@@ -2492,7 +2492,43 @@ Devuelve formato JSON válido y estructurado.`;
 // SMART FALLBACK RESPONSE ENGINE FOR KASI (Deep codebase knowledge, all buttons, zero-install bridge)
 function getSmartCodebaseReply(message: string, context?: any): string {
   const m = message.toLowerCase();
-  
+  // 1. AYUDA DIRECTA PARA CREAR O HACER UNA CAMPAÑA
+  if (
+    m.includes('hacer una campaña') ||
+    m.includes('hacer campaña') ||
+    m.includes('crear una campaña') ||
+    m.includes('crear campaña') ||
+    m.includes('ayudame a hacer') ||
+    m.includes('ayudar a hacer') ||
+    m.includes('ayuda para campaña') ||
+    m.includes('cómo hago una campaña') ||
+    m.includes('como hago una campaña') ||
+    m.includes('cómo crear una campaña') ||
+    m.includes('como crear una campaña') ||
+    m.includes('quiero hacer una campaña') ||
+    m.includes('quiero crear una campaña') ||
+    m.includes('dar de alta') ||
+    m.includes('lanzar campaña') ||
+    m.includes('empezar campaña')
+  ) {
+    return '¡Claro que sí! Con mucho gusto te ayudo a dar de alta y lanzar tu campaña paso a paso. 🚀✨\n\n' +
+      'El proceso es muy rápido y solo te pide 4 datos sencillos:\n' +
+      '1️⃣ **Nombre de tu App o Producto**: Por ejemplo *"MiApp SaaS"* o *"Tienda Virtual"*.\n' +
+      '2️⃣ **Enlace / Web de Destino**: La URL donde quieres que redirijamos a todos los visitantes.\n' +
+      '3️⃣ **Tu Nicho o Sector**: Por ejemplo *"Productividad"*, *"E-commerce"*, *"Finanzas"*, etc.\n' +
+      '4️⃣ **Tu Meta de Registros o Ventas**: Desde 1,000 hasta 25,000+ usuarios garantizados.\n\n' +
+      '👉 **Puedes presionar el botón verde superior "+ Nueva Campaña"** o confirmar la acción interactiva en el chat para abrir el formulario al instante.';
+  }
+
+  // 2. CLIENTES, TRÁFICO Y RESULTADOS
+  if (m.includes('cliente') || m.includes('tráfico') || m.includes('trafico') || m.includes('visita') || m.includes('venta') || m.includes('cuanto usuario') || m.includes('cuánto usuario') || m.includes('llegan solo')) {
+    return '¡Te explico con total precisión cómo funciona la llegada de clientes! 📈👥\n\n' +
+      '1️⃣ **Los 8 Motores trabajan de forma 100% autónoma**: Redactan y publican contenidos en X/Twitter, foros como Reddit, 50+ directorios de software, videos virales y envían URLs a Google Indexing API.\n' +
+      '2️⃣ **Enlace Puente Inteligente**: Cada publicación lleva tu enlace `/r/:campaignId`. Cuando una persona real hace clic, el contador suma +1 al instante y la redirige a tu web.\n' +
+      '3️⃣ **Tiempos de llegada**: El tráfico orgánico comienza a entrar progresivamente desde las primeras 24 a 48 horas tras activarse la campaña.\n' +
+      '4️⃣ **Auto-corte garantizado**: Al alcanzar exactamente tu cuota contratada, todos los motores se apagan de forma automática para no desperdiciar tráfico.';
+  }
+
   if (m.includes('pixel') || m.includes('píxel') || m.includes('enlace') || m.includes('puente') || m.includes('contador') || m.includes('apagar') || m.includes('apagado')) {
     return '¡Hola! ✨🎯 En KaSe hemos eliminado por completo los scripts manuales de píxel para que no tengas que tocar código.\n\n' +
       '1️⃣ **Enrutador Puente Inteligente**: El backend sirve la ruta `/r/:campaignId`. Cada clic orgánico derivado por los 8 motores pasa por este puente.\n' +

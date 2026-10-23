@@ -129,7 +129,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
     const q = text.toLowerCase();
 
     // 1. Pause / Resume campaign
-    if (q.includes('pausar') || q.includes('frenar') || q.includes('detener')) {
+    if (q.includes('pausar') || q.includes('frenar') || q.includes('detener') || q.includes('parar') || q.includes('apagar')) {
       if (activeCampaign && activeCampaign.status === 'active') {
         return {
           id: `act_${Date.now()}`,
@@ -140,7 +140,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
       }
     }
 
-    if (q.includes('reanudar') || q.includes('activar') || q.includes('encender')) {
+    if (q.includes('reanudar') || q.includes('activar') || q.includes('encender') || q.includes('prender') || q.includes('continuar')) {
       if (activeCampaign && activeCampaign.status !== 'active') {
         return {
           id: `act_${Date.now()}`,
@@ -151,43 +151,64 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
       }
     }
 
-    // 2. New Campaign
-    if (q.includes('nueva campaña') || q.includes('crear campaña') || q.includes('dar de alta') || q.includes('registrar app')) {
-      return {
-        id: `act_${Date.now()}`,
-        type: 'new_campaign',
-        title: 'Abrir Formulario de Nueva Campaña',
-        description: 'Registra una nueva aplicación con su nicho, URL y meta de registros.',
-      };
+    // 2. New Campaign / Help creating a campaign (Very broad matching for everyday Spanish)
+    if (
+      q.includes('campaña') ||
+      q.includes('campana') ||
+      q.includes('dar de alta') ||
+      q.includes('registrar app') ||
+      q.includes('crear') ||
+      q.includes('hacer') ||
+      q.includes('lanzar') ||
+      q.includes('empezar')
+    ) {
+      if (
+        q.includes('hacer') ||
+        q.includes('crear') ||
+        q.includes('nueva') ||
+        q.includes('alta') ||
+        q.includes('ayud') ||
+        q.includes('lanzar') ||
+        q.includes('iniciar') ||
+        q.includes('empezar') ||
+        q.includes('configurar')
+      ) {
+        return {
+          id: `act_${Date.now()}`,
+          type: 'new_campaign',
+          title: '➕ Abrir Formulario y Crear Campaña Ahora',
+          description: 'Abre el asistente para registrar tu app, configurar tu nicho, URL y cuota meta.',
+        };
+      }
     }
 
     // 3. Navigate sections
-    if (q.includes('simulador') || q.includes('ráfaga') || q.includes('probar cuota')) {
+    if (q.includes('simulador') || q.includes('ráfaga') || q.includes('rafaga') || q.includes('probar cuota')) {
       return {
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'simulator',
-        title: 'Ir a Pestaña "Simulador de Cuota"',
+        title: '🧪 Ir a Pestaña "Simulador de Cuota"',
         description: 'Te lleva al simulador para probar ráfagas de tráfico y corte automático.',
       };
     }
 
-    if (q.includes('modulo') || q.includes('módulo') || q.includes('8')) {
+    if (q.includes('modulo') || q.includes('módulo') || q.includes('8') || q.includes('motores')) {
       return {
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'modules',
-        title: 'Ir a Pestaña "Módulos (8)"',
+        title: '🚀 Ir a Pestaña "Módulos (8)"',
         description: 'Te muestra el estado y configuración de cada uno de los 8 motores de crecimiento.',
       };
     }
 
-    if (q.includes('precio') || q.includes('plan') || q.includes('cuanto cuesta') || q.includes('cuánto cuesta') || q.includes('comprar')) {
+    if (q.includes('precio') || q.includes('plan') || q.includes('cuanto cuesta') || q.includes('cuánto cuesta') || q.includes('comprar') || q.includes('pagar')) {
       return {
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'plans',
-        title: 'Ir a Pestaña "Planes y Precios"',
+        title: '💳 Ir a Pestaña "Planes y Precios"',
         description: 'Abre el comparador de planes oficiales y la calculadora personalizada.',
       };
     }
@@ -197,7 +218,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'dashboard',
-        title: 'Ir al Dashboard Principal',
+        title: '📊 Ir al Dashboard Principal',
         description: 'Muestra los números en vivo de tu campaña, cuota y velocidad.',
       };
     }
@@ -207,26 +228,26 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'integration',
-        title: 'Ir a "Integración Segura"',
+        title: '🔌 Ir a "Integración Segura"',
         description: 'Copia tu Enlace Puente Inteligente (/r/:id) sin instalar ningún píxel.',
       };
     }
 
-    if (q.includes('guia') || q.includes('guía') || q.includes('como funciona') || q.includes('cómo funciona')) {
+    if (q.includes('guia') || q.includes('guía') || q.includes('como funciona') || q.includes('cómo funciona') || q.includes('que hago') || q.includes('qué hago')) {
       return {
         id: `act_${Date.now()}`,
         type: 'navigate',
         target: 'guide',
-        title: 'Ir a "¿Cómo funciona?" (Guía Oficial)',
+        title: '📖 Ir a "¿Cómo funciona?" (Guía Oficial)',
         description: 'Paso a paso simple de cómo opera la arquitectura autónoma.',
       };
     }
 
-    if (q.includes('instalar') || q.includes('celular') || q.includes('pwa') || q.includes('telefono') || q.includes('teléfono')) {
+    if (q.includes('instalar') || q.includes('celular') || q.includes('pwa') || q.includes('telefono') || q.includes('teléfono') || q.includes('app movil')) {
       return {
         id: `act_${Date.now()}`,
         type: 'install_app',
-        title: 'Abrir Instalador de App Móvil (PWA)',
+        title: '📱 Abrir Instalador de App Móvil (PWA)',
         description: 'Instala KaSe en tu celular Android o iPhone para tener acceso directo.',
       };
     }
@@ -235,16 +256,16 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
       return {
         id: `act_${Date.now()}`,
         type: 'one_dollar_test',
-        title: 'Iniciar Autoprueba Mercado Pago ($1.00 USD)',
+        title: '💳 Iniciar Autoprueba Mercado Pago ($1.00 USD)',
         description: 'Abre el checkout de $1 USD para comprobar acreditación bancaria directa.',
       };
     }
 
-    if (q.includes('reiniciar contador') || q.includes('resetear contador') || q.includes('poner en cero')) {
+    if (q.includes('reiniciar contador') || q.includes('resetear contador') || q.includes('poner en cero') || q.includes('reset')) {
       return {
         id: `act_${Date.now()}`,
         type: 'reset_counter',
-        title: `Resetear Contador de "${activeCampaign?.name || 'Campaña'}"`,
+        title: `🔄 Resetear Contador de "${activeCampaign?.name || 'Campaña'}"`,
         description: 'Pone en 0 los registros y reactiva los motores de la campaña.',
       };
     }
@@ -256,6 +277,44 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
   const getSmartReply = (question: string): string => {
     const q = question.toLowerCase();
 
+    // 1. AYUDA DIRECTA PARA HACER O CREAR UNA CAMPAÑA
+    if (
+      q.includes('hacer una campaña') ||
+      q.includes('hacer campaña') ||
+      q.includes('crear una campaña') ||
+      q.includes('crear campaña') ||
+      q.includes('ayudame a hacer') ||
+      q.includes('ayudar a hacer') ||
+      q.includes('ayuda para campaña') ||
+      q.includes('cómo hago una campaña') ||
+      q.includes('como hago una campaña') ||
+      q.includes('cómo crear una campaña') ||
+      q.includes('como crear una campaña') ||
+      q.includes('quiero hacer una campaña') ||
+      q.includes('quiero crear una campaña') ||
+      q.includes('dar de alta') ||
+      q.includes('lanzar campaña') ||
+      q.includes('empezar campaña')
+    ) {
+      return '¡Claro que sí! Con mucho gusto te ayudo a dar de alta y lanzar tu campaña paso a paso. 🚀✨\n\n' +
+        'El proceso es muy rápido y solo te pide 4 datos básicos:\n' +
+        '1️⃣ **Nombre de tu App o Producto**: Por ejemplo *"MiApp SaaS"* o *"Tienda Virtual"*.\n' +
+        '2️⃣ **Enlace / Web de Destino**: La URL donde quieres que redirijamos a todos los visitantes.\n' +
+        '3️⃣ **Tu Nicho o Sector**: Por ejemplo *"Productividad"*, *"E-commerce"*, *"Finanzas"*, etc.\n' +
+        '4️⃣ **Tu Meta de Registros o Ventas**: Desde 1,000 hasta 25,000+ usuarios garantizados.\n\n' +
+        '👇 **He preparado la acción aquí abajo.** Presiona el botón verde para abrir el formulario y crearla de inmediato con tu permiso:';
+    }
+
+    // 2. CLIENTES, VENTAS, TRÁFICO Y RESULTADOS
+    if (q.includes('cliente') || q.includes('tráfico') || q.includes('trafico') || q.includes('visita') || q.includes('venta') || q.includes('cuanto usuario') || q.includes('cuánto usuario') || q.includes('llegan solo')) {
+      return '¡Te explico con total precisión cómo funciona la llegada de clientes! 📈👥\n\n' +
+        '1️⃣ **Los 8 Motores trabajan de forma autónoma**: Redactan y publican contenidos en X/Twitter, foros como Reddit, 50+ directorios de software, videos virales y envían URLs a Google Indexing API.\n' +
+        '2️⃣ **Enlace Puente Inteligente**: Cada publicación lleva tu enlace `/r/:campaignId`. Cuando una persona real hace clic, el contador suma +1 al instante y la redirige a tu web.\n' +
+        '3️⃣ **Tiempos de llegada**: El tráfico orgánico comienza a entrar progresivamente desde las primeras 24 a 48 horas tras activarse la campaña, aumentando su velocidad conforme Google y las redes indexan los enlaces.\n' +
+        '4️⃣ **Auto-corte garantizado**: Al alcanzar exactamente tu cuota contratada, todos los motores se apagan de forma automática para no desperdiciar tráfico.';
+    }
+
+    // 3. ENRUTADOR PUENTE / PÍXEL
     if (q.includes('pixel') || q.includes('píxel') || q.includes('enlace') || q.includes('puente')) {
       return '¡Hola! ✨🎯 En KaSe hemos eliminado totalmente los viejos scripts de píxeles manuales:\n\n' +
         '1️⃣ **Enrutador Puente Inteligente**: Se procesa directamente en `/r/:campaignId`. Cada clic generado por los motores de tráfico pasa por este endpoint.\n' +
@@ -264,6 +323,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         '4️⃣ **Auto-Apagado por Cuota**: Si el contador alcanza la meta contratada, la función `evaluateQuotaAndEnforce()` apaga todos los motores al instante. ¡Cero scripts molestos en tu código! 🛡️⚡';
     }
 
+    // 4. MÓDULOS DE MARKETING
     if (q.includes('modulo') || q.includes('módulo') || q.includes('8') || q.includes('motores')) {
       return '¡Claro que sí! 🚀💡 La suite cuenta con 8 motores autónomos de crecimiento orgánico:\n\n' +
         '🔹 **Mod 1 (SEO)**: Conector con Google Search Indexing API para indexar en <48h.\n' +
@@ -277,7 +337,8 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         '¡Puedes prender o apagar cualquiera desde la pestaña "Módulos (8)"! ✨🔥';
     }
 
-    if (q.includes('mercadopago') || q.includes('mercado pago') || q.includes('precio') || q.includes('plan') || q.includes('pago')) {
+    // 5. MERCADO PAGO, PRECIOS Y PAGOS
+    if (q.includes('mercadopago') || q.includes('mercado pago') || q.includes('precio') || q.includes('plan') || q.includes('pago') || q.includes('costo') || q.includes('cuanto vale')) {
       return '¡Hablemos de finanzas y planes! 💳🇺🇾 Tu pasarela está conectada a Mercado Pago Uruguay mediante `/api/payments/mercadopago/create-preference`:\n\n' +
         '💰 **Planes Disponibles**:\n' +
         '- **Starter**: $490 USD (1,000 registros/ventas garantizados)\n' +
@@ -286,6 +347,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         'Además contamos con una calculadora interactiva en "Planes y Precios" para tarifas exactas a medida. Si eres Kathy, también tienes el botón para autoprueba de $1.00 USD. 💸✨';
     }
 
+    // 6. GUÍA DE BOTONES
     if (q.includes('boton') || q.includes('botón') || q.includes('seccion') || q.includes('sección') || q.includes('donde') || q.includes('dónde') || q.includes('que hace') || q.includes('qué hace')) {
       return '¡Guía completa de cada botón de la plataforma! 🧭✨\n\n' +
         '🟢 **Navbar Superior**:\n' +
@@ -302,15 +364,25 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
         '¿Deseas que ejecute alguna acción o te lleve a una pestaña? ¡Dímelo y lo hacemos! 🚀';
     }
 
-    if (q.includes('pausar') || q.includes('frenar') || q.includes('detener')) {
+    // 7. PAUSAR / REANUDAR
+    if (q.includes('pausar') || q.includes('frenar') || q.includes('detener') || q.includes('parar')) {
       return `¡Entendido! He preparado la acción para pausar la campaña "${activeCampaign?.name || 'actual'}". Al confirmarla abajo, los 8 motores se detendrán al instante para no consumir más cuota. ⏸️🛡️`;
     }
 
-    if (q.includes('reanudar') || q.includes('activar') || q.includes('encender')) {
+    if (q.includes('reanudar') || q.includes('activar') || q.includes('encender') || q.includes('prender')) {
       return `¡Entendido! He preparado la acción para reanudar la campaña "${activeCampaign?.name || 'actual'}". Al confirmarla abajo, los motores retomarán la captación de tráfico de inmediato. ▶️⚡`;
     }
 
-    return `¡Comprendido! ✨🤖 Analizando tu solicitud en el contexto de "${activeCampaign?.name || 'KaSe Suite'}": nuestra arquitectura procesa el tráfico a través del Enrutador Puente inteligente, con persistencia en base de datos y corte automático por cuota garantizada. ¿Te gustaría que te guíe a alguna sección, que pausemos/activemos una campaña o que revisemos la estrategia de los 8 motores? ¡Dime y lo hacemos juntos con tu confirmación! 💡🚀`;
+    // 8. QUÉ HAGO AHORA / POR DÓNDE EMPIEZO
+    if (q.includes('que hago') || q.includes('qué hago') || q.includes('por donde empiezo') || q.includes('por dónde empiezo') || q.includes('como empiezo') || q.includes('cómo empiezo')) {
+      return '¡Aquí tienes el camino simple para empezar ahora mismo! 🏁✨\n\n' +
+        '1️⃣ **Paso 1: Dar de alta tu campaña**: Presiona el botón verde `+ Nueva Campaña` y pon el nombre y URL de tu web.\n' +
+        '2️⃣ **Paso 2: Elegir tu plan de usuarios**: Selecciona cuántos registros quieres recibir (ej. 1,000 en Starter).\n' +
+        '3️⃣ **Paso 3: Copiar tu Enlace Puente**: Ve a "Integración Segura" y usa tu enlace `/r/:id` en tus redes o anuncios.\n' +
+        '4️⃣ **Paso 4: Relájate**: Los 8 motores generarán contenido y dirigirán el tráfico automáticamente hasta cumplir tu meta.';
+    }
+
+    return `¡Hola! Soy KaSi ✨🤖, tu Copiloto Oficial de KaSe. Conozco cada botón y módulo de tu plataforma. Puedo ayudarte a crear una campaña nueva, pausar o reanudar motores, guiarte a cualquier sección o responder cualquier duda técnica de tu negocio. ¿Qué te gustaría hacer ahora? ¡Dime y te ayudo al instante! 💡🚀`;
   };
 
   const handleSendMessage = async (textToSend?: string) => {
