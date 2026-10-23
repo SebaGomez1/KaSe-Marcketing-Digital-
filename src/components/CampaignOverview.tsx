@@ -1,0 +1,394 @@
+import React from 'react';
+import { 
+  Users, 
+  Target, 
+  Cpu, 
+  ShieldCheck, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Play, 
+  ArrowUpRight,
+  Code2,
+  Radio
+} from 'lucide-react';
+import { Campaign } from '../types/growth';
+
+interface CampaignOverviewProps {
+  campaign: Campaign;
+  onSimulateBurst: (count: number) => void;
+  onOpenIntegration: () => void;
+  onOpenModules: () => void;
+  onOpenGuide: () => void;
+  onOpenPlans: () => void;
+  isSimulating?: boolean;
+}
+
+export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
+  campaign,
+  onSimulateBurst,
+  onOpenIntegration,
+  onOpenModules,
+  onOpenGuide,
+  onOpenPlans,
+  isSimulating = false,
+}) => {
+  const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
+  const progressPercent = Math.min(100, Math.round((currentRegistrations / targetRegistrations) * 100));
+  const remaining = Math.max(0, targetRegistrations - currentRegistrations);
+  const isQuotaReached = status === 'paused_quota_reached' || currentRegistrations >= targetRegistrations;
+
+  // Count active modules
+  const activeModulesCount = Object.values(modules).filter((m) => m.active).length;
+
+  return (
+    <div className="space-y-6">
+      {/* 0. FRIENDLY ONBOARDING BANNER (What to do, where to go) */}
+      <div className="bg-[#141414] border border-neutral-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <Radio className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white flex items-center gap-2">
+              <span>¿Cómo funciona el flujo de tu campaña?</span>
+              <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800">
+                1. Configuras meta &rarr; 2. Pegas píxel &rarr; 3. KaSe atrae usuarios &rarr; 4. Auto-Pausa
+              </span>
+            </div>
+            <p className="text-[11px] text-neutral-400 mt-0.5">
+              Solo pagas por usuarios registrados reales. No necesitas dar contraseñas ni acceso a tus servidores.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <button
+            onClick={onOpenGuide}
+            className="w-full sm:w-auto px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-md text-xs font-medium text-emerald-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>Ver Guía Paso a Paso</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onOpenPlans}
+            className="w-full sm:w-auto px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+          >
+            Ver Planes & Precios
+          </button>
+        </div>
+      </div>
+      {/* 1. AUTO-PAUSE ALERT BANNER (Displayed prominently when quota is reached) */}
+      {isQuotaReached && (
+        <div className="bg-amber-950/30 border border-amber-500/40 rounded-xl p-5 text-amber-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5 text-amber-400">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-amber-300">
+                  Tope Programado Cumplido: Motores Pausados de Forma Inteligente
+                </h3>
+                <p className="text-xs text-amber-200/90 leading-relaxed">
+                  KaSe ha completado el 100% de la meta contratada ({currentRegistrations.toLocaleString()} de {targetRegistrations.toLocaleString()} usuarios registrados). Los 8 módulos autónomos se han detenido en segundo plano para evitar sobrecostos al cliente.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-mono text-amber-300 bg-amber-900/50 px-2.5 py-1 rounded border border-amber-600/30">
+                100% COMPLETADO
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. DOMINANT FOCAL ANCHOR: CONVERSION GOAL METER */}
+      <div className="bg-[#161616] border border-neutral-800 rounded-xl p-6 relative overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-neutral-800">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+              <Target className="w-4 h-4 text-sky-400" />
+              <span>Control Autónomo de Cuota Contratada</span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono text-emerald-400">Auto-Pausa Activa</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <span className="font-mono tabular-nums text-sky-400">
+                {currentRegistrations.toLocaleString()}
+              </span>{' '}
+              <span className="text-neutral-500 font-light">/</span>{' '}
+              <span className="font-mono tabular-nums text-neutral-200">
+                {targetRegistrations.toLocaleString()}
+              </span>{' '}
+              <span className="text-base font-medium text-neutral-400">
+                {campaign.targetUnitLabel || 'usuarios registrados'}
+              </span>
+            </h2>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+              <p className="max-w-xl leading-relaxed">
+                Monitoreo continuo en tiempo real mediante el Píxel de Seguimiento y Webhook seguro. El sistema se desactiva de forma estricta al llegar a la cuota.
+              </p>
+              {campaign.minPlanPrice !== undefined && campaign.maxPlanPrice !== undefined && (
+                <div className="px-2.5 py-1 rounded-md bg-emerald-950/30 border border-emerald-500/20 text-emerald-300 text-[11px] font-mono">
+                  Targeting calibrado para planes de <strong className="text-white">${campaign.minPlanPrice} - ${campaign.maxPlanPrice} {campaign.currency || 'USD'}</strong>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="text-right sm:text-right">
+              <div className="text-3xl font-extrabold font-mono tabular-nums text-emerald-400">
+                {progressPercent}%
+              </div>
+              <div className="text-xs text-neutral-400">
+                {remaining > 0 ? (
+                  <span>
+                    Faltan <strong className="font-mono text-neutral-200">{remaining.toLocaleString()}</strong> {campaign.targetUnitLabel || 'unidades'}
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-medium">Meta alcanzada (Motores en Pausa)</span>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Progress Bar Container */}
+        <div className="relative pt-6">
+          <div className="w-full h-3 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+            <div
+              className={`h-full transition-all duration-700 ease-out ${
+                isQuotaReached
+                  ? 'bg-gradient-to-r from-emerald-500 via-sky-400 to-amber-400'
+                  : 'bg-gradient-to-r from-emerald-500 to-sky-400'
+              }`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-neutral-500 mt-2 font-mono tabular-nums">
+            <span>0</span>
+            <span>{(targetRegistrations * 0.25).toLocaleString()}</span>
+            <span>{(targetRegistrations * 0.5).toLocaleString()}</span>
+            <span>{(targetRegistrations * 0.75).toLocaleString()}</span>
+            <span className="text-sky-400 font-semibold">{targetRegistrations.toLocaleString()} (Meta)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FOUR KPI METRIC STRIP */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1 */}
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Usuarios Registrados</span>
+            <Users className="w-4 h-4 text-sky-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono tabular-nums text-white">
+            {currentRegistrations.toLocaleString()}
+          </div>
+          <div className="text-xs text-neutral-400">
+            Contabilizados de forma externa
+          </div>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Estado del Motor</span>
+            <Cpu className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold text-white flex items-center gap-2">
+            {!isQuotaReached && status === 'active' ? (
+              <span className="text-emerald-400 text-lg font-semibold">100% Autónomo</span>
+            ) : isQuotaReached ? (
+              <span className="text-amber-400 text-lg font-semibold">Pausa Inteligente</span>
+            ) : (
+              <span className="text-neutral-400 text-lg font-semibold">Pausado Manual</span>
+            )}
+          </div>
+          <div className="text-xs text-neutral-400">
+            {isQuotaReached ? 'Cuota cumplida' : 'Procesos en segundo plano'}
+          </div>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Módulos de Captación</span>
+            <Radio className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono tabular-nums text-white">
+            {activeModulesCount} <span className="text-sm font-normal text-neutral-500">/ 8</span>
+          </div>
+          <div className="text-xs text-neutral-400 flex items-center justify-between">
+            <span>Plan {plan.toUpperCase()}</span>
+            <button
+              onClick={onOpenModules}
+              className="text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+            >
+              Ver todos →
+            </button>
+          </div>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-1">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Integración Externa</span>
+            <ShieldCheck className="w-4 h-4 text-teal-400" />
+          </div>
+          <div className="text-lg font-semibold text-white">
+            Píxel & Webhook
+          </div>
+          <div className="text-xs text-neutral-400 flex items-center justify-between">
+            <span>Zero-Access seguro</span>
+            <button
+              onClick={onOpenIntegration}
+              className="text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+            >
+              Copiar scripts →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. REAL-TIME ACTIVITY & LIVE CONVERSIONS FEED */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: Conversion Timeline Feed */}
+        <div className="lg:col-span-2 bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Flujo de Conversiones en Tiempo Real
+              </h3>
+              <p className="text-xs text-neutral-400">
+                Registros validados externamente mediante Píxel en Thank You Page o Webhook
+              </p>
+            </div>
+            <span className="text-xs font-mono text-neutral-400 tabular-nums">
+              {campaign.recentConversions.length} eventos recientes
+            </span>
+          </div>
+
+          {campaign.recentConversions.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <Code2 className="w-8 h-8 text-neutral-600 mx-auto" />
+              <div className="text-sm text-neutral-300 font-medium">Aún no hay registros contabilizados</div>
+              <p className="text-xs text-neutral-500 max-w-sm mx-auto">
+                Integra el Píxel o Webhook en tu página de confirmación, o utiliza el Simulador de Cuota para probar.
+              </p>
+              <button
+                onClick={() => onSimulateBurst(5)}
+                className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-md hover:bg-emerald-500/20 transition-colors cursor-pointer"
+              >
+                Enviar 5 Registros de Prueba
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-neutral-800/80 max-h-80 overflow-y-auto pr-1">
+              {campaign.recentConversions.map((conv) => (
+                <div key={conv.id} className="py-3 flex items-center justify-between gap-4 text-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                        conv.method === 'webhook'
+                          ? 'bg-sky-400'
+                          : conv.method === 'organic_click' || conv.method === 'bridge_router' || (conv.method as any) === 'pixel'
+                          ? 'bg-emerald-400'
+                          : 'bg-indigo-400'
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <div className="font-mono text-neutral-200 truncate">
+                        {conv.userTag}
+                      </div>
+                      <div className="text-neutral-500 flex items-center gap-2 truncate">
+                        <span>{conv.method.toUpperCase()}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="truncate">{conv.referrer}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-neutral-400">
+                      {new Date(conv.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </div>
+                    <div className="text-neutral-500 text-[10px] font-mono">
+                      {conv.ipMasked}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right 1 Col: Autonomous Architecture Summary */}
+        <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-4">
+          <div className="pb-3 border-b border-neutral-800">
+            <h3 className="text-sm font-bold text-white">
+              Ecosistema de Captación
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Orquestación autónoma coordinada
+            </p>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div className="p-3 rounded-lg bg-neutral-900 border border-neutral-800 space-y-1">
+              <div className="font-medium text-emerald-400 flex items-center justify-between">
+                <span>Módulos Base (1, 2, 3)</span>
+                <span className="text-[10px] font-mono text-neutral-400">Activos</span>
+              </div>
+              <p className="text-neutral-400 text-[11px] leading-relaxed">
+                SEO técnico, Indexación API directa a Google y envío automatizado a 50+ directorios de software.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-neutral-900 border border-neutral-800 space-y-1">
+              <div className="font-medium text-sky-400 flex items-center justify-between">
+                <span>Módulos Growth (4, 5)</span>
+                <span className="text-[10px] font-mono text-neutral-400">
+                  {plan === 'growth' || plan === 'enterprise' ? 'Activos' : 'Plan Growth'}
+                </span>
+              </div>
+              <p className="text-neutral-400 text-[11px] leading-relaxed">
+                Outbound en Reddit & X con respuestas de valor contextual y motor de pitching para newsletters.
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-neutral-900 border border-neutral-800 space-y-1">
+              <div className="font-medium text-purple-400 flex items-center justify-between">
+                <span>Módulos Enterprise (6, 7, 8)</span>
+                <span className="text-[10px] font-mono text-neutral-400">
+                  {plan === 'enterprise' ? 'Activos' : 'Plan Enterprise'}
+                </span>
+              </div>
+              <p className="text-neutral-400 text-[11px] leading-relaxed">
+                Micro-videos virales (Reels/TikTok), Programmatic SEO a gran escala y bot de alianzas con influencers.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={onOpenModules}
+              className="w-full py-2 px-3 text-xs font-medium text-center text-neutral-300 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-md transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>Explorar los 8 Módulos</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

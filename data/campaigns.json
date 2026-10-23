@@ -1,0 +1,386 @@
+[
+  {
+    "id": "kase_camp_78a1bc",
+    "name": "PulseFlow AI - B2B Operations Suite",
+    "targetUrl": "https://pulseflow.app",
+    "niche": "SaaS / Productividad y Gestión Inteligente",
+    "description": "Plataforma de orquestación de operaciones y automatización de flujos de trabajo B2B con IA.",
+    "campaignType": "user_registrations",
+    "targetUnitLabel": "usuarios registrados",
+    "minPlanPrice": 29,
+    "maxPlanPrice": 199,
+    "currency": "USD",
+    "targetRegistrations": 2000,
+    "currentRegistrations": 1846,
+    "plan": "starter",
+    "status": "active",
+    "webhookSecret": "whsec_98f41e0b57a2c6d4",
+    "pixelToken": "px_81a44e21a0",
+    "createdAt": "2026-10-16T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 48,
+        "lastExecution": "Hace 14 min",
+        "statusText": "12 URLs enviadas a Google Search Indexing API (<48h rastreo)"
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 116,
+        "lastExecution": "Hace 32 min",
+        "statusText": "Sindicando hilos técnicos en X y artículos en LinkedIn"
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 39,
+        "lastExecution": "Hace 1 h",
+        "statusText": "Listado en 39 de 52 plataformas de software verificadas"
+      },
+      "mod4_outbound": {
+        "active": false,
+        "name": "Automated Outbound (Reddit & X Bot)",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Requiere Plan Growth o Enterprise"
+      },
+      "mod5_newsletter": {
+        "active": false,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Requiere Plan Growth o Enterprise"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_1792722789312_611",
+        "timestamp": "2026-10-23T02:33:09.312Z",
+        "method": "webhook",
+        "userTag": "lead_validado@b2b.uy",
+        "ipMasked": "127.0.0.1",
+        "referrer": "Google Search Organic"
+      },
+      {
+        "id": "conv_918",
+        "timestamp": "2026-10-23T02:28:52.011Z",
+        "method": "webhook",
+        "userTag": "usr_718293@finteam.co",
+        "ipMasked": "194.22.***.***",
+        "referrer": "https://news.ycombinator.com"
+      },
+      {
+        "id": "conv_917",
+        "timestamp": "2026-10-23T02:14:52.011Z",
+        "method": "pixel",
+        "userTag": "usr_849201@startup.io",
+        "ipMasked": "82.165.***.***",
+        "referrer": "https://producthunt.com/posts/pulseflow-ai"
+      },
+      {
+        "id": "conv_916",
+        "timestamp": "2026-10-23T01:47:52.011Z",
+        "method": "webhook",
+        "userTag": "usr_901824@techlead.de",
+        "ipMasked": "213.133.***.***",
+        "referrer": "https://google.com/search?q=alternativa+operaciones+saas"
+      }
+    ],
+    "logs": [
+      {
+        "id": "log_bridge_1792722794596_656",
+        "timestamp": "2026-10-23T02:33:14.596Z",
+        "level": "INFO",
+        "module": "ENRUTADOR_PUENTE",
+        "message": "Visita canalizada hacia PulseFlow AI - B2B Operations Suite vía Enrutador Puente (/r/kase_camp_78a1bc). Origen: reddit_thread. Destino: https://pulseflow.app."
+      },
+      {
+        "id": "log_conv_1792722789312",
+        "timestamp": "2026-10-23T02:33:09.312Z",
+        "level": "SUCCESS",
+        "module": "WEBHOOK_RECEIVER",
+        "message": "Conversión criptográficamente autenticada vía Webhook (x-kase-secret verificado). Usuario: lead_validado@b2b.uy. Total acumulado: 1846/2000."
+      },
+      {
+        "id": "log_shield_alert_1792722783863",
+        "timestamp": "2026-10-23T02:33:03.863Z",
+        "level": "ALERT",
+        "module": "WEBHOOK_SHIELD",
+        "message": "🛡️ INYECCIÓN NO AUTORIZADA BLOQUEADA: Petición rechazada en webhook para campaña \"PulseFlow AI - B2B Operations Suite\" (kase_camp_78a1bc). Cabecera x-kase-secret inválida o ausente desde IP: 127.0.0.1."
+      },
+      {
+        "id": "log_01",
+        "timestamp": "2026-10-23T02:28:52.011Z",
+        "level": "SUCCESS",
+        "module": "WEBHOOK_RECEIVER",
+        "message": "Conversión confirmada vía Webhook seguro. Usuario: usr_718293@finteam.co. Total: 1845/2000 usuarios registrados."
+      },
+      {
+        "id": "log_02",
+        "timestamp": "2026-10-23T02:18:52.011Z",
+        "level": "INFO",
+        "module": "MÓDULO 1 (SEO API)",
+        "message": "Lote de 4 artículos técnicos indexados con éxito vía Google Search Indexing API."
+      },
+      {
+        "id": "log_03",
+        "timestamp": "2026-10-23T02:00:52.011Z",
+        "level": "INFO",
+        "module": "MÓDULO 2 (SOCIAL)",
+        "message": "Sindicación omnicanal publicada: 1 Hilo en X (Twitter) + 1 Caso de Estudio en LinkedIn."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_sales99",
+    "name": "NovaMetrics Pro - Venta de Membresías",
+    "targetUrl": "https://novametrics.io/pricing",
+    "niche": "Analytics & Business Intelligence",
+    "description": "Campaña orientada a la venta directa de membresías y suscripciones anuales con captación de clientes de alto valor.",
+    "campaignType": "plan_sales",
+    "targetUnitLabel": "ventas de planes",
+    "minPlanPrice": 49,
+    "maxPlanPrice": 390,
+    "currency": "USD",
+    "targetRegistrations": 50,
+    "currentRegistrations": 42,
+    "plan": "growth",
+    "status": "active",
+    "webhookSecret": "whsec_sales_8192a7bc",
+    "pixelToken": "px_sales_99a8",
+    "createdAt": "2026-10-11T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 48,
+        "lastExecution": "Hace 14 min",
+        "statusText": "12 URLs enviadas a Google Search Indexing API (<48h rastreo)"
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 116,
+        "lastExecution": "Hace 32 min",
+        "statusText": "Sindicando hilos técnicos en X y artículos en LinkedIn"
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 39,
+        "lastExecution": "Hace 1 h",
+        "statusText": "Listado en 39 de 52 plataformas de software verificadas"
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (Reddit & X Bot)",
+        "category": "advanced",
+        "itemsProcessed": 84,
+        "lastExecution": "Hace 8 min",
+        "statusText": "Monitoreando r/SaaS, r/startups con respuestas de alto valor"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 28,
+        "lastExecution": "Hace 2 h",
+        "statusText": "Base dinámica de creadores tech con ofertas VIP de cortesía"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 0,
+        "lastExecution": "Inactivo por Plan",
+        "statusText": "Exclusivo Plan Enterprise VIP"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_sale_01",
+        "timestamp": "2026-10-23T02:20:52.011Z",
+        "method": "webhook",
+        "userTag": "orden_#8492 ($390/año) - cfo@logistix.com",
+        "ipMasked": "201.217.***.***",
+        "referrer": "https://novametrics.io/checkout/success"
+      },
+      {
+        "id": "conv_sale_02",
+        "timestamp": "2026-10-23T01:07:52.011Z",
+        "method": "webhook",
+        "userTag": "orden_#8491 ($49/mes) - ceo@agenciapro.uy",
+        "ipMasked": "179.24.***.***",
+        "referrer": "https://mercadopago.com.uy/checkout"
+      }
+    ],
+    "logs": [
+      {
+        "id": "log_s01",
+        "timestamp": "2026-10-23T02:20:52.011Z",
+        "level": "SUCCESS",
+        "module": "PAYMENT_WEBHOOK",
+        "message": "Venta de Membresía Enterprise ($390) confirmada vía Webhook de pago. Progreso: 42/50 ventas alcanzadas."
+      },
+      {
+        "id": "log_s02",
+        "timestamp": "2026-10-23T01:52:52.011Z",
+        "level": "INFO",
+        "module": "MÓDULO 4 (OUTBOUND)",
+        "message": "Algoritmo calibrado para tickets de $49 - $390: Detectadas 18 empresas B2B evaluando software de BI."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_yt88",
+    "name": "GrowthLab Studio - Canal YouTube",
+    "targetUrl": "https://youtube.com/@GrowthLabStudio",
+    "niche": "Educación Tecnológica & Startups",
+    "description": "Atracción masiva de reproducciones orgánicas de alta retención y suscriptores para serie de masterclasses.",
+    "campaignType": "youtube_growth",
+    "targetUnitLabel": "vistas y suscriptores",
+    "minPlanPrice": 0,
+    "maxPlanPrice": 79,
+    "currency": "USD",
+    "targetRegistrations": 25000,
+    "currentRegistrations": 21800,
+    "plan": "enterprise",
+    "status": "active",
+    "webhookSecret": "whsec_yt_991823",
+    "pixelToken": "px_yt_4401",
+    "createdAt": "2026-10-05T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 48,
+        "lastExecution": "Hace 14 min",
+        "statusText": "12 URLs enviadas a Google Search Indexing API (<48h rastreo)"
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 116,
+        "lastExecution": "Hace 32 min",
+        "statusText": "Sindicando hilos técnicos en X y artículos en LinkedIn"
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 39,
+        "lastExecution": "Hace 1 h",
+        "statusText": "Listado en 39 de 52 plataformas de software verificadas"
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (Reddit & X Bot)",
+        "category": "advanced",
+        "itemsProcessed": 84,
+        "lastExecution": "Hace 8 min",
+        "statusText": "Monitoreando r/SaaS, r/startups con respuestas de alto valor"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 28,
+        "lastExecution": "Hace 2 h",
+        "statusText": "Base dinámica de creadores tech con ofertas VIP de cortesía"
+      },
+      "mod6_video": {
+        "active": true,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 31,
+        "lastExecution": "Hace 45 min",
+        "statusText": "Renderizando micro-videos virales con síntesis de voz digital"
+      },
+      "mod7_pseo": {
+        "active": true,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 210,
+        "lastExecution": "Hace 3 h",
+        "statusText": "210 páginas comparativas hiper-específicas publicadas"
+      },
+      "mod8_influencers": {
+        "active": true,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 65,
+        "lastExecution": "Hace 1 h",
+        "statusText": "65 propuestas de afiliación y accesos exclusivos enviadas"
+      }
+    },
+    "recentConversions": [],
+    "logs": [
+      {
+        "id": "log_yt01",
+        "timestamp": "2026-10-23T02:22:52.011Z",
+        "level": "SUCCESS",
+        "module": "YOUTUBE_TRACKER",
+        "message": "Lote de 840 reproducciones orgánicas y 34 nuevos suscriptores confirmados. Total: 21,800/25,000."
+      },
+      {
+        "id": "log_yt02",
+        "timestamp": "2026-10-23T02:02:52.011Z",
+        "level": "INFO",
+        "module": "MÓDULO 6 (VIDEO)",
+        "message": "3 Shorts y Reels virales sindicados con etiquetas de nicho impulsando visitas directas a YouTube."
+      }
+    ]
+  }
+]
