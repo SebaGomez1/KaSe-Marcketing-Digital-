@@ -25,7 +25,7 @@ import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
 import { Campaign, ModuleDefinition, User } from './types/growth';
 import avatarImg from './assets/images/avatar_growth_lead_1792397446672.jpg';
-import { Smartphone, Download, ShieldCheck } from 'lucide-react';
+import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 
 export default function App() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -55,6 +55,29 @@ export default function App() {
     }
     return null;
   });
+
+  // Internet Connectivity Guard (Strict Online Enforcement)
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      fetchCampaigns();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Sync user state to localStorage
   useEffect(() => {
@@ -295,6 +318,14 @@ export default function App() {
         avatarUrl={avatarImg}
         onRequestOneDollarCheckout={handleOpenOneDollarCheckout}
       />
+
+      {/* Offline Alert Bar: Application strictly operates online */}
+      {!isOnline && (
+        <div className="bg-rose-950/95 border-b border-rose-500/60 px-4 py-2.5 text-center text-xs font-bold text-rose-200 flex items-center justify-center gap-2 sticky top-16 z-50 backdrop-blur-md shadow-lg shadow-rose-950/40">
+          <WifiOff className="w-4 h-4 text-rose-400 animate-pulse shrink-0" />
+          <span>CONEXIÓN A INTERNET REQUERIDA: KaSe y el Agente de IA operan ÚNICAMENTE EN LÍNEA para comunicarse con los motores y procesar datos en tiempo real.</span>
+        </div>
+      )}
 
       {/* Campaign Header & Selector: STRICTLY visible only when user is logged in and not on public or macro tabs */}
       {currentUser && activeCampaign && activeTab !== 'admin_global' && activeTab !== 'landing' && activeTab !== 'reviews' && activeTab !== 'guide' && activeTab !== 'active_campaigns' && (
@@ -538,6 +569,7 @@ export default function App() {
         onOpenOneDollarCheckout={handleOpenOneDollarCheckout}
         currentUser={currentUser}
         onSelectCampaign={(id) => setActiveCampaignId(id)}
+        isOnline={isOnline}
       />
     </div>
   );

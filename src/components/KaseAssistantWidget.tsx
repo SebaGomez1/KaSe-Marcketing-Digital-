@@ -23,7 +23,9 @@ import {
   Gauge,
   HelpCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { Campaign, User } from '../types/growth';
 
@@ -40,6 +42,7 @@ export interface KaseAssistantWidgetProps {
   onOpenOneDollarCheckout?: () => void;
   currentUser?: User | null;
   onSelectCampaign?: (id: string) => void;
+  isOnline?: boolean;
 }
 
 interface ActionProposal {
@@ -71,6 +74,7 @@ export const KaseAssistantWidget: React.FC<KaseAssistantWidgetProps> = ({
   onOpenAuthModal,
   onOpenOneDollarCheckout,
   currentUser,
+  isOnline,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -79,6 +83,26 @@ export const KaseAssistantWidget: React.FC<KaseAssistantWidgetProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [executingActionId, setExecutingActionId] = useState<string | null>(null);
+
+  // Internet Connection Status (Strict Online Requirement)
+  const [localOnline, setLocalOnline] = useState<boolean>(() => {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => setLocalOnline(true);
+    const handleOffline = () => setLocalOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const effectiveOnline = isOnline !== undefined ? isOnline : localOnline;
 
   const initialGreeting = `¡Hola! Soy KaSi ✨🤖, tu Copiloto Inteligente de KaSe Marketing Digital.
 
@@ -389,6 +413,25 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
     const text = (textToSend || inputMessage).trim();
     if (!text || isLoading) return;
 
+    // Strict Online Guard: AI assistant operates ONLY with active internet connection
+    if (!effectiveOnline) {
+      const userMsg: ChatMessage = {
+        id: `user_${Date.now()}`,
+        role: 'user',
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      const offlineMsg: ChatMessage = {
+        id: `offline_${Date.now()}`,
+        role: 'assistant',
+        text: '⚠️ **SIN CONEXIÓN A INTERNET**: KaSi opera **ÚNICAMENTE EN LÍNEA**. Conéctate a Wi-Fi o red móvil activa para comunicarte con la IA y ejecutar acciones en vivo.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, userMsg, offlineMsg]);
+      setInputMessage('');
+      return;
+    }
+
     const action = detectActionProposal(text);
 
     const userMsg: ChatMessage = {
@@ -542,18 +585,24 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
               setIsOpen(true);
               setIsMinimized(false);
             }}
-            className="group relative flex items-center gap-2 p-2.5 sm:px-3 sm:py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold shadow-xl shadow-emerald-500/25 transition-all transform hover:scale-105 active:scale-95 cursor-pointer border border-emerald-400/40"
-            title="Abrir KaSi: Copiloto Inteligente de KaSe"
+            className={`group relative flex items-center gap-2 p-2.5 sm:px-3 sm:py-2.5 rounded-full ${
+              effectiveOnline 
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 border-emerald-400/40 shadow-emerald-500/25' 
+                : 'bg-neutral-900 border-rose-500/60 text-white shadow-rose-950/40'
+            } font-bold shadow-xl transition-all transform hover:scale-105 active:scale-95 cursor-pointer border`}
+            title={effectiveOnline ? "Abrir KaSi: Copiloto Inteligente de KaSe (En línea)" : "⚠️ KaSi requiere conexión a internet"}
             aria-label="Abrir asistente inteligente"
           >
             <div className="relative w-6 h-6 rounded-full bg-black flex items-center justify-center text-emerald-400">
-              <Bot className="w-3.5 h-3.5" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-black" />
+              <Bot className={`w-3.5 h-3.5 ${effectiveOnline ? 'text-emerald-400' : 'text-neutral-400'}`} />
+              <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${effectiveOnline ? 'bg-emerald-400 ring-emerald-400/40' : 'bg-rose-500 ring-rose-500/40'} ring-2 ring-black`} />
             </div>
 
             <div className="hidden sm:flex items-center gap-1 text-xs">
-              <span className="font-extrabold text-black">KaSi</span>
-              <span className="text-[10px] bg-black/20 px-1 rounded font-mono font-bold">IA</span>
+              <span className={`font-extrabold ${effectiveOnline ? 'text-black' : 'text-neutral-200'}`}>KaSi</span>
+              <span className={`text-[10px] px-1 rounded font-mono font-bold ${effectiveOnline ? 'bg-black/20 text-black' : 'bg-rose-500/30 text-rose-300'}`}>
+                {effectiveOnline ? 'IA' : 'OFFLINE'}
+              </span>
             </div>
           </button>
         </div>
@@ -595,9 +644,17 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
               <div className="overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-xs font-bold text-white truncate">KaSi · Copiloto de la Suite</h3>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-bold shrink-0">
-                    ACTIVO
-                  </span>
+                  {effectiveOnline ? (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-bold shrink-0 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      EN LÍNEA
+                    </span>
+                  ) : (
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-bold shrink-0 flex items-center gap-1">
+                      <WifiOff className="w-2.5 h-2.5" />
+                      SIN INTERNET
+                    </span>
+                  )}
                 </div>
                 <p className="text-[10px] text-neutral-400 truncate">
                   {activeCampaign ? `Campaña: ${activeCampaign.name}` : `Sección: ${activeTab}`}
@@ -717,6 +774,19 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
 
               {/* MESSAGES LIST */}
               <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+                {/* Offline Warning Card: Strict online enforcement */}
+                {!effectiveOnline && (
+                  <div className="p-3 rounded-xl bg-rose-950/70 border border-rose-500/60 text-rose-200 text-xs flex items-start gap-2.5 shadow-lg animate-pulse">
+                    <WifiOff className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <strong className="block text-rose-300 text-[11px]">Conexión a Internet Obligatoria</strong>
+                      <p className="text-[10px] text-neutral-300 leading-relaxed">
+                        KaSi opera <strong>ÚNICAMENTE EN LÍNEA</strong>. Conéctate a Wi-Fi o datos móviles para continuar chateando, sincronizar tus campañas y ejecutar acciones en vivo.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {messages.map((msg) => {
                   const isUser = msg.role === 'user';
                   return (
@@ -767,9 +837,9 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
                             ) : (
                               <button
                                 type="button"
-                                disabled={executingActionId === msg.action.id}
+                                disabled={!effectiveOnline || executingActionId === msg.action.id}
                                 onClick={() => handleExecuteAction(msg.id, msg.action!)}
-                                className="w-full py-1.5 px-3 rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-black font-extrabold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/20"
+                                className="w-full py-1.5 px-3 rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 text-black font-extrabold text-[10px] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/20"
                               >
                                 {executingActionId === msg.action.id ? (
                                   <>
@@ -820,7 +890,7 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* INPUT FORM */}
+              {/* INPUT FORM (Disabled when offline) */}
               <div className="p-2.5 bg-neutral-950 border-t border-neutral-800">
                 <form
                   onSubmit={(e) => {
@@ -832,23 +902,38 @@ Estoy conectado directamente a todos los módulos y botones de tu panel. Conozco
                   <input
                     ref={inputRef}
                     type="text"
+                    disabled={!effectiveOnline || isLoading}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Pídele a KaSi una acción o pregunta sobre cualquier botón..."
-                    className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={
+                      effectiveOnline 
+                        ? "Pídele a KaSi una acción o pregunta sobre cualquier botón..." 
+                        : "⚠️ Sin conexión a internet. Conéctate para hablar con KaSi..."
+                    }
+                    className={`flex-1 bg-neutral-900 border ${
+                      effectiveOnline 
+                        ? 'border-neutral-800 focus:border-emerald-500 text-white' 
+                        : 'border-rose-900/60 opacity-60 text-neutral-400 cursor-not-allowed'
+                    } rounded-xl px-3 py-2 text-xs placeholder-neutral-500 focus:outline-none transition-colors`}
                   />
                   <button
                     type="submit"
-                    disabled={!inputMessage.trim() || isLoading}
-                    className="p-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 disabled:hover:bg-emerald-400 text-black font-bold transition-all cursor-pointer shadow-sm shadow-emerald-500/20 shrink-0"
-                    title="Enviar mensaje"
+                    disabled={!effectiveOnline || !inputMessage.trim() || isLoading}
+                    className={`p-2 rounded-xl font-bold transition-all ${
+                      effectiveOnline 
+                        ? 'bg-emerald-400 hover:bg-emerald-300 text-black shadow-sm shadow-emerald-500/20 cursor-pointer' 
+                        : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
+                    } disabled:opacity-40 shrink-0`}
+                    title={effectiveOnline ? "Enviar mensaje" : "Sin conexión a internet"}
                   >
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
                 <div className="mt-1 flex items-center justify-between text-[9px] text-neutral-500 px-1">
-                  <span>Guía y ejecuta con tu permiso directo</span>
-                  <span className="font-mono text-emerald-400">100% Autónomo</span>
+                  <span>{effectiveOnline ? 'Guía y ejecuta con tu permiso directo' : '⚠️ Requiere conexión activa a internet'}</span>
+                  <span className={`font-mono ${effectiveOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {effectiveOnline ? '100% Autónomo' : 'Offline'}
+                  </span>
                 </div>
               </div>
             </>
