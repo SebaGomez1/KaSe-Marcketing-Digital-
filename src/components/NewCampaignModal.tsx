@@ -20,10 +20,18 @@ import {
   Code2,
   Copy,
   RefreshCw,
-  Globe2
+  Globe2,
+  Search
 } from 'lucide-react';
 import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult, isUserSuperAdmin } from '../types/growth';
-import { GEOGRAPHICAL_DATABASE, calculateGeoFeasibility } from '../data/geoLocations';
+import { 
+  GEOGRAPHICAL_DATABASE, 
+  WORLD_COUNTRIES_CATALOG, 
+  searchCountries, 
+  resolveCustomCity, 
+  calculateGeoFeasibility, 
+  CityData 
+} from '../data/geoLocations';
 
 interface NewCampaignModalProps {
   isOpen: boolean;
@@ -68,6 +76,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [selectedCountryCode, setSelectedCountryCode] = useState('UY');
   const [selectedRegionName, setSelectedRegionName] = useState('Montevideo');
   const [selectedCityName, setSelectedCityName] = useState('Montevideo Capital');
+  const [cityInputText, setCityInputText] = useState('Montevideo Capital');
+  const [countrySearchQuery, setCountrySearchQuery] = useState('');
   const [autoExpandProximity, setAutoExpandProximity] = useState(true);
 
   // Pricing Range Questions (Strategic Intent Qualification - Only for user_registrations & plan_sales)
@@ -172,11 +182,21 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   // Selected Country, Region & City objects
   const countryObj = GEOGRAPHICAL_DATABASE.find((c) => c.code === selectedCountryCode) || GEOGRAPHICAL_DATABASE[0];
   const regionObj = countryObj.regions.find((r) => r.name === selectedRegionName) || countryObj.regions[0];
-  const cityObj = regionObj?.cities.find((ci) => ci.name === selectedCityName) || regionObj?.cities[0];
 
-  // Recalculate feasibility when goal or city changes
-  const cityPopulation = cityObj?.population || 1000000;
-  const feasibility = calculateGeoFeasibility(targetQuantity, cityPopulation, selectedCityName);
+  // Resolve custom or selected city
+  const effectiveCityName = (cityInputText || selectedCityName || 'Ciudad Principal').trim();
+  const resolvedCity = resolveCustomCity(effectiveCityName, selectedCountryCode);
+  const cityPopulation = resolvedCity.population || 500000;
+  const feasibility = calculateGeoFeasibility(targetQuantity, cityPopulation, effectiveCityName);
+
+  // Available cities in currently selected country
+  const availableCitiesInCountry: CityData[] = [];
+  countryObj.regions.forEach((r) => {
+    r.cities.forEach((c) => availableCitiesInCountry.push(c));
+  });
+
+  // Filtered countries based on user search query
+  const filteredCountries = searchCountries(countrySearchQuery);
 
   // Handle Country Change
   const handleCountryChange = (code: string) => {
@@ -185,7 +205,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     if (country.regions.length > 0) {
       setSelectedRegionName(country.regions[0].name);
       if (country.regions[0].cities.length > 0) {
-        setSelectedCityName(country.regions[0].cities[0].name);
+        const defCity = country.regions[0].cities[0].name;
+        setSelectedCityName(defCity);
+        setCityInputText(defCity);
       }
     }
   };
@@ -196,7 +218,14 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     const region = countryObj.regions.find((r) => r.name === rName);
     if (region && region.cities.length > 0) {
       setSelectedCityName(region.cities[0].name);
+      setCityInputText(region.cities[0].name);
     }
+  };
+
+  // Handle Free City Input Change
+  const handleCityInputChange = (text: string) => {
+    setCityInputText(text);
+    setSelectedCityName(text);
   };
 
   // Determine which fields to display conditionally
@@ -306,8 +335,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
     const geoData: GeoTargeting = {
       country: countryObj.name,
-      region: selectedRegionName,
-      city: selectedCityName,
+      region: selectedRegionName || 'Región Central',
+      city: effectiveCityName,
       estimatedCityPopulation: cityPopulation,
       autoExpandProximity,
       radiusKm: autoExpandProximity ? feasibility.recommendedRadiusKm : 0,
@@ -576,68 +605,149 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               </div>
             )}
 
-            {/* PARTE 4: MÓDULO DE SEGMENTACIÓN GEOGRÁFICA INTELIGENTE */}
-            <div className="p-4 bg-neutral-900/90 border border-emerald-500/30 rounded-xl space-y-3">
+            {/* PARTE 4: MÓDULO DE SEGMENTACIÓN GEOGRÁFICA INTELIGENTE CON BUSCADOR GLOBAL */}
+            <div className="p-4 bg-neutral-900/90 border border-emerald-500/30 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-400" />
                   <h4 className="font-bold text-white text-xs">
-                    Segmentación Geográfica Inteligente (Ciudades y Radios)
+                    Segmentación Geográfica Inteligente (Buscador Mundial de Países y Ciudades)
                   </h4>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                  Densidad Local Alta Precisión
+                  {WORLD_COUNTRIES_CATALOG.length} Países + Cualquier Ciudad
                 </span>
               </div>
-              <p className="text-[11px] text-neutral-400">
-                Ideal para servicios locales o aplicaciones que exigen densidad geográfica estricta. Selecciona país, estado/provincia y ciudad núcleo:
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Enfoca el tráfico de tus motores exactamente donde están tus clientes ideales. Busca cualquier país del mundo y escribe o selecciona cualquier ciudad específica:
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-neutral-300 text-[11px] font-medium mb-1">País:</label>
-                  <select
-                    value={selectedCountryCode}
-                    onChange={(e) => handleCountryChange(e.target.value)}
-                    className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    {GEOGRAPHICAL_DATABASE.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.flag} {c.name}
-                      </option>
-                    ))}
-                  </select>
+              {/* 1. BUSCADOR DE PAÍS */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="text-neutral-300 text-[11px] font-semibold flex items-center gap-1.5">
+                    <span>1. País Seleccionado:</span>
+                    <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                      <span>{countryObj.flag}</span>
+                      <span>{countryObj.name}</span>
+                      <span className="font-mono text-[10px] text-neutral-400">({countryObj.code})</span>
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-neutral-500 font-mono">Búsqueda rápida mundial</span>
                 </div>
 
-                <div>
-                  <label className="block text-neutral-300 text-[11px] font-medium mb-1">Provincia / Región:</label>
-                  <select
-                    value={selectedRegionName}
-                    onChange={(e) => handleRegionChange(e.target.value)}
-                    className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    {countryObj.regions.map((r) => (
-                      <option key={r.name} value={r.name}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    type="text"
+                    value={countrySearchQuery}
+                    onChange={(e) => setCountrySearchQuery(e.target.value)}
+                    placeholder="Buscar país en todo el mundo (ej. España, Japón, Brasil, Uruguay, México, Alemania...)"
+                    className="w-full pl-9 pr-3 py-2 bg-black border border-neutral-700 rounded-lg text-white text-xs focus:outline-none focus:border-emerald-500 placeholder-neutral-500 transition-colors"
+                  />
+                  {countrySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setCountrySearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-neutral-300 text-[11px] font-medium mb-1">Ciudad Núcleo:</label>
-                  <select
-                    value={selectedCityName}
-                    onChange={(e) => setSelectedCityName(e.target.value)}
-                    className="w-full bg-black border border-neutral-700 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500"
-                  >
-                    {regionObj?.cities.map((ci) => (
-                      <option key={ci.name} value={ci.name}>
-                        {ci.name} (~{ci.population.toLocaleString()} hab.)
-                      </option>
-                    ))}
-                  </select>
+                {/* Country Matching List */}
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-neutral-800 bg-black/70 p-1.5 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                  {filteredCountries.slice(0, 18).map((c) => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => {
+                        handleCountryChange(c.code);
+                        setCountrySearchQuery('');
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] text-left transition-colors cursor-pointer truncate ${
+                        selectedCountryCode === c.code
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold shadow-sm'
+                          : 'text-neutral-300 hover:bg-neutral-800/80 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-sm shrink-0">{c.flag}</span>
+                      <span className="truncate">{c.name}</span>
+                    </button>
+                  ))}
+                  {filteredCountries.length === 0 && (
+                    <div className="col-span-full text-center text-[11px] text-neutral-500 py-3 font-mono">
+                      No se encontraron países para "{countrySearchQuery}".
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {/* 2. BUSCADOR Y ENTRADA LIBRE DE CIUDAD */}
+              <div className="space-y-2 pt-2 border-t border-neutral-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                  <label className="text-neutral-300 text-[11px] font-semibold flex items-center gap-1.5">
+                    <span>2. Ciudad Núcleo:</span>
+                    <strong className="text-white bg-neutral-800 border border-neutral-700 px-2 py-0.5 rounded font-mono text-xs">
+                      {effectiveCityName}
+                    </strong>
+                    <span className="text-[10px] text-emerald-400 font-mono">
+                      (~{cityPopulation.toLocaleString()} hab.)
+                    </span>
+                  </label>
+                  <span className="text-[10px] text-sky-400 font-mono">
+                    Admite cualquier ciudad del mundo
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    type="text"
+                    value={cityInputText}
+                    onChange={(e) => handleCityInputChange(e.target.value)}
+                    placeholder="Escribe o busca cualquier ciudad del mundo (ej. Punta del Este, Rosario, Lyon, Arequipa, Miami...)"
+                    className="w-full pl-9 pr-3 py-2 bg-black border border-neutral-700 rounded-lg text-white text-xs focus:outline-none focus:border-emerald-500 placeholder-neutral-500 transition-colors"
+                  />
+                  {cityInputText && (
+                    <button
+                      type="button"
+                      onClick={() => handleCityInputChange('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Suggestion Chips for Selected Country */}
+                {availableCitiesInCountry.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <span className="text-[10px] text-neutral-500 uppercase font-mono block">
+                      Ciudades destacadas en {countryObj.name} (Clic para seleccionar rápido):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                      {availableCitiesInCountry.map((city) => (
+                        <button
+                          key={city.name}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCityName(city.name);
+                            setCityInputText(city.name);
+                          }}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                            effectiveCityName.toLowerCase() === city.name.toLowerCase()
+                              ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 font-bold'
+                              : 'bg-black/60 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700'
+                          }`}
+                        >
+                          {city.name} <span className="text-[9px] text-neutral-500 font-mono">(~{(city.population / 1000).toFixed(0)}k)</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ALGORITMO DE VIABILIDAD DE META */}
