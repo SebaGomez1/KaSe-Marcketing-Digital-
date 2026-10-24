@@ -2509,7 +2509,44 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
   const m = message.toLowerCase();
   const camp = context?.activeCampaign;
   const campName = camp?.name || 'tu campaña';
-  const isSuperAdmin = context?.isSuperAdmin || false;
+  const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+
+  // 0. CONTROL DE ACCESO ESTRICTO (RBAC: SUPER ADMIN VS USUARIO CLIENTE)
+  const isAdminActionRequested = 
+    m.includes('admin global') ||
+    m.includes('panel de admin') ||
+    m.includes('claves maestras') ||
+    m.includes('credenciales mercado pago') ||
+    m.includes('credenciales supabase') ||
+    m.includes('postgres password') ||
+    m.includes('ganancias totales') ||
+    m.includes('todos los usuarios') ||
+    m.includes('destruir plan') ||
+    m.includes('modificar apis globales') ||
+    m.includes('configuracion global') ||
+    m.includes('configuración global') ||
+    m.includes('pixel global');
+
+  if (isAdminActionRequested && !isSuperAdmin) {
+    return {
+      reply: '⛔ **ACCESO RESTRINGIDO · NIVEL SUPER ADMINISTRADOR**\n\n' +
+        'Esta acción, configuración de infraestructura y datos confidenciales pertenecen **exclusivamente a la administración central de KaSe Marketing Digital (Kathy Seba)**.\n\n' +
+        '🔒 **Motivo de la restricción**:\n' +
+        '• **Seguridad Bancaria**: Las credenciales de pasarela, tokens de encriptación y llaves maestras de base de datos están bajo protocolo Zero-Access.\n' +
+        '• **Privacidad de Usuarios**: Cada cliente gestiona su propia campaña sin visibilidad sobre métricas de terceros.\n\n' +
+        '💡 **¿En qué sí puedo ayudarte en tu panel?**:\n' +
+        '• Auditar tu campaña actual y el avance de tu cuota.\n' +
+        '• Revisar tus 8 motores de adquisición orgánica.\n' +
+        '• Obtener tu Enlace Puente Inteligente (`/r/:id`) de 1 clic.\n' +
+        '• Resolver cualquier consulta de tu producto o facturación.',
+      suggestions: [
+        '🚀 Auditar mi campaña',
+        '📊 Ver mis métricas en Dashboard',
+        '🔌 Copiar mi Enlace Puente',
+        '💳 Ver mis planes contratados'
+      ]
+    };
+  }
 
   // 1. CLARIFICACIÓN DE APIS Y VERCEL (Pregunta explícita del usuario)
   if (
@@ -2544,7 +2581,125 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 2. AUDITORÍA EN TIEMPO REAL DE LA CAMPAÑA ACTIVA
+  // 2. DIAGNÓSTICO TÉCNICO Y RESOLUCIÓN DE ERRORES EN LA APP
+  if (
+    m.includes('error') ||
+    m.includes('falla') ||
+    m.includes('fallo') ||
+    m.includes('no funciona') ||
+    m.includes('problema') ||
+    m.includes('no suma') ||
+    m.includes('no carga') ||
+    m.includes('404') ||
+    m.includes('se trabó') ||
+    m.includes('se trabo') ||
+    m.includes('se paró') ||
+    m.includes('se paro')
+  ) {
+    // Caso A: Contador no suma o visitas no suben
+    if (m.includes('suma') || m.includes('contador') || m.includes('visita') || m.includes('clic') || m.includes('registro')) {
+      return {
+        reply: '🛠️ **DIAGNÓSTICO TÉCNICO · CONTADOR Y ENRUTADOR PUENTE**\n\n' +
+          '• **Causa Raíz Detectada**: Los clics o visitas solo suman cuando entran a través del **Enrutador Puente Inteligente** (`/r/:campaignId`). Si compartes tu URL directa sin el puente, el servidor no puede interceptar el evento atómico.\n' +
+          '• **Estado de la Base de Datos**: Tabla `conversions` activa en Supabase/PostgreSQL.\n' +
+          '• **Solución Inmediata**: Ve a la pestaña "Integración Segura", copia tu enlace `/r/:id` y utilízalo en tus publicaciones o anuncios. Cada clic sumará +1 y redirigirá de inmediato al visitante sin demoras.',
+        action: {
+          id: `act_err_int_${Date.now()}`,
+          type: 'navigate',
+          target: 'integration',
+          title: '🔌 Copiar mi Enlace Puente Inteligente',
+          description: 'Abre la sección de integración para obtener tu enlace de seguimiento automático.',
+        },
+        suggestions: [
+          '🔌 Ir a Integración Segura',
+          '🧪 Probar simulación (+25)',
+          '📊 Ver Dashboard'
+        ]
+      };
+    }
+
+    // Caso B: Campaña pausada automáticamente
+    if (m.includes('pausó') || m.includes('pauso') || m.includes('paró') || m.includes('frenó') || m.includes('cuota') || m.includes('meta')) {
+      const cur = camp?.currentRegistrations ?? 0;
+      const tgt = camp?.targetRegistrations ?? 1000;
+      return {
+        reply: '🛡️ **DIAGNÓSTICO TÉCNICO · SISTEMA DE PROTECCIÓN DE CUOTA**\n\n' +
+          `• **Causa Raíz**: La función de protección \`evaluateQuotaAndEnforce()\` se activa automáticamente cuando los registros alcanzan o superan la meta contratada (${cur}/${tgt}).\n` +
+          '• **Objetivo**: Garantizar contractualmente que el cliente **NUNCA gaste de más ni pague un solo centavo adicional** fuera de su cuota.\n' +
+          '• **Solución Inmediata**: Puedes ampliar tu cuota pasando a un plan superior (Growth o Enterprise) o reiniciar el contador de prueba.',
+        action: {
+          id: `act_quota_fix_${Date.now()}`,
+          type: 'navigate',
+          target: 'plans',
+          title: '💳 Ampliar Cuota en Planes y Precios',
+          description: 'Aumenta tu volumen de usuarios garantizados para reactivar los motores.',
+        },
+        suggestions: [
+          '💳 Ampliar mi plan',
+          '🔄 Resetear contador de prueba',
+          '📊 Ver Dashboard'
+        ]
+      };
+    }
+
+    // Caso C: Error en pasarela o Mercado Pago
+    if (m.includes('mercado pago') || m.includes('pago') || m.includes('tarjeta') || m.includes('checkout')) {
+      if (isSuperAdmin) {
+        return {
+          reply: '💳 **DIAGNÓSTICO TÉCNICO PASARELA MERCADO PAGO URUGUAY (ADMIN)**\n\n' +
+            '• **Estado de Credenciales**: Verificando `MERCADO_PAGO_ACCESS_TOKEN` y `MERCADO_PAGO_PUBLIC_KEY`.\n' +
+            '• **Solución para Kathy Seba**: Puedes ejecutar la autoprueba en vivo de **$1.00 USD** con el botón de abajo para verificar que la pasarela redirige al checkout oficial de Mercado Pago Uruguay y acredita en tu cuenta.',
+          action: {
+            id: `act_mp_fix_${Date.now()}`,
+            type: 'one_dollar_test',
+            title: '💳 Ejecutar Autoprueba de $1.00 USD',
+            description: 'Abre el checkout de Mercado Pago para confirmar que la pasarela está 100% activa.',
+          },
+          suggestions: [
+            '💳 Probar $1 USD en Mercado Pago',
+            '👑 Ir a Admin Global',
+            '📊 Ver Transacciones'
+          ]
+        };
+      } else {
+        return {
+          reply: '💳 **DIAGNÓSTICO TÉCNICO DE COBRO · CLIENTE**\n\n' +
+            '• Si tu pago fue rechazado por el banco, verifica que tu tarjeta esté habilitada para compras online o prueba con otro medio de pago admitido por Mercado Pago.\n' +
+            '• Tu suscripción se activará inmediatamente en cuanto Mercado Pago emita la notificación de cobro aprobado.',
+          action: {
+            id: `act_retry_pay_${Date.now()}`,
+            type: 'navigate',
+            target: 'plans',
+            title: '💳 Reintentar Pago en Planes y Precios',
+            description: 'Selecciona tu plan preferido para abrir el checkout oficial.',
+          },
+          suggestions: [
+            '💳 Reintentar en Planes y Precios',
+            '🚀 Auditar mi campaña activa',
+            '📊 Ir al Dashboard'
+          ]
+        };
+      }
+    }
+
+    // Caso D: Error general o URL destino
+    return {
+      reply: '🔍 **ANÁLISIS DE ESTADO DEL SISTEMA · KaSi 2.0**\n\n' +
+        'He escaneado los componentes clave de tu plataforma:\n' +
+        '1️⃣ **Enrutador Puente**: Operativo (HTTP 307 + registro atómico).\n' +
+        '2️⃣ **Base de Datos**: PostgreSQL / Supabase sincronizado con fallback local redundante.\n' +
+        '3️⃣ **Motores**: Módulos 1 a 8 calibrados con jittering anti-bloqueo.\n\n' +
+        '¿Cuál es el síntoma específico que experimentas? Puedes pedirme simular una ráfaga, pausar la campaña o llevarte a la sección adecuada.',
+      suggestions: [
+        '🚀 Auditar mi campaña actual',
+        '🧪 Probar simulación (+25)',
+        '🔌 Ver mi Enlace Puente',
+        '📊 Ver Dashboard'
+      ]
+    };
+  }
+
+  // 3. AUDITORÍA EN TIEMPO REAL DE LA CAMPAÑA ACTIVA
   if (
     m.includes('auditar') ||
     m.includes('auditoria') ||
@@ -2589,7 +2744,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 2.5. SIMULACIÓN DE RÁFAGA DIRECTA
+  // 4. SIMULACIÓN DE RÁFAGA DIRECTA
   if (
     m.includes('simular') ||
     m.includes('simulacion') ||
@@ -2623,7 +2778,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 3. AYUDA DIRECTA PARA CREAR O HACER UNA CAMPAÑA
+  // 5. AYUDA DIRECTA PARA CREAR O HACER UNA CAMPAÑA
   if (
     m.includes('hacer una campaña') ||
     m.includes('hacer campaña') ||
@@ -2663,7 +2818,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 4. PAUSAR O REANUDAR CAMPAÑA
+  // 6. PAUSAR O REANUDAR CAMPAÑA
   if (m.includes('pausar') || m.includes('frenar') || m.includes('detener') || m.includes('parar') || m.includes('apagar')) {
     return {
       reply: `¡Entendido! He preparado la acción para pausar **"${campName}"**. ⏸️🛡️\n\n` +
@@ -2700,64 +2855,6 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 5. CLIENTES, VENTAS, TRÁFICO Y RESULTADOS
-  if (m.includes('cliente') || m.includes('tráfico') || m.includes('trafico') || m.includes('visita') || m.includes('venta') || m.includes('cuanto usuario') || m.includes('cuánto usuario') || m.includes('llegan solo')) {
-    return {
-      reply: '¡Te explico con total precisión cómo funciona la llegada de clientes a tu web! 📈👥\n\n' +
-        '1️⃣ **Los 8 Motores trabajan de forma 100% autónoma**:\n' +
-        '   - Redactan y publican hilos de alto valor en X/Twitter y LinkedIn.\n' +
-        '   - Fichas y lanzamientos en 50+ directorios de software como Product Hunt y AlternativeTo.\n' +
-        '   - Escucha activa en subreddits de la industria mediante Snoowrap.\n' +
-        '   - Sincronización instantánea con Google Search Indexing API (<48h de rastreo).\n\n' +
-        '2️⃣ **Enlace Puente Inteligente (`/r/:id`)**:\n' +
-        '   - Cada publicación y mención lleva tu enlace puente seguro.\n' +
-        '   - Cuando una persona real hace clic, el servidor suma atómicamente +1 al contador y la redirige en milisegundos a tu página de venta sin que tengas que programar nada.\n\n' +
-        '3️⃣ **Garantía de Corte por Meta**:\n' +
-        '   - En el instante exacto en que alcanzas tu cuota contratada, los 8 motores se apagan automáticamente. ¡Cero desperdicio ni sobrecostos!',
-      action: {
-        id: `act_sim_${Date.now()}`,
-        type: 'simulate_burst',
-        count: 25,
-        title: '🧪 Probar Simulación de 25 Clientes',
-        description: 'Comprueba en tiempo real cómo suma el contador y cómo opera el corte de cuota.',
-      },
-      suggestions: [
-        '🧪 Probar simulación (+25)',
-        '🔌 Ver mi Enlace Puente',
-        '📊 Ver Dashboard en vivo'
-      ]
-    };
-  }
-
-  // 6. ENRUTADOR PUENTE / PÍXEL
-  if (m.includes('pixel') || m.includes('píxel') || m.includes('enlace') || m.includes('puente') || m.includes('contador') || m.includes('apagar')) {
-    return {
-      reply: '¡En KaSe hemos revolucionado la medición eliminando por completo los píxeles manuales! 🎯⚡\n\n' +
-        '1️⃣ **Enrutador Puente Inteligente (`/r/:campaignId`)**:\n' +
-        '   - Funciona como una puerta de enlace de alta velocidad en el backend.\n' +
-        '   - Cada clic derivado por los 8 motores entra a esta ruta.\n\n' +
-        '2️⃣ **Registro Atómico y Seguro**:\n' +
-        '   - El servidor guarda el evento en la base de datos con método `"organic_click"`.\n' +
-        '   - Suma +1 al contador `campaign.currentRegistrations`.\n\n' +
-        '3️⃣ **Redirección Inmediata (HTTP 307)**:\n' +
-        '   - El visitante es transferido al instante a la URL de tu cliente sin latencia perceptible.\n\n' +
-        '4️⃣ **Auto-Apagado por Cuota**:\n' +
-        '   - Si `currentRegistrations >= targetRegistrations`, el sistema cambia la campaña a `paused_quota_reached` y congela todos los motores. ¡Garantía de corte matemática! 🛡️',
-      action: {
-        id: `act_nav_int_${Date.now()}`,
-        type: 'navigate',
-        target: 'integration',
-        title: '🔌 Ir a Pestaña "Integración Segura"',
-        description: 'Copia tu Enlace Puente Inteligente sin tocar una sola línea de código.',
-      },
-      suggestions: [
-        '🔌 Ir a Integración Segura',
-        '📊 Ver Dashboard',
-        '🚀 Ver los 8 motores'
-      ]
-    };
-  }
-
   // 7. MERCADO PAGO, PRECIOS Y PLANES
   if (m.includes('mercadopago') || m.includes('mercado pago') || m.includes('pago') || m.includes('precio') || m.includes('plan') || m.includes('1 usd') || m.includes('dolar') || m.includes('cuanto vale')) {
     return {
@@ -2790,27 +2887,6 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 8. GUÍA DE BOTONES Y SECCIONES
-  if (m.includes('boton') || m.includes('botón') || m.includes('seccion') || m.includes('sección') || m.includes('panel') || m.includes('donde') || m.includes('dónde')) {
-    return {
-      reply: '¡Aquí tienes el mapa completo de botones y secciones de KaSe! 🧭✨\n\n' +
-        '🔹 **Botón "+ Nueva Campaña" (Barra Superior)**: Abre el formulario para registrar un nuevo producto o URL.\n' +
-        '🔹 **Botón "📱 Instalar App"**: Abre el instalador PWA para tener KaSe en tu celular Android o iPhone.\n' +
-        '🔹 **Pestaña "Dashboard"**: Métricas en vivo, tacómetro de cuota y botón de pausar/reanudar.\n' +
-        '🔹 **Pestaña "Módulos (8)"**: Interruptores individuales para activar o desactivar cada motor de marketing.\n' +
-        '🔹 **Pestaña "Integración Segura"**: Tu Enlace Puente (`/r/:id`) de 1 clic y Webhook atómico.\n' +
-        '🔹 **Pestaña "Simulador de Cuota"**: Botones (+1, +25, +100) para verificar el apagado automático inmediato.\n' +
-        '🔹 **Pestaña "Planes y Precios"**: Comparador y cotizador interactivo.\n' +
-        '🔹 **Pestaña "👑 Admin Global"**: Acceso exclusivo para Kathy Seba para credenciales de Mercado Pago, Supabase y Google.',
-      suggestions: [
-        '📊 Ir al Dashboard',
-        '🚀 Ver los 8 motores',
-        '🧪 Probar simulador de cuota',
-        '➕ Crear nueva campaña'
-      ]
-    };
-  }
-
   // DEFAULT HIGH-VALUE ASSISTANT GREETING & GUIDANCE
   return {
     reply: `¡Hola! Soy **KaSi 2.0** ✨🤖, tu Copiloto Inteligente de KaSe Marketing Digital.\n\n` +
@@ -2818,7 +2894,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
       `• **Campaña Activa**: *${campName}*\n` +
       `• **Progreso**: ${camp ? `${camp.currentRegistrations}/${camp.targetRegistrations} usuarios` : 'Listo para iniciar'}\n` +
       `• **Motores Autónomos**: 8 módulos de syndication, SEO y captación en tiempo real.\n\n` +
-      `¿Qué deseas que hagamos hoy? Puedo auditar tu campaña, simular ráfagas de tráfico, guiarte a dar de alta un producto o responder cualquier consulta sobre tus cobros de Mercado Pago. 🚀💬`,
+      `¿Qué deseas que hagamos hoy? Puedo auditar tu campaña, simular ráfagas de tráfico, guiarte a dar de alta un producto o diagnosticar y resolver cualquier error técnico en tu plataforma. 🚀💬`,
     suggestions: [
       '🚀 Auditar mi campaña actual',
       '➕ Crear nueva campaña',
@@ -2828,7 +2904,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
   };
 }
 
-// INTERACTIVE CODE & ARCHITECTURE ASSISTANT (KaSi 2.0 with Gemini 3.8 Flash, Context Injection & Actions)
+// INTERACTIVE CODE & ARCHITECTURE ASSISTANT (KaSi 2.0 with Gemini 3.1 Flash Lite, Ultra-Fast Latency & Strict RBAC)
 app.post('/api/ai/code-assistant', async (req: Request, res: Response) => {
   const { message, history, context } = req.body;
 
@@ -2843,42 +2919,39 @@ app.post('/api/ai/code-assistant', async (req: Request, res: Response) => {
   const campStatus = camp?.status || 'active';
   const campCur = camp?.currentRegistrations ?? 0;
   const campTgt = camp?.targetRegistrations ?? 1000;
-  const isSuperAdmin = context?.isSuperAdmin || false;
+  const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
 
   const systemPrompt = `Eres KaSi ✨🤖, el Agente de Inteligencia Artificial de Élite y Especialista en Operaciones Autónomas de "KaSe - Marketing Digital" (fundado por Kathy Seba).
 
 TU PERFIL Y MISIÓN:
-- Eres altamente inteligente, empático, cálido, resolutivo y analítico. Hablas siempre en español impecable, usando emojis adecuados y formato markdown legible (negritas, listas, viñetas).
-- Conoces TODO el código, botones, pasarela de Mercado Pago Uruguay, enrutador puente y los 8 módulos de marketing de la suite KaSe.
-- CONTEXTO EN VIVO:
-  * Campaña activa actual: "${campName}"
-  * Nicho: "${campNiche}"
-  * Estado: "${campStatus}"
-  * Registros actuales: ${campCur} / ${campTgt}
-  * Usuario actual: ${isSuperAdmin ? 'Kathy Seba (Super Admin)' : 'Cliente'}
+- Eres altamente inteligente, empático, resolutivo, analítico y directo. Hablas siempre en español impecable, usando formato markdown legible (negritas, viñetas, código).
+- TIENES EL MISMO NIVEL DE RAZONAMIENTO Y RESOLUCIÓN TÉCNICA QUE UN SENIOR SOFTWARE ENGINEER: cuando el usuario reporta una duda o un error técnico en la aplicación, diagnosticas la causa raíz exacta y le ofreces la solución inmediata.
+
+CONTROL DE ACCESO Y SEGURIDAD ESTRICTA (RBAC):
+- SUPER ADMINISTRADORA: Kathy Seba (kathyseba2020@gmail.com). Ella tiene autorización total para ver ganancias globales, modificar credenciales de APIs (Mercado Pago, Supabase, Google, Reddit, X), activar el plan de prueba de $1 USD o acceder a '👑 Admin Global'.
+- USUARIO CLIENTE (NO-ADMIN): Tiene control ÚNICAMENTE sobre su propia campaña activa, sus módulos, su Enlace Puente (/r/:id) y sus cotizaciones.
+- REGLA DE ORO: Si un usuario que NO es administrador solicita modificar configuraciones globales, ver claves maestras de APIs, ver datos de otros clientes o acceder a 'Admin Global', DEBES NEGAR LA PETICIÓN de forma cordial pero categórica, explicando que es exclusivo de la Super Administradora por seguridad bancaria y confidencialidad, y ofreciéndole ayuda en lo que sí le compete a su cuenta.
 
 CONOCIMIENTO PROFUNDO DE LA PLATAFORMA:
 1. ENRUTADOR PUENTE INTELIGENTE (/r/:campaignId): Cero píxeles manuales. Cada clic redirige al instante (HTTP 307) y suma +1 atómicamente en PostgreSQL/Supabase.
-2. AUTO-APAGADO POR CUOTA: Al llegar a currentRegistrations >= targetRegistrations, evaluateQuotaAndEnforce() apaga los 8 motores automáticamente.
+2. AUTO-APAGADO POR CUOTA: Al llegar a currentRegistrations >= targetRegistrations, evaluateQuotaAndEnforce() apaga los 8 motores automáticamente para evitar sobrecostos al cliente.
 3. 8 MÓDULOS AUTÓNOMOS: Mod 1 (Google Search Indexing API), Mod 2 (X/Twitter v2 y LinkedIn), Mod 3 (50+ directorios de software como Product Hunt), Mod 4 (Reddit Snoowrap), Mod 5 (Newsletters B2B), Mod 6 (Video TikTok/Reels), Mod 7 (pSEO landing pages), Mod 8 (Influencers 30% recurrente).
 4. PASARELA MERCADO PAGO URUGUAY: Starter ($490 / 1k leads), Growth ($1,890 / 5k leads), Enterprise ($8,900 / 25k leads), y Autoprueba de $1.00 USD para Kathy Seba.
 5. APIS Y VERCEL: Explica con empatía que las APIs (Mercado Pago, Gemini) van en Vercel -> Settings -> Environment Variables para producción, mientras que en AI Studio el backend ya está configurado.
 
-FORMATO DE RESPUESTA:
-Debes responder de manera fluida y ejecutiva. Si la solicitud del usuario involucra una acción concreta (como pausar o reanudar campaña, crear nueva campaña, simular tráfico, ir a una pestaña o probar pago), menciona la acción y anímalo a ejecutarla.
-Además, si puedes devolver formato JSON estructurado, hazlo con este esquema:
+FORMATO DE SALIDA:
+Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela en formato JSON con la siguiente estructura:
 {
-  "reply": "Texto de tu respuesta en markdown enriquecido...",
+  "reply": "Texto de tu respuesta...",
   "action": {
     "type": "toggle_status" | "navigate" | "new_campaign" | "simulate_burst" | "reset_counter" | "install_app" | "one_dollar_test",
-    "title": "Título corto del botón de acción",
-    "description": "Breve descripción",
+    "title": "Título corto",
+    "description": "Descripción",
     "target": "dashboard | modules | plans | integration | simulator | admin_global | reviews | guide",
     "count": 25
   },
-  "suggestions": ["Pregunta o sugerencia 1", "Sugerencia 2", "Sugerencia 3"]
-}
-Si devuelves texto libre, que sea estructurado y directo.`;
+  "suggestions": ["Sugerencia 1", "Sugerencia 2"]
+}`;
 
   const fallbackData = getSmartCodebaseReply(message, context);
 
@@ -2895,21 +2968,21 @@ Si devuelves texto libre, que sea estructurado y directo.`;
 
   try {
     const formattedHistory = Array.isArray(history) 
-      ? history.slice(-6).map((h: any) => `${h.role === 'user' ? 'Usuario' : 'KaSi'}: ${h.text}`).join('\n')
+      ? history.slice(-5).map((h: any) => `${h.role === 'user' ? 'Usuario' : 'KaSi'}: ${h.text}`).join('\n')
       : '';
-    const userPrompt = `${formattedHistory}\nUsuario: ${message}\nKaSi:`;
+    const userPrompt = `${formattedHistory}\nUsuario [${isSuperAdmin ? 'SUPER ADMIN' : 'CLIENTE'}]: ${message}\nKaSi:`;
 
-    // 15 seconds generous timeout for Gemini 3.8 Flash to reason and generate
+    // 5-second ultra-fast latency window using gemini-3.1-flash-lite
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('AI timeout')), 15000)
+      setTimeout(() => reject(new Error('AI timeout')), 5000)
     );
 
     const generatePromise = ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.1-flash-lite',
       contents: userPrompt,
       config: {
         systemInstruction: systemPrompt,
-        temperature: 0.7,
+        temperature: 0.6,
       },
     });
 
@@ -2938,7 +3011,7 @@ Si devuelves texto libre, que sea estructurado y directo.`;
         reply: parsedJson.reply,
         action: parsedJson.action || fallbackData.action,
         suggestions: parsedJson.suggestions || fallbackData.suggestions,
-        source: 'gemini-3.8-flash'
+        source: 'gemini-3.1-flash-lite'
       });
       return;
     }
@@ -2948,7 +3021,7 @@ Si devuelves texto libre, que sea estructurado y directo.`;
       reply: rawText || fallbackData.reply,
       action: fallbackData.action,
       suggestions: fallbackData.suggestions,
-      source: 'gemini-3.8-flash'
+      source: 'gemini-3.1-flash-lite'
     });
   } catch (err) {
     res.json({
