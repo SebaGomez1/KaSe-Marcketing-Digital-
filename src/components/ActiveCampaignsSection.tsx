@@ -21,7 +21,7 @@ import {
   DollarSign,
   Users
 } from 'lucide-react';
-import { Campaign, User } from '../types/growth';
+import { Campaign, User, isUserSuperAdmin } from '../types/growth';
 
 interface ActiveCampaignsSectionProps {
   campaigns: Campaign[];
@@ -56,7 +56,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
     }));
   };
 
-  const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   // Filter campaigns
   const filteredCampaigns = campaigns.filter((camp) => {

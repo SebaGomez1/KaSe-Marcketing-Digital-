@@ -1,6 +1,6 @@
 import React from 'react';
 import { Zap, Plus, ShieldCheck, User as UserIcon, LogIn, Lock, LogOut } from 'lucide-react';
-import { User } from '../types/growth';
+import { User, isUserSuperAdmin } from '../types/growth';
 
 interface NavbarProps {
   activeTab: string;
@@ -25,7 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   avatarUrl,
   onRequestOneDollarCheckout,
 }) => {
-  const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   // Strict View Rules: Unauthenticated visitors can ONLY see Inicio, ¿Cómo funciona? and Reseñas
   const publicNavItems = [

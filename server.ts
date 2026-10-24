@@ -646,7 +646,8 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
     }
 
     const isOneDollarPlan = req.body.isOneDollarTestPlan === true || plan === 'test_one_dollar' || Number(req.body.price) === 1;
-    const isKathy = ((creatorEmail && creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com') || isSuperAdmin) && !isOneDollarPlan;
+    const isCleanAdminEmail = creatorEmail && (creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com' || creatorEmail.toLowerCase() === 'kase.marketing.digital@gmail.com');
+    const isKathy = (isCleanAdminEmail || isSuperAdmin) && !isOneDollarPlan;
     const initialStatus = isOneDollarPlan ? 'configuring' : isKathy ? 'active' : (status === 'configuring' ? 'configuring' : 'active');
 
     const newCampaign: Campaign = {
@@ -1414,8 +1415,17 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
+  const cleanPass = (password || '').trim();
+  const isSuperAdmin = cleanEmail === 'kase.marketing.digital@gmail.com' || cleanEmail === 'kathyseba2020@gmail.com';
   const role: 'super_admin' | 'client' = isSuperAdmin ? 'super_admin' : 'client';
+
+  // Admin password enforcement: 'Felipe.1' is the official password (also accept 'kase2026Secure!' as transition fallback)
+  const isValidAdminPass = isSuperAdmin && (cleanPass === 'Felipe.1' || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!');
+
+  if (isSuperAdmin && !isValidAdminPass) {
+    res.status(401).json({ error: 'Contraseña Incorrecta' });
+    return;
+  }
 
   // Determine if acquired from KaSe internal promotion
   const isFromInternal = source === 'kase_internal' || 
@@ -1429,25 +1439,33 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
   const allUsers = await getUsersAsync();
   let existing = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
   if (existing) {
-    if (existing.password && existing.password !== password) {
+    if (isSuperAdmin) {
+      existing.role = 'super_admin';
+      existing.password = 'Felipe.1';
+      await saveUserAsync(existing);
+      res.json({ success: true, user: existing, isNew: false });
+      return;
+    }
+
+    if (existing.password && existing.password !== cleanPass) {
       res.status(401).json({ error: 'Contraseña Incorrecta' });
       return;
     }
-    existing.role = role; // guarantee super_admin grant
-    if (!existing.password) existing.password = password;
+    existing.role = role;
+    if (!existing.password) existing.password = cleanPass;
     await saveUserAsync(existing);
     res.json({ success: true, user: existing, isNew: false });
     return;
   }
 
   const newUser: UserRecord = {
-    id: `usr_${Math.random().toString(36).substring(2, 9)}`,
-    name: (name || (isSuperAdmin ? 'Kathy Seba' : cleanEmail.split('@')[0])).trim(),
+    id: isSuperAdmin ? 'usr_superadmin_kase' : `usr_${Math.random().toString(36).substring(2, 9)}`,
+    name: (name || (isSuperAdmin ? (cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba') : cleanEmail.split('@')[0])).trim(),
     email: cleanEmail,
     role,
     createdAt: new Date().toISOString(),
     acquisitionSource,
-    password: password.trim(),
+    password: isSuperAdmin ? 'Felipe.1' : cleanPass,
   };
 
   await saveUserAsync(newUser);
@@ -1484,46 +1502,75 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     res.status(400).json({ error: 'El correo electrónico es requerido' });
     return;
   }
+  if (!password) {
+    res.status(401).json({ error: 'Contraseña Incorrecta' });
+    return;
+  }
 
   const cleanEmail = email.trim().toLowerCase();
-  const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
+  const cleanPass = (password || '').trim();
+  const isSuperAdmin = cleanEmail === 'kase.marketing.digital@gmail.com' || cleanEmail === 'kathyseba2020@gmail.com';
+
+  if (isSuperAdmin) {
+    const isValidAdminPass = cleanPass === 'Felipe.1' || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!';
+    if (!isValidAdminPass) {
+      res.status(401).json({ error: 'Contraseña Incorrecta' });
+      return;
+    }
+
+    const allUsers = await getUsersAsync();
+    let user = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    if (!user) {
+      user = {
+        id: 'usr_superadmin_kase',
+        name: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba (Super Admin)',
+        email: cleanEmail,
+        role: 'super_admin',
+        createdAt: new Date().toISOString(),
+        acquisitionSource: 'direct_organic',
+        password: 'Felipe.1',
+      };
+    } else {
+      user.role = 'super_admin';
+      user.password = 'Felipe.1';
+      if (!user.name || user.name === 'kase.marketing.digital') {
+        user.name = cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba (Super Admin)';
+      }
+    }
+    await saveUserAsync(user);
+    res.json({ success: true, user });
+    return;
+  }
+
   const allUsers = await getUsersAsync();
   let user = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
 
   if (!user) {
-    // If not found, register them smoothly with the provided password
+    // If not found, register client smoothly with the provided password
     user = {
-      id: isSuperAdmin ? 'usr_superadmin_kase' : `usr_${Math.random().toString(36).substring(2, 9)}`,
-      name: (isSuperAdmin ? 'Kathy Seba (Super Admin)' : cleanEmail.split('@')[0]),
+      id: `usr_${Math.random().toString(36).substring(2, 9)}`,
+      name: cleanEmail.split('@')[0],
       email: cleanEmail,
-      role: isSuperAdmin ? 'super_admin' : 'client',
+      role: 'client',
       createdAt: new Date().toISOString(),
-      acquisitionSource: isSuperAdmin ? 'direct_organic' : 'kase_internal_campaign',
-      password: (password || 'kase2026Secure!').trim(),
+      acquisitionSource: 'direct_organic',
+      password: cleanPass,
     };
     await saveUserAsync(user);
     res.json({ success: true, user });
     return;
   }
 
-  // User exists, verify password
-  if (password) {
-    const expectedPassword = user.password || (isSuperAdmin ? 'kase2026Secure!' : null);
-    if (expectedPassword && user.password && user.password !== password) {
-      res.status(401).json({ error: 'Contraseña Incorrecta' });
-      return;
-    }
-    if (!user.password) {
-      user.password = password;
-    }
-  } else if (user.password) {
+  // Client exists, verify password
+  if (user.password && user.password !== cleanPass) {
     res.status(401).json({ error: 'Contraseña Incorrecta' });
     return;
   }
-
-  // Enforce role
-  user.role = isSuperAdmin ? 'super_admin' : user.role;
-  await saveUserAsync(user);
+  if (!user.password) {
+    user.password = cleanPass;
+    await saveUserAsync(user);
+  }
 
   res.json({ success: true, user });
 });
@@ -1569,6 +1616,17 @@ app.post(['/api/bridge/verify-target-url', '/api/pixel/verify-installation'], (r
 app.post('/api/payments/mercadopago/create-preference', async (req: Request, res: Response) => {
   const { campaignId, amount, currency = 'USD', title, payerEmail } = req.body;
   const campaign = campaigns.find((c) => c.id === campaignId);
+
+  if (campaign) {
+    const validation = validateCampaignEnginesForPlan(campaign.plan);
+    if (!validation.canProceed) {
+      res.status(403).json({
+        error: `BLOQUEO DE SEGURIDAD KASE: No se puede generar la orden de cobro en Mercado Pago porque faltan APIs en Vercel requeridas para el plan ${campaign.plan.toUpperCase()}.`,
+        missingModules: validation.missingModules,
+      });
+      return;
+    }
+  }
 
   const cleanAmount = Number(amount || 490);
   const cleanTitle = title || (campaign ? `Campaña KaSe - ${campaign.name}` : 'Plan KaSe Marketing Digital');
@@ -1675,6 +1733,15 @@ app.post('/api/payments/mercadopago/simulate-approval', (req: Request, res: Resp
 
   if (!campaign) {
     res.status(404).json({ error: 'Campaña no encontrada' });
+    return;
+  }
+
+  const validation = validateCampaignEnginesForPlan(campaign.plan);
+  if (!validation.canProceed) {
+    res.status(403).json({
+      error: `BLOQUEO DE SEGURIDAD KASE: No se puede activar la campaña porque faltan APIs en Vercel requeridas para el plan ${campaign.plan.toUpperCase()}.`,
+      missingModules: validation.missingModules,
+    });
     return;
   }
 

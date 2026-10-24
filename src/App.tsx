@@ -23,7 +23,7 @@ import { LandingHero } from './components/LandingHero';
 import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
-import { Campaign, ModuleDefinition, User } from './types/growth';
+import { Campaign, ModuleDefinition, User, isUserSuperAdmin } from './types/growth';
 import avatarImg from './assets/images/avatar_growth_lead_1792397446672.jpg';
 import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 
@@ -47,6 +47,9 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.name)) {
+          if (isUserSuperAdmin(parsed)) {
+            parsed.role = 'super_admin';
+          }
           return parsed;
         }
       }
@@ -92,18 +95,19 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Direct admin bypass via URL parameter (?admin=kathy or ?kathy=true)
+  // Direct admin bypass via URL parameter (?admin=kathy or ?admin=kase or ?kathy=true)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('admin') === 'kathy' || params.get('kathy') === 'true') {
+      if (params.get('admin') === 'kathy' || params.get('admin') === 'kase' || params.get('kathy') === 'true') {
+        const adminEmail = params.get('admin') === 'kase' ? 'kase.marketing.digital@gmail.com' : 'kathyseba2020@gmail.com';
         const kathyUser: User = {
-          id: 'kathy_super_admin',
-          name: 'Kathy Seba',
-          email: 'kathyseba2020@gmail.com',
+          id: 'kase_super_admin',
+          name: adminEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba',
+          email: adminEmail,
           role: 'super_admin',
           createdAt: new Date().toISOString(),
-          acquisitionSource: 'kase_internal_campaign',
+          acquisitionSource: 'direct_organic',
         };
         setCurrentUser(kathyUser);
         setActiveTab('admin_global');

@@ -21,7 +21,7 @@ import {
   DollarSign,
   Star
 } from 'lucide-react';
-import { User, CampaignType, CAMPAIGN_TYPES_CATALOG } from '../types/growth';
+import { User, CampaignType, CAMPAIGN_TYPES_CATALOG, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
 
 interface LandingHeroProps {
   currentUser: User | null;
@@ -64,16 +64,24 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
     if (!cleanEmail) {
       setError('Por favor ingresa tu correo electrónico');
       return;
     }
-    if (!password) {
+    if (!cleanPass) {
       setError('Por favor ingresa tu contraseña');
       return;
     }
     setError(null);
     setLoading(true);
+
+    const isAdmin = isUserSuperAdmin({ email: cleanEmail });
+    if (isAdmin && !isValidAdminCredentials(cleanEmail, cleanPass)) {
+      setError('Contraseña Incorrecta');
+      setLoading(false);
+      return;
+    }
 
     try {
       let authUser: User | null = null;
@@ -109,36 +117,36 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       if (!authUser) {
         const storedUsersRaw = localStorage.getItem('kase_registered_users');
         const registeredMap: Record<string, any> = storedUsersRaw ? JSON.parse(storedUsersRaw) : {};
-        const isKathy = cleanEmail === 'kathyseba2020@gmail.com';
+        const isAdmin = isUserSuperAdmin({ email: cleanEmail });
 
-        if (authMode === 'login') {
+        if (isAdmin) {
+          if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
+            throw new Error('Contraseña Incorrecta');
+          }
+          authUser = {
+            id: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'kase_admin_super' : 'kathy_super_admin',
+            name: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba',
+            email: cleanEmail,
+            role: 'super_admin',
+            createdAt: new Date().toISOString(),
+            acquisitionSource: 'direct_organic',
+          };
+          registeredMap[cleanEmail] = { ...authUser, password: ADMIN_PASSWORD };
+          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
+        } else if (authMode === 'login') {
           const existing = registeredMap[cleanEmail];
           if (existing) {
-            if (existing.password && existing.password !== password) {
+            if (existing.password && existing.password !== cleanPass) {
               throw new Error('Contraseña Incorrecta');
             }
             authUser = {
               id: existing.id,
               name: existing.name,
               email: existing.email,
-              role: isKathy ? 'super_admin' : existing.role || 'client',
+              role: existing.role || 'client',
               createdAt: existing.createdAt,
               acquisitionSource: existing.acquisitionSource || 'direct_organic',
             };
-          } else if (isKathy) {
-            if (password !== 'kase2026Secure!' && password.length < 4) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            authUser = {
-              id: 'kathy_super_admin',
-              name: 'Kathy Seba',
-              email: 'kathyseba2020@gmail.com',
-              role: 'super_admin',
-              createdAt: new Date().toISOString(),
-              acquisitionSource: 'direct_organic',
-            };
-            registeredMap[cleanEmail] = { ...authUser, password };
-            localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
           } else {
             // Register smoothly if logging in first time
             authUser = {
@@ -149,24 +157,24 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               createdAt: new Date().toISOString(),
               acquisitionSource: 'direct_organic',
             };
-            registeredMap[cleanEmail] = { ...authUser, password };
+            registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
             localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
           }
         } else {
           // Register mode
           const existing = registeredMap[cleanEmail];
-          if (existing && existing.password && existing.password !== password) {
+          if (existing && existing.password && existing.password !== cleanPass) {
             throw new Error('Contraseña Incorrecta');
           }
           authUser = {
             id: existing?.id || `usr_${Math.random().toString(36).substring(2, 9)}`,
-            name: (name.trim() || (isKathy ? 'Kathy Seba' : cleanEmail.split('@')[0])),
+            name: (name.trim() || cleanEmail.split('@')[0]),
             email: cleanEmail,
-            role: isKathy ? 'super_admin' : 'client',
+            role: 'client',
             createdAt: existing?.createdAt || new Date().toISOString(),
-            acquisitionSource: isKathy ? 'direct_organic' : 'kase_internal_campaign',
+            acquisitionSource: 'direct_organic',
           };
-          registeredMap[cleanEmail] = { ...authUser, password };
+          registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
           localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
         }
       }
@@ -340,7 +348,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {(currentUser.email || '').toLowerCase() === 'kathyseba2020@gmail.com' && onRequestOneDollarCheckout && (
+                  {isUserSuperAdmin(currentUser) && onRequestOneDollarCheckout && (
                     <button
                       type="button"
                       onClick={onRequestOneDollarCheckout}

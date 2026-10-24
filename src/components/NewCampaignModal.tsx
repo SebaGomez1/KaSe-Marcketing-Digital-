@@ -22,7 +22,7 @@ import {
   RefreshCw,
   Globe2
 } from 'lucide-react';
-import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult } from '../types/growth';
+import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult, isUserSuperAdmin } from '../types/growth';
 import { GEOGRAPHICAL_DATABASE, calculateGeoFeasibility } from '../data/geoLocations';
 
 interface NewCampaignModalProps {
@@ -104,7 +104,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isKathy = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
+  const isKathy = isUserSuperAdmin(currentUser);
 
   if (adminSuccessCamp) {
     return (
@@ -262,6 +262,14 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (engineValidation && !engineValidation.canProceed) {
+      setError(
+        'Verificación de Seguridad KaSe: Se requiere que las APIs del motor estén operativas en Vercel antes de autorizar el cobro o activar la campaña.'
+      );
+      setLoading(false);
+      return;
+    }
 
     if (requiresPricingCalibration && (minPlanPrice < 0 || maxPlanPrice < minPlanPrice)) {
       setError('El precio del plan más caro debe ser igual o mayor al plan más barato.');
@@ -853,15 +861,64 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               </span>
             </div>
 
-            {/* INFRAESTRUCTURA AUTÓNOMA KASE (CERO APIS PARA EL USUARIO) */}
-            <div className="p-4 rounded-xl border text-xs space-y-2 bg-emerald-950/30 border-emerald-500/40 text-emerald-200">
-              <div className="flex items-center gap-2 font-bold text-xs text-emerald-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Infraestructura 100% Autónoma y Gestionada por KaSe</span>
+            {/* VERCEL APIS VERIFICATION GATE (SEGURIDAD Y PROTECCIÓN AL CLIENTE) */}
+            <div className={`p-4 rounded-xl border text-xs space-y-3 ${
+              engineValidation && !engineValidation.canProceed
+                ? 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+                : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+            }`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  {engineValidation && !engineValidation.canProceed ? (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span className="text-rose-300">
+                        ACTIVACIÓN Y COBRO BLOQUEADOS: APIs PENDIENTES EN VERCEL
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-emerald-300">
+                        APIs de Motores 100% Verificadas y Conectadas en Vercel
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-              <p className="text-[11px] text-neutral-300 leading-relaxed">
-                Tú <strong>no tienes que configurar ni crear ninguna API</strong>. Los 8 motores de adquisición operan en nuestra nube de forma autónoma. Tú sólo indicas el link de tu página y tus metas, y el sistema se encarga de llevar clientes reales a tu negocio.
-              </p>
+
+              {engineValidation && !engineValidation.canProceed ? (
+                <div className="space-y-2 text-[11px] text-neutral-300">
+                  <p className="leading-relaxed">
+                    Por <strong>política de seguridad y garantía estricta de entrega de servicio 100% real</strong>, no se puede proceder al checkout ni cobrar campañas hasta que las APIs de los motores del plan <strong>{plan.toUpperCase()}</strong> estén configuradas en Vercel. Esto garantiza que el cliente nunca pague por un servicio sin respaldo técnico activo:
+                  </p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {engineValidation.missingModules.map((m) => (
+                      <div key={m.id} className="p-2 rounded-lg bg-black/60 border border-rose-900/40 text-[11px]">
+                        <div className="font-semibold text-rose-300 flex items-center justify-between">
+                          <span>🔴 {m.name}</span>
+                          <span className="font-mono text-[10px] text-neutral-400">{m.platform}</span>
+                        </div>
+                        <div className="text-neutral-400 text-[10px] mt-0.5">
+                          Variables requeridas en Vercel: <code className="text-amber-300 font-mono">{m.missingVars.join(', ')}</code>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="p-2 bg-black/40 rounded border border-neutral-800 text-[10px] text-neutral-400">
+                    💡 <strong>Política Cero-APIs para el cliente:</strong> Tú como cliente no configuras ninguna API. Este bloqueo es un seguro de la app para protegerte de cobros antes de que los motores estén conectados y listos.
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1 text-[11px] text-neutral-300">
+                  <p className="leading-relaxed">
+                    Todos los motores del plan <strong>{plan.toUpperCase()}</strong> tienen sus credenciales validadas en Vercel. Al pasar al checkout se procederá al cobro y la campaña comenzará de inmediato con tráfico 100% real.
+                  </p>
+                  <p className="text-[10px] text-emerald-400">
+                    ✨ Cero configuración para el cliente: infraestructura autónoma gestionada y respaldada por KaSe.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -878,9 +935,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (engineValidation ? !engineValidation.canProceed : false)}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  isTestOneDollarMode
+                  engineValidation && !engineValidation.canProceed
+                    ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
+                    : isTestOneDollarMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-lg shadow-amber-500/30 font-extrabold'
                     : 'bg-emerald-400 hover:bg-emerald-300 text-black glow-emerald'
                 }`}
@@ -889,6 +948,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 <span>
                   {loading
                     ? 'Preparando...'
+                    : engineValidation && !engineValidation.canProceed
+                    ? '⛔ Bloqueado: Conecta las APIs en Vercel'
                     : isKathy
                     ? isTestOneDollarMode
                       ? '💳 Pagar $1.00 USD con Mercado Pago'

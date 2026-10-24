@@ -11,7 +11,7 @@ import {
   Cpu,
   Layers
 } from 'lucide-react';
-import { Campaign } from '../types/growth';
+import { Campaign, isUserSuperAdmin } from '../types/growth';
 
 import { User } from '../types/growth';
 
@@ -28,7 +28,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
   currentUser,
   onRequestOneDollarCheckout,
 }) => {
-  const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
   // Custom user target calculator state
   const [customUsers, setCustomUsers] = useState<number>(campaign.targetRegistrations || 5000);
   const [isAppliedNotice, setIsAppliedNotice] = useState<boolean>(false);

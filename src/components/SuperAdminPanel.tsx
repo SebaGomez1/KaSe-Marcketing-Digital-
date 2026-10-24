@@ -47,7 +47,8 @@ import {
   SensitiveDataExposureAlert,
   PotentialClient,
   MarketingEmailRecord,
-  DissatisfactionAlert
+  DissatisfactionAlert,
+  isUserSuperAdmin
 } from '../types/growth';
 
 interface SuperAdminPanelProps {
@@ -131,8 +132,8 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [isSavingLocalPixel, setIsSavingLocalPixel] = useState(false);
   const [localPixelSuccess, setLocalPixelSuccess] = useState(false);
 
-  // Security guard: Only render for kathyseba2020@gmail.com
-  const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com' && currentUser?.role === 'super_admin';
+  // Security guard: Only render for authorized super administrators
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   const fetchAdminData = async () => {
     setIsLoading(true);
@@ -498,7 +499,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         <Lock className="w-12 h-12 text-rose-500 mx-auto" />
         <h2 className="text-xl font-bold text-white">Acceso Restringido</h2>
         <p className="text-xs text-neutral-400 max-w-md mx-auto">
-          Este panel de administración global está protegido criptográficamente y es exclusivo para la cuenta administradora de la plataforma (<strong className="text-white">kathyseba2020@gmail.com</strong>).
+          Este panel de administración global está protegido criptográficamente y es exclusivo para la cuenta administradora de la plataforma (<strong className="text-white">kase.marketing.digital@gmail.com / kathyseba2020@gmail.com</strong>).
         </p>
       </div>
     );
@@ -517,7 +518,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-black uppercase font-mono tracking-wider">
                 Super Administrador KaSe
               </span>
-              <span className="text-xs text-neutral-400 font-mono">kathyseba2020@gmail.com</span>
+              <span className="text-xs text-neutral-400 font-mono">{currentUser?.email || 'kase.marketing.digital@gmail.com'}</span>
             </div>
             <h1 className="text-lg font-bold text-white mt-1">
               Panel de Administración y Control Global
@@ -1569,7 +1570,7 @@ DATABASE_URL=...`}</pre>
                     ) : (
                       registeredUsers.map((u: any) => {
                         const isFromInternal = u.acquisitionSource === 'kase_internal_campaign';
-                        const isSuper = u.email?.toLowerCase() === 'kathyseba2020@gmail.com' || u.role === 'super_admin';
+                        const isSuper = isUserSuperAdmin(u);
                         return (
                           <tr key={u.id || u.email} className="hover:bg-neutral-800/40 transition-colors">
                             <td className="py-2.5 px-3">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Lock, Mail, User as UserIcon, ShieldAlert, Sparkles, CheckCircle2, Zap } from 'lucide-react';
-import { User } from '../types/growth';
+import { User, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -37,17 +37,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
     if (!cleanEmail) {
       setError('Por favor ingresa tu correo electrónico');
       return;
     }
-    if (!password) {
+    if (!cleanPass) {
       setError('Por favor ingresa tu contraseña');
       return;
     }
 
     setLoading(true);
     setError(null);
+
+    const isAdmin = isUserSuperAdmin({ email: cleanEmail });
+
+    // Pre-check for admin: If entering an admin account with wrong password, throw immediately
+    if (isAdmin && !isValidAdminCredentials(cleanEmail, cleanPass)) {
+      setError('Contraseña Incorrecta');
+      setLoading(false);
+      return;
+    }
 
     try {
       let authUser: User | null = null;
@@ -56,7 +66,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim(), email: cleanEmail, password }),
+          body: JSON.stringify({ name: name.trim(), email: cleanEmail, password: cleanPass }),
         });
         const contentType = res.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -77,38 +87,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
       }
 
-      // Resilient fallback (for static hosting or Vercel)
+      // Resilient fallback (for static hosting or Vercel client-side execution)
       if (!authUser) {
         const storedUsersRaw = localStorage.getItem('kase_registered_users');
         const registeredMap: Record<string, any> = storedUsersRaw ? JSON.parse(storedUsersRaw) : {};
-        const isKathy = cleanEmail === 'kathyseba2020@gmail.com';
 
-        if (mode === 'login') {
+        if (isAdmin) {
+          if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
+            throw new Error('Contraseña Incorrecta');
+          }
+          authUser = {
+            id: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'kase_admin_super' : 'kathy_super_admin',
+            name: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba',
+            email: cleanEmail,
+            role: 'super_admin',
+            createdAt: new Date().toISOString(),
+          };
+          registeredMap[cleanEmail] = { ...authUser, password: ADMIN_PASSWORD };
+          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
+        } else if (mode === 'login') {
           const existing = registeredMap[cleanEmail];
           if (existing) {
-            if (existing.password && existing.password !== password) {
+            if (existing.password && existing.password !== cleanPass) {
               throw new Error('Contraseña Incorrecta');
             }
             authUser = {
               id: existing.id,
               name: existing.name,
               email: existing.email,
-              role: isKathy ? 'super_admin' : existing.role || 'client',
+              role: existing.role || 'client',
               createdAt: existing.createdAt,
             };
-          } else if (isKathy) {
-            if (password !== 'kase2026Secure!' && password.length < 4) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            authUser = {
-              id: 'kathy_super_admin',
-              name: 'Kathy Seba',
-              email: 'kathyseba2020@gmail.com',
-              role: 'super_admin',
-              createdAt: new Date().toISOString(),
-            };
-            registeredMap[cleanEmail] = { ...authUser, password };
-            localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
           } else {
             authUser = {
               id: `usr_${Math.random().toString(36).substring(2, 9)}`,
@@ -117,22 +126,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               role: 'client',
               createdAt: new Date().toISOString(),
             };
-            registeredMap[cleanEmail] = { ...authUser, password };
+            registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
             localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
           }
         } else {
           const existing = registeredMap[cleanEmail];
-          if (existing && existing.password && existing.password !== password) {
+          if (existing && existing.password && existing.password !== cleanPass) {
             throw new Error('Contraseña Incorrecta');
           }
           authUser = {
             id: existing?.id || `usr_${Math.random().toString(36).substring(2, 9)}`,
-            name: (name.trim() || (isKathy ? 'Kathy Seba' : cleanEmail.split('@')[0])),
+            name: (name.trim() || cleanEmail.split('@')[0]),
             email: cleanEmail,
-            role: isKathy ? 'super_admin' : 'client',
+            role: 'client',
             createdAt: existing?.createdAt || new Date().toISOString(),
           };
-          registeredMap[cleanEmail] = { ...authUser, password };
+          registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
           localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
         }
       }
@@ -246,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full bg-black border border-neutral-700 rounded-lg pl-9 pr-3 py-2 text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 font-mono"
               />
             </div>
-            {email.trim().toLowerCase() === 'kathyseba2020@gmail.com' && (
+            {isUserSuperAdmin({ email }) && (
               <span className="text-[11px] text-emerald-400 mt-1 block font-semibold flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> Privilegios de Super Administrador Global detectados.
               </span>
