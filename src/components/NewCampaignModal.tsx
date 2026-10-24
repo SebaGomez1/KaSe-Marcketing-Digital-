@@ -31,6 +31,7 @@ interface NewCampaignModalProps {
   onCreated: (newCamp: Campaign) => void;
   onRequestCheckout?: (camp: Campaign) => void;
   currentUser?: User | null;
+  initialPlan?: 'basic' | 'starter' | 'growth' | 'enterprise';
 }
 
 export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
@@ -39,6 +40,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   onCreated,
   onRequestCheckout,
   currentUser,
+  initialPlan,
 }) => {
   const [selectedType, setSelectedType] = useState<CampaignType>('user_registrations');
   const [name, setName] = useState('');
@@ -74,10 +76,21 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [currency, setCurrency] = useState<'USD' | 'UYU'>('USD');
   
   // Target Conversion Goal
-  const [targetQuantity, setTargetQuantity] = useState<number>(2000);
-  const [plan, setPlan] = useState<'starter' | 'growth' | 'enterprise'>('starter');
+  const [targetQuantity, setTargetQuantity] = useState<number>(initialPlan === 'basic' ? 1000 : 2000);
+  const [plan, setPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>(initialPlan || 'starter');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync initialPlan when modal opens
+  useEffect(() => {
+    if (initialPlan) {
+      setPlan(initialPlan);
+      if (initialPlan === 'basic') setTargetQuantity(1000);
+      else if (initialPlan === 'starter') setTargetQuantity(2000);
+      else if (initialPlan === 'growth') setTargetQuantity(10000);
+      else if (initialPlan === 'enterprise') setTargetQuantity(100000);
+    }
+  }, [initialPlan, isOpen]);
 
   // Fetch real Vercel API status for the selected plan
   useEffect(() => {
@@ -244,17 +257,25 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const handleTargetChange = (val: number) => {
     setTargetQuantity(val);
     if (selectedType === 'plan_sales') {
-      if (val <= 30) setPlan('starter');
+      if (val <= 15) setPlan('basic');
+      else if (val <= 30) setPlan('starter');
       else if (val <= 100) setPlan('growth');
       else setPlan('enterprise');
     } else {
-      if (val <= 2000) setPlan('starter');
+      if (val <= 1000) setPlan('basic');
+      else if (val <= 2000) setPlan('starter');
       else if (val <= 10000) setPlan('growth');
       else setPlan('enterprise');
     }
   };
 
   const calculateEstimate = (qty: number) => {
+    if (selectedType === 'user_registrations') {
+      if (qty <= 1000) return 250;
+      if (qty <= 2000) return 490;
+      if (qty <= 10000) return 1890;
+      return 8900;
+    }
     return Math.round(qty * currentTypeMeta.pricePerUnitEstimateUSD);
   };
 
@@ -813,7 +834,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               <div className="text-[11px] text-neutral-400 pt-1 border-t border-neutral-800 flex items-center justify-between">
                 <span>Nivel de Suite asignado:</span>
                 <span className="font-bold text-white uppercase font-mono px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700">
-                  Plan {plan} ({plan === 'starter' ? 'Módulos 1 a 3' : plan === 'growth' ? 'Módulos 1 a 5' : 'Todos los 8 Módulos VIP'})
+                  Plan {plan} ({plan === 'basic' ? 'Básico Económico ($250 USD - Módulos 1 a 3)' : plan === 'starter' ? 'Starter ($490 USD - Módulos 1 a 3)' : plan === 'growth' ? 'Growth ($1,890 USD - Módulos 1 a 5)' : 'Enterprise VIP ($8,900 USD - Los 8 Módulos)'})
                 </span>
               </div>
             </div>

@@ -27,10 +27,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const isSuperAdmin = isUserSuperAdmin(currentUser);
 
-  // Strict View Rules: Unauthenticated visitors can ONLY see Inicio, ¿Cómo funciona? and Reseñas
+  // Unauthenticated visitors can see Inicio, ¿Cómo funciona?, Planes y Precios, and Reseñas
   const publicNavItems = [
     { id: 'landing', label: '🏠 Inicio' },
     { id: 'guide', label: '¿Cómo funciona?' },
+    { id: 'plans', label: '💎 Planes y Precios' },
     { id: 'reviews', label: '⭐ Reseñas' },
   ];
 

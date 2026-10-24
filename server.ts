@@ -142,7 +142,7 @@ export interface Campaign {
   logs: CampaignLog[];
 }
 
-function getInitialModules(plan: 'starter' | 'growth' | 'enterprise') {
+function getInitialModules(plan: 'basic' | 'starter' | 'growth' | 'enterprise') {
   const isGrowth = plan === 'growth' || plan === 'enterprise';
   const isEnterprise = plan === 'enterprise';
 

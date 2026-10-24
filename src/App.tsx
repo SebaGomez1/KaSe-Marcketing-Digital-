@@ -39,6 +39,7 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [campaignForCheckout, setCampaignForCheckout] = useState<Campaign | null>(null);
+  const [selectedInitialPlan, setSelectedInitialPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>('starter');
 
   // User Authentication State (Persisted in localStorage with auto-detect for Kathy)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -212,7 +213,7 @@ export default function App() {
   };
 
   // Update Plan
-  const handleUpdatePlan = async (plan: 'starter' | 'growth' | 'enterprise', targetRegistrations: number) => {
+  const handleUpdatePlan = async (plan: 'basic' | 'starter' | 'growth' | 'enterprise', targetRegistrations: number) => {
     if (!activeCampaign) return;
     setIsActionLoading(true);
     try {
@@ -256,8 +257,11 @@ export default function App() {
     );
   }
 
-  // Safe New Campaign Trigger: Requires login first
-  const handleOpenNewCampaign = () => {
+  // Safe New Campaign Trigger: Requires login first, can pre-select plan
+  const handleOpenNewCampaign = (planId?: 'basic' | 'starter' | 'growth' | 'enterprise') => {
+    if (planId) {
+      setSelectedInitialPlan(planId);
+    }
     if (!currentUser) {
       setIsAuthModalOpen(true);
     } else {
@@ -380,13 +384,29 @@ export default function App() {
             currentUser={currentUser}
             onOpenAuthModal={() => setIsAuthModalOpen(true)}
             onNavigateTab={(tab) => {
-              if (!currentUser) {
+              if (!currentUser && tab !== 'plans' && tab !== 'guide' && tab !== 'reviews' && tab !== 'landing') {
                 setIsAuthModalOpen(true);
               } else {
                 setActiveTab(tab);
               }
             }}
             onOpenNewCampaign={handleOpenNewCampaign}
+          />
+        ) : activeTab === 'plans' ? (
+          <PlansComparison
+            campaign={activeCampaign}
+            onUpdatePlan={handleUpdatePlan}
+            currentUser={currentUser}
+            onRequestOneDollarCheckout={handleOpenOneDollarCheckout}
+            onOpenAuthModal={() => setIsAuthModalOpen(true)}
+            onOpenNewCampaignWithPlan={(planId) => {
+              setSelectedInitialPlan(planId);
+              if (!currentUser) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsNewCampaignOpen(true);
+              }
+            }}
           />
         ) : !currentUser ? (
           <LandingHero
@@ -453,15 +473,6 @@ export default function App() {
               <IntegrationPanel
                 campaign={activeCampaign}
                 onRefreshCampaign={fetchCampaigns}
-              />
-            )}
-
-            {activeTab === 'plans' && (
-              <PlansComparison
-                campaign={activeCampaign}
-                onUpdatePlan={handleUpdatePlan}
-                currentUser={currentUser}
-                onRequestOneDollarCheckout={handleOpenOneDollarCheckout}
               />
             )}
 
@@ -546,6 +557,7 @@ export default function App() {
         onClose={() => setIsNewCampaignOpen(false)}
         onCreated={handleCreatedCampaign}
         currentUser={currentUser}
+        initialPlan={selectedInitialPlan}
         onRequestCheckout={(camp) => {
           setCampaignForCheckout(camp);
           setIsCheckoutModalOpen(true);

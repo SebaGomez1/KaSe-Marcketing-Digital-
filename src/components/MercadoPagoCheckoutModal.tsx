@@ -58,7 +58,8 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
 
   if (!isOpen) return null;
 
-  const planAmounts = {
+  const planAmounts: Record<string, number> = {
+    basic: 250,
     starter: 490,
     growth: 1890,
     enterprise: 8900,

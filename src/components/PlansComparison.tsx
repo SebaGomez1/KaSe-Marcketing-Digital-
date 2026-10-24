@@ -11,15 +11,15 @@ import {
   Cpu,
   Layers
 } from 'lucide-react';
-import { Campaign, isUserSuperAdmin } from '../types/growth';
-
-import { User } from '../types/growth';
+import { Campaign, isUserSuperAdmin, User } from '../types/growth';
 
 interface PlansComparisonProps {
-  campaign: Campaign;
-  onUpdatePlan: (plan: 'starter' | 'growth' | 'enterprise', targetRegistrations: number) => void;
+  campaign?: Campaign | null;
+  onUpdatePlan?: (plan: 'basic' | 'starter' | 'growth' | 'enterprise', targetRegistrations: number) => void;
   currentUser?: User | null;
   onRequestOneDollarCheckout?: () => void;
+  onOpenNewCampaignWithPlan?: (planId: 'basic' | 'starter' | 'growth' | 'enterprise') => void;
+  onOpenAuthModal?: () => void;
 }
 
 export const PlansComparison: React.FC<PlansComparisonProps> = ({
@@ -27,22 +27,35 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
   onUpdatePlan,
   currentUser,
   onRequestOneDollarCheckout,
+  onOpenNewCampaignWithPlan,
+  onOpenAuthModal,
 }) => {
   const isSuperAdmin = isUserSuperAdmin(currentUser);
   // Custom user target calculator state
-  const [customUsers, setCustomUsers] = useState<number>(campaign.targetRegistrations || 5000);
+  const [customUsers, setCustomUsers] = useState<number>(campaign?.targetRegistrations || 1000);
   const [isAppliedNotice, setIsAppliedNotice] = useState<boolean>(false);
 
   // Calculate pricing based on custom volume
   const getCustomTier = (volume: number) => {
-    if (volume <= 2000) {
+    if (volume <= 1000) {
+      const price = Math.round(volume * 0.25);
+      return {
+        plan: 'basic' as const,
+        planName: 'Plan Básico Económico',
+        totalPrice: Math.max(250, price),
+        unitPrice: '0.250',
+        modulesCount: '3 Módulos Base (SEO + Redes + Directorios)',
+        colorText: 'text-teal-400',
+        bgButton: 'bg-teal-400 hover:bg-teal-300 text-black',
+      };
+    } else if (volume <= 2000) {
       const price = Math.round(volume * 0.245);
       return {
         plan: 'starter' as const,
         planName: 'Plan Starter',
-        totalPrice: Math.max(190, price),
+        totalPrice: Math.max(350, price),
         unitPrice: '0.245',
-        modulesCount: '3 Módulos (Base)',
+        modulesCount: '3 Módulos Base Optimizados',
         colorText: 'text-emerald-400',
         bgButton: 'bg-emerald-400 hover:bg-emerald-300 text-black',
       };
@@ -53,7 +66,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         planName: 'Plan Growth',
         totalPrice: price,
         unitPrice: '0.189',
-        modulesCount: '5 Módulos (Base + Outbound + Newsletters)',
+        modulesCount: '5 Módulos (Base + Outbound Reddit + Newsletters)',
         colorText: 'text-sky-400',
         bgButton: 'bg-sky-400 hover:bg-sky-300 text-black',
       };
@@ -64,7 +77,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         planName: 'Plan Enterprise VIP',
         totalPrice: price,
         unitPrice: '0.089',
-        modulesCount: 'Los 8 Módulos en Paralelo',
+        modulesCount: 'Los 8 Módulos en Simultáneo',
         colorText: 'text-purple-400',
         bgButton: 'bg-purple-500 hover:bg-purple-400 text-white glow-purple',
       };
@@ -74,12 +87,60 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
   const customQuote = getCustomTier(customUsers);
 
   const handleApplyCustom = () => {
-    onUpdatePlan(customQuote.plan, customUsers);
-    setIsAppliedNotice(true);
-    setTimeout(() => setIsAppliedNotice(false), 3000);
+    if (campaign && onUpdatePlan) {
+      onUpdatePlan(customQuote.plan, customUsers);
+      setIsAppliedNotice(true);
+      setTimeout(() => setIsAppliedNotice(false), 3000);
+    } else if (onOpenNewCampaignWithPlan) {
+      onOpenNewCampaignWithPlan(customQuote.plan);
+    } else if (!currentUser && onOpenAuthModal) {
+      onOpenAuthModal();
+    }
+  };
+
+  const handlePlanAction = (planId: 'basic' | 'starter' | 'growth' | 'enterprise', target: number) => {
+    if (campaign && onUpdatePlan) {
+      onUpdatePlan(planId, target);
+    } else if (onOpenNewCampaignWithPlan) {
+      onOpenNewCampaignWithPlan(planId);
+    } else if (!currentUser && onOpenAuthModal) {
+      onOpenAuthModal();
+    }
   };
 
   const plans = [
+    {
+      id: 'basic' as const,
+      name: 'Plan Básico Económico',
+      badge: 'Opción Más Accesible',
+      price: '$250 USD',
+      period: '/ mes',
+      target: 1000,
+      costPerUser: '$0.250 / usuario',
+      description: 'El plan de entrada más económico para validar tracción real. Consigue 1,000 usuarios registrados verificados en tu web o app sin asumir altos costos.',
+      color: 'border-teal-900/60',
+      activeColor: 'border-teal-500/50 bg-teal-500/5',
+      accentText: 'text-teal-400',
+      accentBtn: 'bg-teal-400 text-black hover:bg-teal-300',
+      whatYouGet: [
+        '1,000 usuarios registrados verificados en tu app o web',
+        'Enlace puente inteligente autónomo de cero código (/r/:id)',
+        'Indexación acelerada en Google en menos de 48 horas (Módulo 1)',
+        'Sindicación social inicial en X/Twitter y LinkedIn (Módulo 2)',
+        'Submisión en directorios seleccionados y Product Hunt (Módulo 3)',
+        'Pausa automática obligatoria e instantánea al usuario #1,000',
+      ],
+      modules: [
+        { name: 'Módulo 1: SEO Técnico e Indexación API Google', included: true },
+        { name: 'Módulo 2: Social Media Syndication (X, LinkedIn)', included: true },
+        { name: 'Módulo 3: Programmatic Launching (50+ Directorios)', included: true },
+        { name: 'Módulo 4: Automated Outbound (Reddit & X Bot)', included: false },
+        { name: 'Módulo 5: Newsletter Outreach Engine', included: false },
+        { name: 'Módulo 6: Video Growth Automation (TikTok/Reels)', included: false },
+        { name: 'Módulo 7: Programmatic SEO & Landing Factory', included: false },
+        { name: 'Módulo 8: Bot de Alianzas e Influencers', included: false },
+      ],
+    },
     {
       id: 'starter' as const,
       name: 'Plan Starter',
@@ -88,7 +149,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
       period: '/ mes',
       target: 2000,
       costPerUser: '$0.245 / usuario',
-      description: 'Ideal para validar tu producto, conseguir los primeros 2,000 usuarios y generar tracción orgánica comprobada.',
+      description: 'Ideal para validar tu producto, conseguir los primeros 2,000 usuarios y generar tracción orgánica comprobada con 3 motores optimizados.',
       color: 'border-neutral-800',
       activeColor: 'border-emerald-500/50 bg-emerald-500/5',
       accentText: 'text-emerald-400',
@@ -98,7 +159,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         'Indexación acelerada en Google en menos de 48 horas (Módulo 1)',
         'Sindicación automática semanal en X/Twitter, LinkedIn y Facebook (Módulo 2)',
         'Inscripción de tu app en 52 directorios mundiales como Product Hunt (Módulo 3)',
-        'Píxel JavaScript y Webhook de conversión sin límite',
+        'Píxel JavaScript y Enlace Puente de conversión sin límite',
         'Pausa automática obligatoria al registrar al usuario #2,000',
       ],
       modules: [
@@ -120,7 +181,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
       period: '/ mes',
       target: 10000,
       costPerUser: '$0.189 / usuario',
-      description: 'Para startups que necesitan un flujo constante de clientes potenciales mediante captación activa en foros y menciones en newsletters.',
+      description: 'Para proyectos que necesitan un flujo constante de clientes potenciales mediante captación activa en foros de Reddit y menciones en newsletters.',
       color: 'border-neutral-800',
       activeColor: 'border-sky-500/50 bg-sky-500/5',
       accentText: 'text-sky-400',
@@ -130,7 +191,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         'Todo lo incluido en el Plan Starter (Módulos 1, 2 y 3)',
         'Bot de escucha activa en Reddit (r/SaaS, r/startups) y X recomendando tu app (Módulo 4)',
         'Pitching personalizado a editores de newsletters tecnológicas de alta audiencia (Módulo 5)',
-        'Píxel y Webhook con monitoreo continuo en segundo plano',
+        'Píxel y Enlace Puente con monitoreo continuo en segundo plano',
         'Pausa automática estricta al llegar a 10,000 usuarios registrados',
       ],
       modules: [
@@ -152,7 +213,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
       period: '/ mes',
       target: 100000,
       costPerUser: '$0.089 / usuario',
-      description: 'Potencia de adquisición extrema. Los 8 módulos operando en simultáneo para dominar tu categoría con micro-videos, programmatic SEO e influencers.',
+      description: 'Potencia de adquisición extrema. Los 8 módulos operando en simultáneo para dominar tu categoría con micro-videos virales, programmatic SEO e influencers.',
       color: 'border-neutral-800',
       activeColor: 'border-purple-500/50 bg-purple-500/5',
       accentText: 'text-purple-400',
@@ -183,17 +244,29 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
       {/* 1. Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Planes, Precios y Calculadora de Usuarios a Medida
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Planes, Precios y Calculadora de Tráfico a Medida</span>
+            <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 border border-teal-500/30 px-2 py-0.5 rounded">
+              DESDE $250 USD
+            </span>
           </h2>
           <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-            Precios 100% transparentes basados en resultados. Solo pagas por usuarios registrados reales contabilizados por tu Píxel o Webhook. Al llegar a la cuota, el sistema se apaga solo.
+            Precios 100% transparentes basados en resultados. Solo pagas por usuarios registrados reales contabilizados por tu Enlace Puente, Píxel o Webhook. Al llegar a la cuota contratada, los motores se pausan de inmediato.
           </p>
         </div>
 
         <div className="text-xs text-neutral-400">
-          Campaña activa:{' '}
-          <strong className="text-white font-mono">{campaign.name}</strong>
+          {campaign ? (
+            <>
+              Campaña activa:{' '}
+              <strong className="text-white font-mono">{campaign.name}</strong>
+            </>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-mono text-[11px]">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Contratación Directa con Mercado Pago Uruguay</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -232,7 +305,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         </div>
       )}
 
-      {/* 2. INTERACTIVE CUSTOM USERS CALCULATOR (Allows user to select any specific number of users) */}
+      {/* 2. INTERACTIVE CUSTOM USERS CALCULATOR */}
       <div className="bg-[#141414] border border-neutral-800 rounded-xl p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -247,7 +320,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                   ¿Quieres comprar una cantidad específica de usuarios?
                 </h3>
                 <p className="text-xs text-neutral-400">
-                  Ajusta la cantidad exacta de registros que necesitas para tu aplicación y cotiza al instante.
+                  Ajusta la cantidad exacta de registros que necesitas para tu aplicación y cotiza al instante desde 500 usuarios.
                 </p>
               </div>
             </div>
@@ -277,10 +350,10 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                   className="w-full accent-sky-400 cursor-pointer h-2 bg-neutral-900 rounded-lg border border-neutral-800"
                 />
                 <div className="flex justify-between text-[11px] font-mono text-neutral-500">
-                  <span>500 usuarios</span>
-                  <span>10,000 usuarios</span>
-                  <span>50,000 usuarios</span>
-                  <span>100,000 usuarios</span>
+                  <span>500 (Básico)</span>
+                  <span>2,000 (Starter)</span>
+                  <span>10,000 (Growth)</span>
+                  <span>100,000 (Enterprise)</span>
                 </div>
               </div>
 
@@ -324,65 +397,39 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                 onClick={handleApplyCustom}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 ${customQuote.bgButton}`}
               >
-                {isAppliedNotice ? '¡Meta Aplicada a la Campaña!' : `Aplicar Meta de ${customUsers.toLocaleString()} Usuarios`}
+                {isAppliedNotice 
+                  ? '¡Meta Aplicada a la Campaña!' 
+                  : campaign 
+                  ? `Aplicar Meta de ${customUsers.toLocaleString()} Usuarios`
+                  : `⚡ Contratar ${customUsers.toLocaleString()} Usuarios ($${customQuote.totalPrice.toLocaleString()} USD)`}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. THREE STANDARD PRICING TIERS */}
+      {/* 3. FOUR STANDARD PRICING TIERS (INCLUDING THE NEW $250 PLAN) */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-base font-bold text-white">
-            Planes Estándar Pre-Configurados
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <span>Planes Pre-Configurados Oficiales</span>
+            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+              4 OPCIONES PARA TODO TIPO DE PROYECTO
+            </span>
           </h3>
           <p className="text-xs text-neutral-400">
-            Escoge un paquete empaquetado o cámbialo en cualquier momento con 1 solo clic.
+            Escoge un paquete o contrátalo al instante con Mercado Pago. Garantía de parada exacta por contrato.
           </p>
         </div>
 
-        {/* SPECIAL $1.00 USD AUTOPRUEBA PLAN FOR KATHY */}
-        {isSuperAdmin && (
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border-2 border-amber-500/60 shadow-xl space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase">
-                    👑 Exclusivo Kathy Seba · Prueba de Pasarela en Vivo
-                  </span>
-                  <span className="text-xs font-mono text-emerald-400 font-bold">$1.00 USD Único</span>
-                </div>
-                <h3 className="text-base font-bold text-white">
-                  Plan de Autoprueba Mercado Pago ($1.00 USD)
-                </h3>
-                <p className="text-xs text-neutral-300 leading-relaxed max-w-2xl">
-                  Diseñado para que hagas un autopago con tu tarjeta bancaria y compruebes que tu API de producción de Mercado Pago Uruguay recibe el dinero de inmediato en tu cuenta. Este plan no tiene bypass gratis para que puedas pasar al checkout real.
-                </p>
-              </div>
-
-              {onRequestOneDollarCheckout && (
-                <button
-                  type="button"
-                  onClick={onRequestOneDollarCheckout}
-                  className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-black font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-amber-500/30 cursor-pointer shrink-0 flex items-center gap-1.5"
-                >
-                  <span>💳 Pagar $1.00 USD con Mercado Pago</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {plans.map((p) => {
-            const isCurrent = campaign.plan === p.id && campaign.targetRegistrations === p.target;
+            const isCurrent = campaign ? (campaign.plan === p.id && campaign.targetRegistrations === p.target) : false;
 
             return (
               <div
                 key={p.id}
-                className={`bg-[#161616] border rounded-xl p-6 flex flex-col justify-between transition-all ${
+                className={`bg-[#161616] border rounded-xl p-5 sm:p-6 flex flex-col justify-between transition-all ${
                   isCurrent ? p.activeColor : p.color
                 }`}
               >
@@ -394,14 +441,14 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                     </span>
                     {isCurrent && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-200 border border-neutral-700 font-semibold">
-                        PLAN ACTIVO EN TU APP
+                        ACTIVO EN TU APP
                       </span>
                     )}
                   </div>
 
                   {/* Title & Price */}
                   <div>
-                    <h3 className="text-xl font-extrabold text-white">{p.name}</h3>
+                    <h3 className="text-lg sm:text-xl font-extrabold text-white">{p.name}</h3>
                     
                     <div className="flex items-baseline gap-1 mt-2">
                       <span className="text-3xl font-extrabold font-mono text-white tracking-tight">
@@ -411,8 +458,8 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 mt-1 text-xs">
-                      <span className="font-mono text-sky-400 font-semibold">
-                        {p.target.toLocaleString()} usuarios registrados
+                      <span className={`font-mono font-semibold ${p.accentText}`}>
+                        {p.target.toLocaleString()} usuarios
                       </span>
                       <span aria-hidden="true" className="text-neutral-600">·</span>
                       <span className="text-neutral-500 font-mono text-[11px]">
@@ -425,11 +472,11 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                     </p>
                   </div>
 
-                  {/* What you get bullet points (Clear and simple for the client) */}
+                  {/* What you get bullet points */}
                   <div className="pt-4 border-t border-neutral-800 space-y-2">
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Lo que obtienes exactamente con este plan:</span>
+                      <Sparkles className={`w-3.5 h-3.5 ${p.accentText}`} />
+                      <span>Lo que obtienes exactamente:</span>
                     </div>
                     <ul className="space-y-2 text-xs">
                       {p.whatYouGet.map((item, idx) => (
@@ -462,18 +509,20 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                 {/* Bottom Action Button */}
                 <div className="pt-6 mt-6 border-t border-neutral-800">
                   <button
-                    onClick={() => onUpdatePlan(p.id, p.target)}
+                    onClick={() => handlePlanAction(p.id, p.target)}
                     disabled={isCurrent}
-                    className={`w-full py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    className={`w-full py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
                       isCurrent
-                        ? 'bg-neutral-800 text-neutral-500 cursor-default'
+                        ? 'bg-neutral-800 text-neutral-500 cursor-default shadow-none'
                         : p.accentBtn
                     }`}
                   >
                     <span>
                       {isCurrent
                         ? 'Plan Actualmente Activo'
-                        : `Seleccionar ${p.name} (${p.price})`}
+                        : campaign
+                        ? `Seleccionar ${p.name}`
+                        : `⚡ Contratar Ahora (${p.price})`}
                     </span>
                     {!isCurrent && <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
@@ -535,46 +584,67 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
           </div>
         </div>
 
-        {/* Current Campaign Billing Status */}
-        <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
-          <div className="space-y-1">
-            <div className="text-neutral-400">
-              Estado de Suscripción de esta Campaña:{' '}
-              <strong className="text-emerald-400 font-mono">
-                {campaign.billing?.subscriptionStatus === 'active' ? 'ACTIVA (DÉBITO MENSUAL VIGENTE)' : 'CONFIGURADA'}
-              </strong>
+        {/* Campaign Billing Status or Quick CTA */}
+        {campaign ? (
+          <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <div className="text-neutral-400">
+                Estado de Suscripción de esta Campaña:{' '}
+                <strong className="text-emerald-400 font-mono">
+                  {campaign.billing?.subscriptionStatus === 'active' ? 'ACTIVA (DÉBITO MENSUAL VIGENTE)' : 'CONFIGURADA'}
+                </strong>
+              </div>
+              <div className="text-[11px] text-neutral-500 font-mono">
+                Pasarela: Mercado Pago Uruguay · Cobro: USD ${campaign.billing?.monthlyAmount || (campaign.plan === 'basic' ? 250 : campaign.plan === 'starter' ? 490 : campaign.plan === 'growth' ? 1890 : 8900)} / mes
+              </div>
             </div>
-            <div className="text-[11px] text-neutral-500 font-mono">
-              Pasarela: Mercado Pago Uruguay · Cobro: USD ${campaign.billing?.monthlyAmount || (campaign.plan === 'starter' ? 490 : campaign.plan === 'growth' ? 1890 : 8900)} / mes
-            </div>
-          </div>
 
-          <button
-            onClick={async () => {
-              try {
-                const res = await fetch('/api/payments/mercadopago/create-subscription', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    campaignId: campaign.id,
-                    plan: campaign.plan,
-                    monthlyAmount: campaign.plan === 'starter' ? 490 : campaign.plan === 'growth' ? 1890 : 8900,
-                    currency: 'USD',
-                  }),
-                });
-                const data = await res.json();
-                alert(`¡Suscripción recurrente de Mercado Pago Uruguay verificada!\n\nID: ${data.subscriptionId}\nCobro recurrente: ${data.billing.monthlyAmount} USD / mes\nPróxima fecha de facturación: ${new Date(data.billing.nextBillingDate).toLocaleDateString()}`);
-                window.location.reload();
-              } catch (e) {
-                alert('Suscripción conectada en backend.');
-              }
-            }}
-            className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-black font-bold rounded-lg transition-colors cursor-pointer text-xs shrink-0 flex items-center gap-1.5"
-          >
-            <span>Probar Cobro Recurrente (Simulación MP UY)</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/payments/mercadopago/create-subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      campaignId: campaign.id,
+                      plan: campaign.plan,
+                      monthlyAmount: campaign.billing?.monthlyAmount || (campaign.plan === 'basic' ? 250 : campaign.plan === 'starter' ? 490 : campaign.plan === 'growth' ? 1890 : 8900),
+                      currency: 'USD',
+                    }),
+                  });
+                  const data = await res.json();
+                  alert(`¡Suscripción recurrente de Mercado Pago Uruguay verificada!\n\nID: ${data.subscriptionId}\nCobro recurrente: ${data.billing.monthlyAmount} USD / mes\nPróxima fecha de facturación: ${new Date(data.billing.nextBillingDate).toLocaleDateString()}`);
+                  window.location.reload();
+                } catch (e) {
+                  alert('Suscripción conectada en backend.');
+                }
+              }}
+              className="px-4 py-2 bg-sky-500 hover:bg-sky-400 text-black font-bold rounded-lg transition-colors cursor-pointer text-xs shrink-0 flex items-center gap-1.5"
+            >
+              <span>Probar Cobro Recurrente (Simulación MP UY)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <div className="text-neutral-300 font-bold">
+                ¿Listo para empezar tu primera campaña?
+              </div>
+              <div className="text-[11px] text-neutral-400">
+                Selecciona tu plan preferido arriba o contrata el nuevo Plan Básico Económico de $250 USD con 1,000 usuarios verificados.
+              </div>
+            </div>
+
+            <button
+              onClick={() => handlePlanAction('basic', 1000)}
+              className="px-4 py-2.5 bg-teal-400 hover:bg-teal-300 text-black font-bold rounded-lg transition-all cursor-pointer text-xs shrink-0 flex items-center gap-1.5 shadow-lg shadow-teal-500/20"
+            >
+              <span>⚡ Contratar Plan Básico ($250 USD)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

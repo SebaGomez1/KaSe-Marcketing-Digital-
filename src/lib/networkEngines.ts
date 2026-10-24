@@ -515,13 +515,13 @@ export function getAllEnginesHealth(): DetailedEngineCheck[] {
 }
 
 // VALIDACIÓN ESTRICTA PRE-COBRO Y PRE-CAMPAÑA
-export function validateCampaignEnginesForPlan(plan: 'starter' | 'growth' | 'enterprise', customModuleKeys?: string[]) {
+export function validateCampaignEnginesForPlan(plan: 'basic' | 'starter' | 'growth' | 'enterprise', customModuleKeys?: string[]) {
   const allEngines = getAllEnginesHealth();
 
   let requiredKeys: string[] = [];
   if (customModuleKeys && customModuleKeys.length > 0) {
     requiredKeys = customModuleKeys;
-  } else if (plan === 'starter') {
+  } else if (plan === 'basic' || plan === 'starter') {
     requiredKeys = ['mod1_seo', 'mod2_social', 'mod3_directories'];
   } else if (plan === 'growth') {
     requiredKeys = ['mod1_seo', 'mod2_social', 'mod3_directories', 'mod4_outbound', 'mod5_newsletter'];

@@ -183,7 +183,7 @@ export interface Campaign {
   currency?: string;
   targetRegistrations: number; // Conversion Goal (e.g. 2000 signups, or 50 plan sales, or 25000 views)
   currentRegistrations: number;
-  plan: 'starter' | 'growth' | 'enterprise';
+  plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;
   interactionPreferences?: string; // Para Likes & Engagement
@@ -218,7 +218,7 @@ export interface ModuleDefinition {
   howItWorks: string; // ¿Qué hace exactamente?
   deliverable: string; // ¿Qué obtienes tú?
   category: 'base' | 'advanced';
-  requiredPlan: 'starter' | 'growth' | 'enterprise';
+  requiredPlan: 'basic' | 'starter' | 'growth' | 'enterprise';
   accentColor: string;
   accentBg: string;
   accentBorder: string;
