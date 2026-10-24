@@ -2743,7 +2743,7 @@ app.get('/api/system/optimal-performance', (_req: Request, res: Response): void 
 app.get('/api/system/test-mercadopago-live', async (_req: Request, res: Response): Promise<void> => {
   try {
     const liveCheck = await testMercadoPagoApiLive();
-    res.json({ success: liveCheck.success, ...liveCheck });
+    res.json({ ...liveCheck });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
