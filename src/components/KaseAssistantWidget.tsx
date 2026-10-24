@@ -198,13 +198,33 @@ export const KaseAssistantWidget: React.FC<KaseAssistantWidgetProps> = ({
 
   const effectiveOnline = isOnline !== undefined ? isOnline : localOnline;
 
-  const defaultGreeting = `¡Hola! Soy **KaSi 2.0** ✨🤖, tu Copiloto Inteligente de KaSe Marketing Digital.
+  const defaultGreeting = currentUser
+    ? `¡Hola ${(currentUser.name || 'Empresario').split(' ')[0]}! Soy **KaSi** ✨🤖, tu Copiloto de Crecimiento de KaSe.
 
-Estoy conectado directamente a los **8 motores autónomos**, tu Enlace Puente sin código y la pasarela de Mercado Pago Uruguay.
+🎯 **Campaña Activa**: ${activeCampaign ? `*${activeCampaign.name}* (${activeCampaign.currentRegistrations}/${activeCampaign.targetRegistrations} conversiones)` : '*Vista General*'}
 
-🎯 **Campaña Actual**: ${activeCampaign ? `*${activeCampaign.name}* (${activeCampaign.currentRegistrations}/${activeCampaign.targetRegistrations} usuarios)` : '*Vista General*'}
+¿En qué puedo ayudarte hoy con la captación y escalamiento de tu negocio? 🚀💬`
+    : `¡Hola! Soy **KaSi** ✨🤖, el especialista en adquisición de clientes de KaSe Marketing Digital.
 
-¿Qué deseas realizar hoy? Puedo auditar tu campaña en vivo, simular tráfico de prueba, guiarte a crear una nueva campaña o responder cualquier duda técnica. 🚀💬`;
+Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio en piloto automático.
+
+🛡️ **Claridad total:** Tú **NO tienes que crear ni configurar ninguna API**. La infraestructura y los 8 motores funcionan de manera 100% autónoma en nuestra nube. Tú sólo brindas el link de tu web a promocionar y tus metas de campaña.
+
+¿Deseas saber cómo funciona la plataforma, conocer los planes o registrarte gratis?`;
+
+  const defaultSuggestions = currentUser
+    ? [
+        '🚀 Auditar mi campaña actual',
+        '➕ Crear nueva campaña',
+        '💳 Ver planes y precios',
+        '⭐ Valora nuestro servicio'
+      ]
+    : [
+        '¿Cómo funciona KaSe?',
+        '¿Tengo que configurar APIs?',
+        '💰 Ver planes y precios',
+        '📝 Crear cuenta gratuita'
+      ];
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -212,12 +232,7 @@ Estoy conectado directamente a los **8 motores autónomos**, tu Enlace Puente si
       role: 'assistant',
       text: defaultGreeting,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestions: [
-        '🚀 Auditar mi campaña actual',
-        '🧪 Simular ráfaga de 25 registros',
-        '➕ Crear nueva campaña',
-        '💳 ¿Cuáles son los precios de los planes?'
-      ]
+      suggestions: defaultSuggestions,
     },
   ]);
 
@@ -237,51 +252,6 @@ Estoy conectado directamente a los **8 motores autónomos**, tu Enlace Puente si
       inputRef.current?.focus({ preventScroll: true });
     }
   }, [isOpen, isMinimized]);
-
-  // PROACTIVE AI ASSISTANT INTERVENTION ON SYSTEM OR ENGINE ERROR
-  useEffect(() => {
-    const handleErrorEvent = (e: Event) => {
-      const custom = e as CustomEvent<{
-        location?: string;
-        module?: string;
-        error?: string;
-        details?: string;
-        unconfiguredVars?: string[];
-      }>;
-      const detail = custom.detail || {};
-
-      setIsOpen(true);
-      setIsMinimized(false);
-      setIsDockedHidden(false);
-
-      const errorText = `🚨 **¿Necesitas ayuda?** Noté un error en **${detail.location || 'el sistema'}**:
-> *${detail.error || 'Verificación de motores fallida'}*
-
-**Diagnóstico de KaSi:**
-Dado que el motor **${detail.module || 'requerido'}** aún no tiene sus APIs configuradas en las variables de entorno de **Vercel** o está en mantenimiento, la plataforma **ha bloqueado el cobro y la activación** para proteger tu inversión y garantizar que sólo pagues por tráfico real.
-
-${detail.unconfiguredVars && detail.unconfiguredVars.length > 0 ? `Variables necesarias en Vercel:\n${detail.unconfiguredVars.map(v => `- \`${v}\``).join('\n')}\n\n` : ''}¿Deseas que te guíe para configurar las APIs en Vercel, o prefieres revisar las opciones y motores que **SÍ tenemos 100% operativos** en este momento?`;
-
-      const proactiveMsg: ChatMessage = {
-        id: `proactive_err_${Date.now()}`,
-        role: 'assistant',
-        text: errorText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: [
-          '📋 Ver variables necesarias en Vercel',
-          '🛡️ Ir a Funcionamiento Óptimo',
-          '⚡ ¿Cuáles módulos SÍ están activos?',
-          '💬 Hablar con soporte técnico'
-        ]
-      };
-
-      setMessages((prev) => [...prev, proactiveMsg]);
-      speakText('¿Necesitas ayuda? Noté un error en la configuración de las APIs. He abierto el asistente para ayudarte.');
-    };
-
-    window.addEventListener('kase:trigger_assistant_error', handleErrorEvent);
-    return () => window.removeEventListener('kase:trigger_assistant_error', handleErrorEvent);
-  }, [voiceEnabled]);
 
   const speakText = (text: string) => {
     if (!voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;

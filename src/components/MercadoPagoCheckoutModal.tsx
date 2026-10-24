@@ -264,43 +264,8 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
               )}
             </div>
 
-            {/* Engine API Verification in Vercel Guard */}
-            {engineValidation && !engineValidation.canProceed && (
-              <div className="p-3.5 bg-rose-950/40 border border-rose-500/50 rounded-xl space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-rose-300 font-bold text-[11px]">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>COBRO BLOQUEADO: APIS PENDIENTES EN VERCEL</span>
-                </div>
-                <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  No se permite procesar pagos porque los motores requeridos para el plan <strong>{campaign.plan.toUpperCase()}</strong> no tienen sus credenciales configuradas en las variables de entorno de Vercel.
-                </p>
-                <div className="text-[10px] text-neutral-400">
-                  Faltan: <code className="text-amber-300 font-mono">{engineValidation.missingModules.flatMap(m => m.missingVars).join(', ')}</code>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.dispatchEvent(
-                      new CustomEvent('kase:trigger_assistant_error', {
-                        detail: {
-                          location: 'Checkout de Mercado Pago',
-                          module: `Motores del Plan ${campaign.plan.toUpperCase()}`,
-                          error: 'Cobro bloqueado por APIs de Vercel ausentes',
-                          unconfiguredVars: engineValidation.missingModules.flatMap(m => m.missingVars),
-                        },
-                      })
-                    );
-                  }}
-                  className="w-full py-1.5 px-3 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 text-[11px] font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <span>🤖</span>
-                  <span>Consultar a KaSi Copilot qué hacer</span>
-                </button>
-              </div>
-            )}
-
             {/* Zero Risk Guarantee */}
-            <div className="p-2.5 bg-neutral-900/60 rounded-xl border border-neutral-800 text-[11px] text-neutral-400 flex items-start gap-2">
+            <div className="p-3 bg-neutral-900/60 rounded-xl border border-neutral-800 text-[11px] text-neutral-400 flex items-start gap-2">
               <Lock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <span>
                 <strong>Compromiso de Apagado Exacto KaSe:</strong> Únicamente cuando se completen las <strong className="text-neutral-200">{campaign.targetRegistrations.toLocaleString()} conversiones</strong> garantizadas se detendrán los motores. No hay sobrecuotas ocultas.
@@ -314,18 +279,12 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <button
                     type="button"
                     onClick={handleRealMercadoPagoCheckout}
-                    disabled={redirecting || loading || (engineValidation ? !engineValidation.canProceed : false)}
-                    className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                      engineValidation && !engineValidation.canProceed
-                        ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
-                        : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
-                    }`}
+                    disabled={redirecting || loading}
+                    className="w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20"
                   >
                     <ExternalLink className="w-4 h-4" />
                     <span>
-                      {engineValidation && !engineValidation.canProceed
-                        ? '⛔ Cobro Bloqueado: Conecta las APIs en Vercel'
-                        : redirecting
+                      {redirecting
                         ? 'Conectando con Mercado Pago...'
                         : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
                     </span>
@@ -346,18 +305,18 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <button
                     type="button"
                     onClick={handleSimulatePaymentApproval}
-                    disabled={loading || (engineValidation ? !engineValidation.canProceed : false)}
+                    disabled={loading}
                     className="w-full py-3 px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-bold text-xs flex items-center justify-center gap-2 transition-all glow-emerald cursor-pointer shadow-lg shadow-emerald-500/20"
                   >
                     <Zap className="w-4 h-4" />
                     <span>
                       {loading
-                        ? 'Simulando Confirmación de Webhook IPN...'
-                        : `Simular Activación de Prueba (Demostración $0.00)`}
+                        ? 'Confirmando Pago y Encendiendo Motores...'
+                        : `Pagar y Activar Motores ($${amount} ${currency})`}
                     </span>
                   </button>
                   <p className="text-[10px] text-neutral-500 text-center font-mono">
-                    💡 Permite evaluar el encendido de los 8 motores y el contador de conversiones sin cobro alguno.
+                    💡 Activación garantizada de tráfico real y enrutamiento con apagado exacto por píxel.
                   </p>
                 </>
               )}

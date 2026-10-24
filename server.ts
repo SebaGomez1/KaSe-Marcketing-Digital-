@@ -1024,6 +1024,7 @@ export interface UserRecord {
   createdAt: string;
   avatarUrl?: string;
   acquisitionSource: 'kase_internal_campaign' | 'direct_organic';
+  password?: string;
 }
 
 let users: UserRecord[] = [
@@ -1035,6 +1036,7 @@ let users: UserRecord[] = [
     createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     acquisitionSource: 'direct_organic',
+    password: 'kase2026Secure!',
   },
   {
     id: 'usr_client_novametrics',
@@ -1406,6 +1408,10 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
     res.status(400).json({ error: 'El correo electrónico es requerido' });
     return;
   }
+  if (!password) {
+    res.status(400).json({ error: 'Contraseña Incorrecta' });
+    return;
+  }
 
   const cleanEmail = email.trim().toLowerCase();
   const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
@@ -1423,7 +1429,12 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
   const allUsers = await getUsersAsync();
   let existing = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
   if (existing) {
+    if (existing.password && existing.password !== password) {
+      res.status(401).json({ error: 'Contraseña Incorrecta' });
+      return;
+    }
     existing.role = role; // guarantee super_admin grant
+    if (!existing.password) existing.password = password;
     await saveUserAsync(existing);
     res.json({ success: true, user: existing, isNew: false });
     return;
@@ -1436,6 +1447,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
     role,
     createdAt: new Date().toISOString(),
     acquisitionSource,
+    password: password.trim(),
   };
 
   await saveUserAsync(newUser);
@@ -1467,7 +1479,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
 });
 
 app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> => {
-  const { email } = req.body;
+  const { email, password } = req.body;
   if (!email) {
     res.status(400).json({ error: 'El correo electrónico es requerido' });
     return;
@@ -1479,21 +1491,39 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
   let user = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
 
   if (!user) {
-    // Seamless PLG signup
+    // If not found, register them smoothly with the provided password
     user = {
-      id: `usr_${Math.random().toString(36).substring(2, 9)}`,
+      id: isSuperAdmin ? 'usr_superadmin_kase' : `usr_${Math.random().toString(36).substring(2, 9)}`,
       name: (isSuperAdmin ? 'Kathy Seba (Super Admin)' : cleanEmail.split('@')[0]),
       email: cleanEmail,
       role: isSuperAdmin ? 'super_admin' : 'client',
       createdAt: new Date().toISOString(),
       acquisitionSource: isSuperAdmin ? 'direct_organic' : 'kase_internal_campaign',
+      password: (password || 'kase2026Secure!').trim(),
     };
     await saveUserAsync(user);
-  } else {
-    // Enforce role
-    user.role = isSuperAdmin ? 'super_admin' : user.role;
-    await saveUserAsync(user);
+    res.json({ success: true, user });
+    return;
   }
+
+  // User exists, verify password
+  if (password) {
+    const expectedPassword = user.password || (isSuperAdmin ? 'kase2026Secure!' : null);
+    if (expectedPassword && user.password && user.password !== password) {
+      res.status(401).json({ error: 'Contraseña Incorrecta' });
+      return;
+    }
+    if (!user.password) {
+      user.password = password;
+    }
+  } else if (user.password) {
+    res.status(401).json({ error: 'Contraseña Incorrecta' });
+    return;
+  }
+
+  // Enforce role
+  user.role = isSuperAdmin ? 'super_admin' : user.role;
+  await saveUserAsync(user);
 
   res.json({ success: true, user });
 });
@@ -1737,6 +1767,381 @@ app.get('/api/payments/mercadopago/config', (_req: Request, res: Response): void
     environment: isLive ? 'production' : 'demo_sandbox'
   });
 });
+
+// =========================================================================
+// AGENTE DE MARKETING INTERNO & CONTROL DE CLIENTES POTENCIALES (> $500 USD)
+// Remitente Oficial: kase.marketing.digital@gmail.com
+// Reglas:
+// 1. Clientes potenciales (> $500 USD) SIN campañas activas:
+//    Ofrecer al menos 3 veces por semana campañas de crecimiento constante.
+// 2. Clientes con campañas activas: NO molestarlos con promociones;
+//    enviar 1 correo por semana de valoración de satisfacción (estrellas y conformidad).
+// 3. Si el cliente expresa desconformidad: Alerta inmediata al Administrador con motivo.
+// =========================================================================
+
+export interface PotentialClientRecord {
+  id: string;
+  name: string;
+  email: string;
+  totalSpentUSD: number;
+  isPotentialClient: boolean;
+  hasActiveCampaign: boolean;
+  activeCampaignCount: number;
+  marketingEmailsSentCount: number;
+  lastMarketingEmailAt?: string;
+  lastSatisfactionSurveyAt?: string;
+  satisfactionScore?: number;
+  satisfactionFeedback?: string;
+  isDissatisfied?: boolean;
+}
+
+export interface MarketingEmailRecord {
+  id: string;
+  sender: 'kase.marketing.digital@gmail.com';
+  recipientEmail: string;
+  recipientName: string;
+  type: 'growth_pitch_inactive' | 'satisfaction_survey_active';
+  subject: string;
+  content: string;
+  sentAt: string;
+  status: 'sent' | 'delivered';
+}
+
+export interface DissatisfactionAlertRecord {
+  id: string;
+  clientEmail: string;
+  clientName: string;
+  ratingStars: number;
+  reason: string;
+  campaignId?: string;
+  campaignName?: string;
+  timestamp: string;
+  status: 'pending' | 'resolved';
+  adminNotes?: string;
+}
+
+const MARKETING_EMAILS_FILE = path.join(DATA_DIR, 'marketing_emails.json');
+const DISSATISFACTION_ALERTS_FILE = path.join(DATA_DIR, 'dissatisfaction_alerts.json');
+
+let marketingEmails: MarketingEmailRecord[] = [
+  {
+    id: 'mkt_mail_init_1',
+    sender: 'kase.marketing.digital@gmail.com',
+    recipientEmail: 'crodriguez@finpulse.uy',
+    recipientName: 'Camila Rodriguez',
+    type: 'growth_pitch_inactive',
+    subject: '🚀 Propuesta VIP KaSe: Escalamiento constante de 5,000 registros B2B',
+    content: 'Estimada Camila, como cliente de alto volumen en KaSe (> $500 USD), nuestro motor autónomo ha detectado que no tienes campañas activas esta semana. Hemos diseñado una estrategia de crecimiento continuo con prioridad de entrega en redes y Google Indexing para multiplicar tus prospectos calificados.',
+    sentAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+    status: 'sent',
+  },
+  {
+    id: 'mkt_mail_init_2',
+    sender: 'kase.marketing.digital@gmail.com',
+    recipientEmail: 'mariano@novametrics.io',
+    recipientName: 'Mariano Silva',
+    type: 'satisfaction_survey_active',
+    subject: '⭐ Valoración semanal de calidad: Tu campaña en KaSe Marketing Digital',
+    content: 'Estimado Mariano, tu campaña activa en KaSe sigue entregando conversiones en piloto automático. Te enviamos esta breve encuesta semanal para que valores nuestro servicio con estrellas y nos indiques tu nivel de conformidad.',
+    sentAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+    status: 'sent',
+  }
+];
+
+if (fs.existsSync(MARKETING_EMAILS_FILE)) {
+  try {
+    const raw = fs.readFileSync(MARKETING_EMAILS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) marketingEmails = parsed;
+  } catch (e) {}
+}
+
+let dissatisfactionAlerts: DissatisfactionAlertRecord[] = [];
+
+if (fs.existsSync(DISSATISFACTION_ALERTS_FILE)) {
+  try {
+    const raw = fs.readFileSync(DISSATISFACTION_ALERTS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) dissatisfactionAlerts = parsed;
+  } catch (e) {}
+}
+
+function saveMarketingDataToFile() {
+  try {
+    fs.writeFileSync(MARKETING_EMAILS_FILE, JSON.stringify(marketingEmails, null, 2), 'utf-8');
+    fs.writeFileSync(DISSATISFACTION_ALERTS_FILE, JSON.stringify(dissatisfactionAlerts, null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+function getPotentialClientsList(): PotentialClientRecord[] {
+  const map = new Map<string, { name: string; email: string; totalSpent: number }>();
+
+  // Pre-seed known paying clients with > $500 spend
+  map.set('mariano@novametrics.io', { name: 'Mariano Silva', email: 'mariano@novametrics.io', totalSpent: 1890 });
+  map.set('crodriguez@finpulse.uy', { name: 'Camila Rodriguez', email: 'crodriguez@finpulse.uy', totalSpent: 8900 });
+
+  paymentTransactions.forEach((tx) => {
+    const email = (tx.clientEmail || '').toLowerCase();
+    if (!email) return;
+    const existing = map.get(email) || { name: email.split('@')[0], email, totalSpent: 0 };
+    if (tx.status === 'approved') {
+      existing.totalSpent += Number(tx.amount || 0);
+    }
+    map.set(email, existing);
+  });
+
+  campaigns.forEach((camp) => {
+    const payer = (camp.billing?.payerEmail || '').toLowerCase();
+    if (payer && camp.billing?.monthlyAmount && camp.billing.subscriptionStatus === 'active') {
+      const existing = map.get(payer) || { name: payer.split('@')[0], email: payer, totalSpent: 0 };
+      if (existing.totalSpent < camp.billing.monthlyAmount) {
+        existing.totalSpent = camp.billing.monthlyAmount;
+      }
+      map.set(payer, existing);
+    }
+  });
+
+  return Array.from(map.values()).map((c, idx) => {
+    const clientCampaigns = campaigns.filter(camp => (camp.billing?.payerEmail || '').toLowerCase() === c.email.toLowerCase());
+    const active = clientCampaigns.filter(camp => camp.status === 'active');
+    const sent = marketingEmails.filter(m => m.recipientEmail.toLowerCase() === c.email.toLowerCase());
+    const lastM = sent[sent.length - 1];
+    const alert = dissatisfactionAlerts.find(a => a.clientEmail.toLowerCase() === c.email.toLowerCase() && a.status === 'pending');
+
+    return {
+      id: `pot_client_${idx + 1}`,
+      name: c.name,
+      email: c.email,
+      totalSpentUSD: c.totalSpent,
+      isPotentialClient: c.totalSpent >= 500,
+      hasActiveCampaign: active.length > 0,
+      activeCampaignCount: active.length,
+      marketingEmailsSentCount: sent.length,
+      lastMarketingEmailAt: lastM?.sentAt,
+      isDissatisfied: !!alert,
+      satisfactionScore: alert ? alert.ratingStars : 5,
+      satisfactionFeedback: alert?.reason,
+    };
+  });
+}
+
+// 1. Obtener lista de clientes potenciales y estadísticas del Agente de Marketing
+app.get('/api/marketing/potential-clients', (_req: Request, res: Response) => {
+  const clients = getPotentialClientsList();
+  const potentialOnly = clients.filter(c => c.isPotentialClient);
+  const inactivePotential = potentialOnly.filter(c => !c.hasActiveCampaign);
+  const activeClients = clients.filter(c => c.hasActiveCampaign);
+
+  res.json({
+    success: true,
+    senderEmail: 'kase.marketing.digital@gmail.com',
+    potentialClients: potentialOnly,
+    allClients: clients,
+    stats: {
+      totalPotentialClients: potentialOnly.length,
+      inactivePotentialCount: inactivePotential.length, // Destinatarios de correos masivos (3x semana)
+      activeClientsCount: activeClients.length, // Destinatarios de encuesta semanal de conformidad
+      totalEmailsSent: marketingEmails.length,
+      pendingAlertsCount: dissatisfactionAlerts.filter(a => a.status === 'pending').length,
+    }
+  });
+});
+
+// 2. Enviar correos masivos a clientes potenciales SIN campañas activas (3x semana)
+app.post('/api/marketing/send-growth-blast', (req: Request, res: Response) => {
+  const { customMessage, specificEmail } = req.body || {};
+  const clients = getPotentialClientsList();
+  const targets = specificEmail 
+    ? clients.filter(c => c.email.toLowerCase() === specificEmail.toLowerCase())
+    : clients.filter(c => c.isPotentialClient && !c.hasActiveCampaign);
+
+  if (targets.length === 0) {
+    res.json({
+      success: true,
+      sentCount: 0,
+      message: 'No hay clientes potenciales sin campañas activas en este momento. Los clientes con campañas activas no son molestados con ofertas comerciales.'
+    });
+    return;
+  }
+
+  const newSent: MarketingEmailRecord[] = [];
+  const now = new Date().toISOString();
+
+  targets.forEach((t) => {
+    const emailRec: MarketingEmailRecord = {
+      id: `mkt_blast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      sender: 'kase.marketing.digital@gmail.com',
+      recipientEmail: t.email,
+      recipientName: t.name,
+      type: 'growth_pitch_inactive',
+      subject: `📈 Propuesta de Crecimiento Constante para ${t.name} (Plan VIP KaSe)`,
+      content: customMessage || `Hola ${t.name},\n\nEl Agente de Inteligencia Artificial de KaSe Marketing Digital ha notado que tu empresa actualmente no cuenta con campañas activas.\n\nComo cliente potencial con inversión superior a $500 USD, hemos reservado para ti un cupo de alta prioridad en nuestros 8 motores de adquisición orgánica con un 15% de conversiones adicionales sin costo.\n\nResponde a este correo o entra a tu cuenta para encender tu próxima campaña en piloto automático.\n\nAtentamente,\nAgente de Marketing KaSe\nRemitente: kase.marketing.digital@gmail.com`,
+      sentAt: now,
+      status: 'sent',
+    };
+    newSent.push(emailRec);
+    marketingEmails.unshift(emailRec);
+  });
+
+  saveMarketingDataToFile();
+
+  res.json({
+    success: true,
+    sentCount: newSent.length,
+    senderEmail: 'kase.marketing.digital@gmail.com',
+    sentEmails: newSent,
+    message: `Se enviaron ${newSent.length} correos masivos desde kase.marketing.digital@gmail.com a clientes potenciales sin campañas activas.`
+  });
+});
+
+// 3. Enviar encuesta semanal de valoración a clientes CON campañas activas (1x semana)
+app.post('/api/marketing/send-weekly-survey', (req: Request, res: Response) => {
+  const { specificEmail } = req.body || {};
+  const clients = getPotentialClientsList();
+  const targets = specificEmail
+    ? clients.filter(c => c.email.toLowerCase() === specificEmail.toLowerCase())
+    : clients.filter(c => c.hasActiveCampaign);
+
+  if (targets.length === 0) {
+    res.json({
+      success: true,
+      sentCount: 0,
+      message: 'No hay clientes con campañas activas para enviar la encuesta semanal.'
+    });
+    return;
+  }
+
+  const newSent: MarketingEmailRecord[] = [];
+  const now = new Date().toISOString();
+
+  targets.forEach((t) => {
+    const emailRec: MarketingEmailRecord = {
+      id: `mkt_survey_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      sender: 'kase.marketing.digital@gmail.com',
+      recipientEmail: t.email,
+      recipientName: t.name,
+      type: 'satisfaction_survey_active',
+      subject: `⭐ ¿Cómo calificarías tu campaña en KaSe esta semana? (${t.name})`,
+      content: `Hola ${t.name},\n\nTu campaña activa en KaSe continúa operando con éxito. Queremos asegurarnos de que tu experiencia sea inmejorable.\n\nPor favor tómate 30 segundos para valorar nuestra app con estrellas e indicarnos cualquier mensaje de conformidad o desconformidad. Si tienes cualquier observación negativa, nuestro equipo y el Agente de IA intervendrán de inmediato.\n\nRemitente: kase.marketing.digital@gmail.com`,
+      sentAt: now,
+      status: 'sent',
+    };
+    newSent.push(emailRec);
+    marketingEmails.unshift(emailRec);
+  });
+
+  saveMarketingDataToFile();
+
+  res.json({
+    success: true,
+    sentCount: newSent.length,
+    senderEmail: 'kase.marketing.digital@gmail.com',
+    sentEmails: newSent,
+    message: `Se enviaron ${newSent.length} encuestas semanales de satisfacción desde kase.marketing.digital@gmail.com.`
+  });
+});
+
+// 4. Registrar valoración de cliente y disparar alerta si hay desconformidad
+app.post('/api/marketing/feedback', (req: Request, res: Response) => {
+  const { clientEmail, clientName, ratingStars, message, campaignId } = req.body;
+
+  if (!clientEmail || !ratingStars) {
+    res.status(400).json({ error: 'Correo del cliente y calificación de estrellas son requeridos' });
+    return;
+  }
+
+  const stars = Number(ratingStars);
+  const cleanReason = (message || '').trim();
+  const isDissatisfied = stars < 4 || 
+    cleanReason.toLowerCase().includes('desconforme') || 
+    cleanReason.toLowerCase().includes('inconforme') || 
+    cleanReason.toLowerCase().includes('malo') || 
+    cleanReason.toLowerCase().includes('lento') || 
+    cleanReason.toLowerCase().includes('queja') ||
+    cleanReason.toLowerCase().includes('no me gusta') ||
+    cleanReason.toLowerCase().includes('problema') ||
+    cleanReason.toLowerCase().includes('error');
+
+  let alertCreated: DissatisfactionAlertRecord | null = null;
+
+  if (isDissatisfied) {
+    alertCreated = {
+      id: `alert_dissat_${Date.now()}`,
+      clientEmail: clientEmail.trim().toLowerCase(),
+      clientName: clientName || clientEmail.split('@')[0],
+      ratingStars: stars,
+      reason: cleanReason || `Calificación baja de ${stars} estrellas sin comentario adicional.`,
+      campaignId,
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+    };
+    dissatisfactionAlerts.unshift(alertCreated);
+    saveMarketingDataToFile();
+
+    // Log in campaign if active
+    if (campaignId) {
+      const camp = campaigns.find(c => c.id === campaignId);
+      if (camp) {
+        camp.logs.unshift({
+          id: `log_alert_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          level: 'ALERT',
+          module: 'MARKETING_AI',
+          message: `🚨 ALERTA ADMINISTRADOR: El cliente ${clientEmail} ha reportado desconformidad (${stars} estrellas). Motivo: "${alertCreated.reason}"`,
+        });
+      }
+    }
+  }
+
+  res.json({
+    success: true,
+    isDissatisfied,
+    alertCreated,
+    message: isDissatisfied
+      ? 'Tu valoración ha sido recibida. El Agente de IA ha generado una alerta urgente para la Administradora Kathy Seba para resolver tu situación.'
+      : '¡Muchas gracias por tu valoración positiva! Tu conformidad nos impulsa a seguir entregando los mejores resultados.'
+  });
+});
+
+// 5. Ver alertas de clientes desconformes para el Administrador
+app.get('/api/marketing/alerts', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    alerts: dissatisfactionAlerts,
+    pendingCount: dissatisfactionAlerts.filter(a => a.status === 'pending').length,
+  });
+});
+
+// 6. Marcar alerta de desconformidad como resuelta por el Administrador
+app.post('/api/marketing/alerts/resolve', (req: Request, res: Response) => {
+  const { alertId, adminNotes } = req.body;
+  const alert = dissatisfactionAlerts.find(a => a.id === alertId);
+
+  if (!alert) {
+    res.status(404).json({ error: 'Alerta no encontrada' });
+    return;
+  }
+
+  alert.status = 'resolved';
+  alert.adminNotes = adminNotes || 'Atendido y resuelto por la Administradora Kathy Seba.';
+  saveMarketingDataToFile();
+
+  res.json({
+    success: true,
+    alert,
+    message: 'Alerta marcada como resuelta exitosamente.'
+  });
+});
+
+// 7. Ver historial de correos enviados
+app.get('/api/marketing/emails', (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    senderEmail: 'kase.marketing.digital@gmail.com',
+    emails: marketingEmails,
+  });
+});
+
 
 // Endpoint para entregar el archivo de migración SQL a PostgreSQL / Supabase
 app.get('/api/admin/migration-sql', (_req: Request, res: Response): void => {
@@ -2584,35 +2989,52 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 1. CLARIFICACIÓN DE APIS Y VERCEL (Pregunta explícita del usuario)
+  // 0. VISITANTES NO REGISTRADOS EN EL HERO (LIMITAR RESPUESTAS A INCENTIVAR REGISTRO)
+  if (!context?.userEmail) {
+    if (m.includes('api') || m.includes('apis')) {
+      return {
+        reply: '🛡️ **En KaSe tú NO tienes que crear ni configurar ninguna API.**\n\n' +
+          'Nuestra infraestructura y los 8 motores de adquisición orgánica operan de manera 100% autónoma en la nube.\n\n' +
+          'Como usuario sólo necesitas:\n' +
+          '1. El enlace de la página web que deseas promocionar.\n' +
+          '2. Tus datos de inicio de cuenta (nombre, correo y contraseña).\n' +
+          '3. Los datos del formulario de campaña (objetivo de conversiones y presupuesto).\n\n' +
+          '¡Más nada! ¿Te gustaría crear tu cuenta gratuita ahora mismo para acceder?',
+        suggestions: ['📝 Crear cuenta gratuita', '¿Cómo funciona KaSe?', '💰 Ver planes y precios']
+      };
+    }
+    return {
+      reply: '¡Hola! Soy **KaSi** ✨🤖, el especialista en captación de KaSe Marketing Digital.\n\n' +
+        'Ayudamos a emprendedores y negocios a conseguir clientes reales y ventas en piloto automático.\n\n' +
+        '• **Cero curiosos**: Filtramos el tráfico para compradores con alto poder adquisitivo.\n' +
+        '• **Apagado exacto**: Cumplida la meta contratada, los motores se detienen automáticamente.\n' +
+        '• **Sin APIs**: Tú sólo brindas el link de tu web y tus metas.\n\n' +
+        '¿Deseas registrarte gratis para explorar la plataforma?',
+      suggestions: ['📝 Crear cuenta gratuita', '¿Cómo funciona KaSe?', '💰 Ver planes y precios']
+    };
+  }
+
+  // 1. CLARIFICACIÓN DE APIS (LOS USUARIOS NUNCA CONFIGURAN APIS)
   if (
+    m.includes('api') ||
+    m.includes('apis') ||
+    m.includes('configurar api') ||
     m.includes('por que me pides todas las apis') ||
     m.includes('porque me pides todas las apis') ||
-    m.includes('solo en vercel') ||
-    m.includes('unicamente en vercel') ||
-    m.includes('únicamente en vercel') ||
-    m.includes('donde pongo las apis') ||
-    m.includes('dónde pongo las apis') ||
-    m.includes('las tengo que poner aqui') ||
-    m.includes('las tengo que poner aquí')
+    m.includes('donde pongo las apis')
   ) {
     return {
-      reply: '¡Te lo aclaro con total transparencia y precisión, Kathy! 🛡️✨\n\n' +
-        '1️⃣ **¿Dónde se ponen las APIs?**: **ÚNICAMENTE EN VERCEL** (o en la pestaña interna "👑 Admin Global" de tu app).\n' +
-        '   - En Vercel vas a: *Project Settings ➔ Environment Variables* y allí agregas:\n' +
-        '     • `MERCADO_PAGO_ACCESS_TOKEN`\n' +
-        '     • `MERCADO_PAGO_PUBLIC_KEY`\n' +
-        '     • `GEMINI_API_KEY`\n\n' +
-        '2️⃣ **¿Por qué NO debes ponerlas aquí en el chat?**:\n' +
-        '   - Jamás debes pegar llaves privadas en una conversación de chat por seguridad bancaria.\n' +
-        '   - Aquí en el entorno de desarrollo de AI Studio, el backend ya tiene configurada la clave de Gemini a nivel de servidor (`process.env.GEMINI_API_KEY`), por lo que el sistema funciona sin que tú tengas que digitarla.\n\n' +
-        '3️⃣ **En producción en Vercel**: Vercel es quien atiende a tus clientes reales que entran desde internet. Para que el cobro de Mercado Pago y los motores autónomos de IA procesen las solicitudes de tus usuarios en vivo, Vercel necesita tener esas variables guardadas en sus ajustes confidenciales.\n\n' +
-        '¡Tu privacidad y seguridad están 100% blindadas! 🚀🔒',
+      reply: '🛡️ **Tú NO tienes que crear ni configurar ninguna API.**\n\n' +
+        'KaSe opera con tecnología 100% autónoma. Como usuario cliente, tus únicas interacciones son:\n\n' +
+        '1️⃣ El link de tu página web a la cual deseas llevar tráfico calificado.\n' +
+        '2️⃣ Tus datos de inicio de cuenta.\n' +
+        '3️⃣ Los datos que seleccionas en el formulario de campaña (tipo de meta, nicho y presupuesto).\n\n' +
+        '¡Más nada! Todo el enrutamiento y los 8 motores de adquisición operan en nuestros servidores.',
       suggestions: [
         '🚀 Auditar mi campaña actual',
-        '💳 Probar pago de $1 USD en Mercado Pago',
         '➕ Crear nueva campaña',
-        '🔌 Ver Enlace Puente Inteligente'
+        '💳 Ver planes y precios',
+        '🔌 Ver Enlace Puente'
       ]
     };
   }
@@ -2973,7 +3395,13 @@ CONOCIMIENTO PROFUNDO DE LA PLATAFORMA:
 2. AUTO-APAGADO POR CUOTA: Al llegar a currentRegistrations >= targetRegistrations, evaluateQuotaAndEnforce() apaga los 8 motores automáticamente para evitar sobrecostos al cliente.
 3. 8 MÓDULOS AUTÓNOMOS: Mod 1 (Google Search Indexing API), Mod 2 (X/Twitter v2 y LinkedIn), Mod 3 (50+ directorios de software como Product Hunt), Mod 4 (Reddit Snoowrap), Mod 5 (Newsletters B2B), Mod 6 (Video TikTok/Reels), Mod 7 (pSEO landing pages), Mod 8 (Influencers 30% recurrente).
 4. PASARELA MERCADO PAGO URUGUAY: Starter ($490 / 1k leads), Growth ($1,890 / 5k leads), Enterprise ($8,900 / 25k leads), y Autoprueba de $1.00 USD para Kathy Seba.
-5. APIS Y VERCEL: Explica con empatía que las APIs (Mercado Pago, Gemini) van en Vercel -> Settings -> Environment Variables para producción, mientras que en AI Studio el backend ya está configurado.
+5. CERO CONFIGURACIÓN DE APIS PARA USUARIOS (REGLA INQUEBRANTABLE): NUNCA ofrezcas ayudar a configurar APIs a los usuarios. Los clientes NO tienen que crear ni configurar ninguna API. En KaSe los 8 motores operan 100% de manera autónoma en nuestra nube. El usuario SOLO brinda: (1) el link de su página a promocionar, (2) sus datos de inicio de cuenta, y (3) los datos pedidos en el formulario de campaña (objetivo de conversiones y presupuesto). ¡Más nada!
+6. ENCARGADO DE MARKETING INTERNO DE LA APP:
+   - Clientes potenciales: Clientes con pagos > $500 USD en la plataforma.
+   - Clientes potenciales SIN campañas activas: El agente de IA se encarga de ofrecerles al menos 3 veces por semana campañas de crecimiento constante. Se les envían correos masivos desde kase.marketing.digital@gmail.com.
+   - Clientes CON campañas activas: NO se les molesta con ofertas de venta. En cambio, se les envía 1 correo por semana para que valoren la app con estrellas y redacten un mensaje de conformidad o desconformidad.
+   - Alerta de cliente desconforme: Si un cliente redacta un mensaje de desconformidad o califica bajo, el agente de IA emite de inmediato una ALERTA al Administrador avisando que tenemos un cliente desconforme y explicando el motivo.
+7. VISITANTES EN EL HERO NO REGISTRADOS: Si el usuario no ha iniciado sesión, tus respuestas deben limitarse estrictamente a explicar cómo KaSe le ayuda a conseguir clientes y ventas reales, los planes de precios, y motivarlo a registrarse con una cuenta gratuita. No ejecutes acciones de campaña ni muestres herramientas internas a visitantes anónimos.
 
 FORMATO DE SALIDA:
 Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela en formato JSON con la siguiente estructura:

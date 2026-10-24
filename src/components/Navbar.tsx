@@ -166,34 +166,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Quick Kathy Super Admin button for immediate access without barriers */}
-          {!currentUser && (
-            <button
-              onClick={() => {
-                try {
-                  window.localStorage.setItem(
-                    'kase_current_user',
-                    JSON.stringify({
-                      id: 'kathy_super_admin',
-                      name: 'Kathy Seba',
-                      email: 'kathyseba2020@gmail.com',
-                      role: 'super_admin',
-                      acquisitionSource: 'kase_internal_campaign',
-                      createdAt: new Date().toISOString(),
-                    })
-                  );
-                  window.location.reload();
-                } catch (e) {
-                  console.warn(e);
-                }
-              }}
-              title="Acceso instantáneo para Kathy Seba (Super Administradora)"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-sm shadow-amber-500/20"
-            >
-              <span>👑</span>
-              <span>Kathy Admin</span>
-            </button>
-          )}
+          {/* Google Translate Global Selector */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-xs text-neutral-300" title="Traducción automática a nivel mundial">
+            <span className="text-sm">🌐</span>
+            <div id="google_translate_element" className="inline-block scale-90 sm:scale-100 origin-left" />
+          </div>
 
           {/* Logout Button */}
           {currentUser && onLogout && (

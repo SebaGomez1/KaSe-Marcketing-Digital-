@@ -63,7 +63,51 @@ export interface User {
   createdAt: string;
   avatarUrl?: string;
   acquisitionSource?: 'kase_internal_campaign' | 'direct_organic';
+  password?: string;
 }
+
+export interface PotentialClient {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  totalSpentUSD: number;
+  isPotentialClient: boolean; // Payments > $500 USD
+  hasActiveCampaign: boolean;
+  activeCampaignCount: number;
+  marketingEmailsSentCount: number;
+  lastMarketingEmailAt?: string;
+  lastSatisfactionSurveyAt?: string;
+  satisfactionScore?: number;
+  satisfactionFeedback?: string;
+  isDissatisfied?: boolean;
+}
+
+export interface MarketingEmailRecord {
+  id: string;
+  sender: 'kase.marketing.digital@gmail.com';
+  recipientEmail: string;
+  recipientName: string;
+  type: 'growth_pitch_inactive' | 'satisfaction_survey_active';
+  subject: string;
+  content: string;
+  sentAt: string;
+  status: 'sent' | 'delivered';
+}
+
+export interface DissatisfactionAlert {
+  id: string;
+  clientEmail: string;
+  clientName: string;
+  ratingStars: number;
+  reason: string;
+  campaignId?: string;
+  campaignName?: string;
+  timestamp: string;
+  status: 'pending' | 'resolved';
+  adminNotes?: string;
+}
+
 
 export interface GlobalKaSeConfig {
   globalPixelCode: string;

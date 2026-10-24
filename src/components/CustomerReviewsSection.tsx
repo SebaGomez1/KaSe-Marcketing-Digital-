@@ -91,6 +91,20 @@ export const CustomerReviewsSection: React.FC<CustomerReviewsSectionProps> = ({
       });
       const data = await res.json();
       if (data.success) {
+        // Sync with Marketing Interno feedback system (triggers admin alert if rating < 4 or dissatisfaction)
+        try {
+          await fetch('/api/marketing/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clientEmail: currentUser?.email || 'cliente@empresa.com',
+              clientName: authorName.trim() || currentUser?.name || 'Cliente Verificado',
+              ratingStars: rating,
+              message: `${comment.trim()} ${suggestion ? `(Sugerencia: ${suggestion.trim()})` : ''}`.trim(),
+            }),
+          });
+        } catch {}
+
         setSubmitSuccess(true);
         setComment('');
         setSuggestion('');

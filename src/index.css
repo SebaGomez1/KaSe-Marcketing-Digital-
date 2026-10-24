@@ -1,1 +1,47 @@
 @import "tailwindcss";
+
+/* Google Translate Widget Styling */
+body {
+  top: 0px !important;
+  position: static !important;
+}
+
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner-frame {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+.skiptranslate iframe {
+  display: none !important;
+}
+
+#google_translate_element select {
+  background-color: #171717 !important;
+  color: #e5e5e5 !important;
+  border: 1px solid #383838 !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  outline: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+#google_translate_element select:hover {
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-gadget {
+  color: transparent !important;
+  font-size: 0px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}

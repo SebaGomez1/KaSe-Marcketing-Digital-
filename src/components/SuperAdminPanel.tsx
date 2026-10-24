@@ -28,7 +28,12 @@ import {
   Cpu,
   Trash2,
   AlertOctagon,
-  KeyRound
+  KeyRound,
+  Bot,
+  Star,
+  MessageSquare,
+  SendHorizontal,
+  AlertCircle
 } from 'lucide-react';
 import { 
   GlobalKaSeConfig, 
@@ -39,7 +44,10 @@ import {
   OptimalPerformanceReport,
   EngineHealthItem,
   InternalSystemError,
-  SensitiveDataExposureAlert
+  SensitiveDataExposureAlert,
+  PotentialClient,
+  MarketingEmailRecord,
+  DissatisfactionAlert
 } from '../types/growth';
 
 interface SuperAdminPanelProps {
@@ -53,7 +61,18 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   allCampaigns,
   onRefreshCampaigns,
 }) => {
-  const [adminTab, setAdminTab] = useState<'optimal_performance' | 'overview' | 'campaigns' | 'mercadopago' | 'global_pixel' | 'rate_limits' | 'sql_migration'>('optimal_performance');
+  const [adminTab, setAdminTab] = useState<'optimal_performance' | 'marketing_alerts' | 'overview' | 'campaigns' | 'mercadopago' | 'global_pixel' | 'rate_limits' | 'sql_migration'>('optimal_performance');
+  
+  // Marketing Interno & Dissatisfaction Alerts State
+  const [potentialClients, setPotentialClients] = useState<PotentialClient[]>([]);
+  const [marketingStats, setMarketingStats] = useState<any>(null);
+  const [dissatisfactionAlerts, setDissatisfactionAlerts] = useState<DissatisfactionAlert[]>([]);
+  const [marketingEmails, setMarketingEmails] = useState<MarketingEmailRecord[]>([]);
+  const [isSendingBlast, setIsSendingBlast] = useState<boolean>(false);
+  const [isSendingSurvey, setIsSendingSurvey] = useState<boolean>(false);
+  const [marketingFeedbackMsg, setMarketingFeedbackMsg] = useState<string | null>(null);
+  const [resolvingAlertId, setResolvingAlertId] = useState<string | null>(null);
+  const [adminResolveNotes, setAdminResolveNotes] = useState<string>('');
   const [migrationSql, setMigrationSql] = useState<string>('');
   const [copiedSql, setCopiedSql] = useState<boolean>(false);
   const [dbStatus, setDbStatus] = useState<any>(null);
@@ -178,10 +197,110 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       } catch (dbErr) {
         console.error('Error fetching DB status:', dbErr);
       }
+
+      try {
+        const potRes = await fetch('/api/marketing/potential-clients');
+        const potData = await potRes.json();
+        if (potData.success) {
+          setPotentialClients(potData.potentialClients || []);
+          setMarketingStats(potData.stats || null);
+        }
+        const alertRes = await fetch('/api/marketing/alerts');
+        const alertData = await alertRes.json();
+        if (alertData.success) {
+          setDissatisfactionAlerts(alertData.alerts || []);
+        }
+        const mailRes = await fetch('/api/marketing/emails');
+        const mailData = await mailRes.json();
+        if (mailData.success) {
+          setMarketingEmails(mailData.emails || []);
+        }
+      } catch (mktErr) {
+        console.warn('Error fetching marketing data:', mktErr);
+      }
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMarketingData = async () => {
+    try {
+      const potRes = await fetch('/api/marketing/potential-clients');
+      const potData = await potRes.json();
+      if (potData.success) {
+        setPotentialClients(potData.potentialClients || []);
+        setMarketingStats(potData.stats || null);
+      }
+      const alertRes = await fetch('/api/marketing/alerts');
+      const alertData = await alertRes.json();
+      if (alertData.success) {
+        setDissatisfactionAlerts(alertData.alerts || []);
+      }
+      const mailRes = await fetch('/api/marketing/emails');
+      const mailData = await mailRes.json();
+      if (mailData.success) {
+        setMarketingEmails(mailData.emails || []);
+      }
+    } catch (e) {
+      console.warn('Error fetching marketing data:', e);
+    }
+  };
+
+  const handleSendGrowthBlast = async () => {
+    setIsSendingBlast(true);
+    setMarketingFeedbackMsg(null);
+    try {
+      const res = await fetch('/api/marketing/send-growth-blast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      setMarketingFeedbackMsg(data.message || 'Correos masivos enviados con éxito.');
+      await fetchMarketingData();
+      setTimeout(() => setMarketingFeedbackMsg(null), 5000);
+    } catch {
+      setMarketingFeedbackMsg('Error al enviar correos masivos.');
+    } finally {
+      setIsSendingBlast(false);
+    }
+  };
+
+  const handleSendWeeklySurvey = async () => {
+    setIsSendingSurvey(true);
+    setMarketingFeedbackMsg(null);
+    try {
+      const res = await fetch('/api/marketing/send-weekly-survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      setMarketingFeedbackMsg(data.message || 'Encuestas semanales enviadas con éxito.');
+      await fetchMarketingData();
+      setTimeout(() => setMarketingFeedbackMsg(null), 5000);
+    } catch {
+      setMarketingFeedbackMsg('Error al enviar encuestas.');
+    } finally {
+      setIsSendingSurvey(false);
+    }
+  };
+
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      const res = await fetch('/api/marketing/alerts/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertId, adminNotes: adminResolveNotes || 'Atendido y resuelto por la Administradora Kathy Seba.' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResolvingAlertId(null);
+        setAdminResolveNotes('');
+        await fetchMarketingData();
+      }
+    } catch {
+      // ignore
     }
   };
 
@@ -416,10 +535,47 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         </button>
       </div>
 
+      {/* DISSATISFACTION ALERT BANNER (URGENT ATTENTION FOR KATHY) */}
+      {dissatisfactionAlerts.filter(a => a.status === 'pending').length > 0 && (
+        <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/60 shadow-xl text-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-lg font-bold shrink-0">
+              🚨
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-black uppercase font-mono tracking-wider">
+                  Atención Prioritaria
+                </span>
+                <span className="text-xs text-rose-300 font-mono font-semibold">
+                  {dissatisfactionAlerts.filter(a => a.status === 'pending').length} Cliente(s) Desconforme(s) Detectado(s) por el Agente IA
+                </span>
+              </div>
+              <p className="text-xs text-neutral-300 mt-1">
+                El Agente de IA detectó valoraciones de baja conformidad o inconformidad. Revisa el motivo exacto para contactar de inmediato al cliente.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setAdminTab('marketing_alerts')}
+            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-black font-extrabold text-xs transition-colors cursor-pointer shrink-0 shadow-lg shadow-rose-500/20 flex items-center gap-1.5"
+          >
+            <span>Ver Motivo y Resolver Reclamo</span>
+            <span>→</span>
+          </button>
+        </div>
+      )}
+
       {/* Admin Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto border-b border-neutral-800 pb-2">
         {[
           { id: 'optimal_performance', label: '🛡️ Funcionamiento Óptimo', icon: ShieldCheck },
+          { 
+            id: 'marketing_alerts', 
+            label: `🤖 Marketing Interno & Alertas (${dissatisfactionAlerts.filter(a => a.status === 'pending').length > 0 ? `🚨 ${dissatisfactionAlerts.filter(a => a.status === 'pending').length} Urgentes` : 'Activo'})`, 
+            icon: Bot 
+          },
           { id: 'overview', label: 'Métricas Globales', icon: Activity },
           { id: 'campaigns', label: `Campañas de Clientes (${allCampaigns.length})`, icon: Layers },
           { id: 'mercadopago', label: `Control de Cobros MP (${transactions.length})`, icon: CreditCard },
@@ -430,6 +586,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           const Icon = tab.icon;
           const isActive = adminTab === tab.id;
           const isOptimalTab = tab.id === 'optimal_performance';
+          const isMarketingTab = tab.id === 'marketing_alerts';
           return (
             <button
               key={tab.id}
@@ -868,6 +1025,410 @@ VERCEL_TOKEN=...
 INSTAGRAM_GRAPH_TOKEN=...
 MERCADO_PAGO_ACCESS_TOKEN=...
 DATABASE_URL=...`}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB MARKETING: AGENTE DE MARKETING INTERNO & ALERTAS DE DESCONFORMIDAD */}
+      {adminTab === 'marketing_alerts' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Header Contract of Marketing Agent */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-neutral-900 via-neutral-950 to-black border border-neutral-800 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono tracking-wider bg-emerald-500 text-black">
+                      Agente de Marketing Autónomo
+                    </span>
+                    <span className="text-xs text-neutral-400 font-mono">
+                      Remitente: <strong className="text-emerald-400 font-mono">kase.marketing.digital@gmail.com</strong>
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-extrabold text-white mt-1">
+                    Gestor de Clientes Potenciales & Alertas de Satisfacción
+                  </h2>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSendGrowthBlast}
+                  disabled={isSendingBlast}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  <SendHorizontal className={`w-3.5 h-3.5 ${isSendingBlast ? 'animate-spin' : ''}`} />
+                  <span>{isSendingBlast ? 'Enviando Masivo...' : '🚀 Enviar Oferta 3x/Semana'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendWeeklySurvey}
+                  disabled={isSendingSurvey}
+                  className="px-3.5 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Star className={`w-3.5 h-3.5 text-amber-400 ${isSendingSurvey ? 'animate-spin' : ''}`} />
+                  <span>{isSendingSurvey ? 'Enviando Encuestas...' : '⭐ Enviar Encuesta Semanal'}</span>
+                </button>
+              </div>
+            </div>
+
+            {marketingFeedbackMsg && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{marketingFeedbackMsg}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+              <div className="p-3.5 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-1">
+                <div className="text-[11px] font-bold text-neutral-300 flex items-center gap-1.5">
+                  <span className="text-emerald-400 font-mono">1.</span> Clientes VIP (&gt; $500 USD)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  Cualquier usuario con pagos acumulados superiores a $500 USD es catalogado como Cliente Potencial.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-1">
+                <div className="text-[11px] font-bold text-neutral-300 flex items-center gap-1.5">
+                  <span className="text-cyan-400 font-mono">2.</span> Sin Campañas Activas (3x/semana)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  El agente envía correos masivos 3 veces por semana ofreciendo campañas de crecimiento continuo.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-1">
+                <div className="text-[11px] font-bold text-neutral-300 flex items-center gap-1.5">
+                  <span className="text-amber-400 font-mono">3.</span> Con Campaña (1x/sem + Alerta)
+                </div>
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  No se les molesta con ventas. Se envía 1 encuesta semanal. Si están desconformes, se emite alerta inmediata.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Metric KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
+              <div className="text-xs text-neutral-400 flex items-center justify-between">
+                <span>Clientes Potenciales VIP</span>
+                <Users className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-white">
+                {potentialClients.filter(c => c.isPotentialClient).length}
+              </div>
+              <div className="text-[10px] text-emerald-400 font-mono font-semibold">
+                Inversión &gt; $500 USD
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
+              <div className="text-xs text-neutral-400 flex items-center justify-between">
+                <span>Sin Campañas Activas</span>
+                <Mail className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-white">
+                {potentialClients.filter(c => c.isPotentialClient && !c.hasActiveCampaign).length}
+              </div>
+              <div className="text-[10px] text-cyan-400 font-mono">
+                Reciben 3 emails/semana
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
+              <div className="text-xs text-neutral-400 flex items-center justify-between">
+                <span>Con Campaña Activa</span>
+                <Zap className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-bold font-mono text-white">
+                {potentialClients.filter(c => c.hasActiveCampaign).length}
+              </div>
+              <div className="text-[10px] text-neutral-400 font-mono">
+                1 encuesta semanal de calidad
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
+              <div className="text-xs text-neutral-400 flex items-center justify-between">
+                <span>Alertas de Desconformidad</span>
+                <AlertOctagon className="w-4 h-4 text-rose-400" />
+              </div>
+              <div className={`text-2xl font-bold font-mono ${dissatisfactionAlerts.filter(a => a.status === 'pending').length > 0 ? 'text-rose-400 animate-pulse' : 'text-neutral-400'}`}>
+                {dissatisfactionAlerts.filter(a => a.status === 'pending').length}
+              </div>
+              <div className="text-[10px] text-neutral-400 font-mono">
+                {dissatisfactionAlerts.filter(a => a.status === 'pending').length > 0 ? '🚨 Requiere atención' : 'Todo en orden'}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 1: ALERTAS DE CLIENTES DESCONFORMES */}
+          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-400" />
+                <h3 className="font-bold text-white text-sm">
+                  Alertas de Clientes Desconformes (Avisadas por el Agente de IA)
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-neutral-400">
+                {dissatisfactionAlerts.filter(a => a.status === 'pending').length} pendientes
+              </span>
+            </div>
+
+            {dissatisfactionAlerts.length === 0 ? (
+              <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>No hay clientes desconformes reportados. El 100% de los clientes registran conformidad.</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {dissatisfactionAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      alert.status === 'pending'
+                        ? 'bg-rose-950/25 border-rose-500/40 text-neutral-100'
+                        : 'bg-neutral-950/40 border-neutral-800 text-neutral-400'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono ${
+                            alert.status === 'pending' ? 'bg-rose-500 text-black' : 'bg-neutral-800 text-neutral-300'
+                          }`}>
+                            {alert.status === 'pending' ? '🚨 Reclamo Pendiente' : '✅ Atendido'}
+                          </span>
+                          <span className="font-bold text-white text-sm">{alert.clientName}</span>
+                          <span className="text-xs text-neutral-400 font-mono">({alert.clientEmail})</span>
+                          <div className="flex items-center text-amber-400 ml-1">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                className={`w-3 h-3 ${s <= alert.ratingStars ? 'fill-amber-400 text-amber-400' : 'text-neutral-600'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-black/50 rounded-lg border border-neutral-800/80 text-xs text-rose-200">
+                          <span className="text-[11px] font-mono text-neutral-400 block mb-0.5">Motivo reportado:</span>
+                          <p className="italic font-medium">"{alert.reason}"</p>
+                        </div>
+
+                        {alert.adminNotes && (
+                          <div className="text-[11px] text-neutral-400 font-mono">
+                            Notas de resolución: <span className="text-emerald-400">{alert.adminNotes}</span>
+                          </div>
+                        )}
+
+                        <div className="text-[10px] text-neutral-500 font-mono">
+                          Detectado el: {new Date(alert.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`mailto:${alert.clientEmail}?subject=Atención%20Personalizada%20KaSe%20Marketing%20-%20Kathy%20Seba&body=Hola%20${encodeURIComponent(alert.clientName)},%20te%20escribe%20Kathy%20Seba%20de%20KaSe.%20Noté%20tu%20mensaje%20respecto%20a%20tu%20campaña%20y%20quiero%20solucionarlo%20de%20inmediato...`}
+                          className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Contactar Cliente</span>
+                        </a>
+
+                        {alert.status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (resolvingAlertId === alert.id) {
+                                handleResolveAlert(alert.id);
+                              } else {
+                                setResolvingAlertId(alert.id);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-black font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            {resolvingAlertId === alert.id ? 'Confirmar Resuelto' : 'Marcar Resuelto'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {resolvingAlertId === alert.id && (
+                      <div className="mt-3 pt-3 border-t border-neutral-800/80 flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Escribe cómo se resolvió la situación (ej: Contactado por WhatsApp y cuota ajustada)"
+                          value={adminResolveNotes}
+                          onChange={(e) => setAdminResolveNotes(e.target.value)}
+                          className="flex-1 bg-black border border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleResolveAlert(alert.id)}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-400 text-black font-bold text-xs cursor-pointer"
+                        >
+                          Guardar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: CLIENTES POTENCIALES (> $500 USD) */}
+          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-white text-sm">
+                  Directorio de Clientes Potenciales (&gt; $500 USD)
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  El Agente de IA monitorea si tienen campañas activas para enviarles propuestas de crecimiento o encuestas.
+                </p>
+              </div>
+
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30 font-semibold self-start sm:self-auto">
+                Remitente: kase.marketing.digital@gmail.com
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-neutral-800 text-neutral-400 font-mono">
+                    <th className="py-2.5 px-3">Cliente</th>
+                    <th className="py-2.5 px-3">Gasto Total</th>
+                    <th className="py-2.5 px-3">Campañas</th>
+                    <th className="py-2.5 px-3">Estrategia del Agente IA</th>
+                    <th className="py-2.5 px-3">Envíos</th>
+                    <th className="py-2.5 px-3 text-right">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800/60 font-mono">
+                  {potentialClients.map((client) => (
+                    <tr key={client.id} className="hover:bg-neutral-800/30 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-white">{client.name}</div>
+                        <div className="text-[11px] text-neutral-400">{client.email}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="text-emerald-400 font-bold">
+                          ${client.totalSpentUSD.toLocaleString()} USD
+                        </span>
+                        {client.isPotentialClient && (
+                          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            VIP &gt; $500
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {client.hasActiveCampaign ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {client.activeCampaignCount} Activa(s)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-neutral-800 text-neutral-400">
+                            0 Activas
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        {client.hasActiveCampaign ? (
+                          <div className="text-neutral-300 text-[11px]">
+                            <span className="text-emerald-400 font-semibold">No molestar con ventas</span>
+                            <div className="text-[10px] text-neutral-400">1 encuesta semanal de calidad</div>
+                          </div>
+                        ) : (
+                          <div className="text-cyan-300 text-[11px]">
+                            <span className="font-semibold text-cyan-400">Ofertas 3x / semana</span>
+                            <div className="text-[10px] text-neutral-400">Crecimiento constante autónomo</div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-neutral-300">
+                        {client.marketingEmailsSentCount} enviados
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <a
+                          href={`mailto:${client.email}?subject=Propuesta%20de%20Crecimiento%20KaSe%20Marketing`}
+                          className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold underline cursor-pointer"
+                        >
+                          Enviar Correo Directo
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* SECTION 3: HISTORIAL DE CORREOS ENVIADOS */}
+          <div className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-bold text-white text-sm">
+                  Historial de Correos Enviados por el Agente IA
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-neutral-400">
+                Remitente: <strong className="text-white">kase.marketing.digital@gmail.com</strong>
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-neutral-800 text-neutral-400">
+                    <th className="py-2 px-3">Fecha</th>
+                    <th className="py-2 px-3">Destinatario</th>
+                    <th className="py-2 px-3">Tipo de Correo</th>
+                    <th className="py-2 px-3">Asunto</th>
+                    <th className="py-2 px-3 text-right">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800/60 text-[11px]">
+                  {marketingEmails.map((email) => (
+                    <tr key={email.id} className="hover:bg-neutral-800/30">
+                      <td className="py-2.5 px-3 text-neutral-400">
+                        {new Date(email.sentAt).toLocaleDateString()} {new Date(email.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="py-2.5 px-3 text-white">
+                        <div>{email.recipientName}</div>
+                        <div className="text-[10px] text-neutral-400">{email.recipientEmail}</div>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          email.type === 'growth_pitch_inactive'
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {email.type === 'growth_pitch_inactive' ? '🚀 Crecimiento 3x/Sem' : '⭐ Encuesta Calidad'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-neutral-300 max-w-xs truncate" title={email.content}>
+                        {email.subject}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <span className="text-emerald-400 font-bold">Enviado ✓</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

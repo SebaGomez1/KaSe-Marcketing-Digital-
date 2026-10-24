@@ -478,19 +478,19 @@ export default function App() {
                 No hay campañas activas actualmente
               </h2>
               <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
-                Todas las campañas previas han sido limpiadas. A partir de ahora, cada campaña pasará por una estricta verificación previa: la suite comprobará que las APIs de los motores correspondientes estén verdaderamente conectadas y configuradas en Vercel antes de autorizar el checkout o iniciar el tráfico.
+                Todas las campañas previas han sido procesadas. Configura una nueva campaña con el link de tu web o red social y los objetivos de tráfico. Los motores autónomos de KaSe se encargan del 100% de la ejecución sin necesidad de que crees ni configures ninguna API.
               </p>
             </div>
 
             <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 text-left space-y-3 max-w-lg mx-auto text-xs text-neutral-300">
               <div className="flex items-center gap-2 text-white font-bold text-xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Protocolo de Activación Segura KaSe:</span>
+                <span>Protocolo de Ejecución Autónoma KaSe:</span>
               </div>
               <ul className="space-y-1.5 list-disc list-inside text-neutral-400 text-[11px]">
-                <li>Verificación automática de credenciales en Vercel antes de cobrar.</li>
-                <li>Bloqueo preventivo de pagos si alguna API requerida está ausente.</li>
-                <li>Monitoreo continuo en el nuevo panel de Funcionamiento Óptimo.</li>
+                <li>Zero-API: Tú solo ingresas tu link y datos de campaña; KaSe ejecuta el tráfico.</li>
+                <li>Monitoreo de conversiones e impresiones en tiempo real.</li>
+                <li>Garantía de crecimiento orgánico y tasa de conversión protegida.</li>
               </ul>
             </div>
 
