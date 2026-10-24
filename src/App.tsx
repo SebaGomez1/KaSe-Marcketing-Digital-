@@ -563,6 +563,7 @@ export default function App() {
         campaigns={campaigns}
         onToggleCampaignStatus={handleToggleStatus}
         onResetCounter={handleResetCounter}
+        onSimulateBurst={(count) => handleSimulateBurst(count)}
         onOpenNewCampaign={handleOpenNewCampaign}
         onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
