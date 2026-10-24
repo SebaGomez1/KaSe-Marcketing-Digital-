@@ -51,6 +51,130 @@ import {
   isUserSuperAdmin
 } from '../types/growth';
 
+const DEFAULT_FALLBACK_ENGINES: EngineHealthItem[] = [
+  {
+    id: 'mod1_seo',
+    moduleKey: 'mod1_seo',
+    name: 'SEO Técnico Avanzado e Indexación API',
+    category: 'base',
+    platform: 'Google Search Console & Indexing API v3',
+    requiredEnvVars: ['GOOGLE_SERVICE_ACCOUNT_JSON', 'GOOGLE_APPLICATION_CREDENTIALS'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requiere cuenta de servicio de Google Search Console.',
+  },
+  {
+    id: 'mod2_social',
+    moduleKey: 'mod2_social',
+    name: 'Social Media Syndication (Omnicanal)',
+    category: 'base',
+    platform: 'X (Twitter API v2) & LinkedIn Developer API',
+    requiredEnvVars: ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN', 'TWITTER_ACCESS_SECRET'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Faltan claves de API v2 de X.',
+  },
+  {
+    id: 'mod3_directories',
+    moduleKey: 'mod3_directories',
+    name: 'Programmatic Launching (Directorios Globales)',
+    category: 'base',
+    platform: 'ProductHunt, Dev.to & BetaList Webhook Syndicator',
+    requiredEnvVars: ['PRODUCTHUNT_TOKEN', 'DEVTO_API_KEY', 'DIRECTORIES_DISPATCH_KEY'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Faltan tokens de ProductHunt/Dev.to o webhook de directorio.',
+  },
+  {
+    id: 'mod4_outbound',
+    moduleKey: 'mod4_outbound',
+    name: 'Automated Outbound (Reddit & X Bot)',
+    category: 'advanced',
+    platform: 'Reddit API via Snoowrap & Reddit OAuth',
+    requiredEnvVars: ['REDDIT_CLIENT_ID', 'REDDIT_CLIENT_SECRET', 'REDDIT_USERNAME', 'REDDIT_PASSWORD'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requieren credenciales de Reddit Developer.',
+  },
+  {
+    id: 'mod5_newsletter',
+    moduleKey: 'mod5_newsletter',
+    name: 'Newsletter Outreach Engine',
+    category: 'advanced',
+    platform: 'Resend / SendGrid Email Outreach API',
+    requiredEnvVars: ['RESEND_API_KEY', 'SENDGRID_API_KEY', 'SMTP_HOST'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requiere RESEND_API_KEY o SENDGRID_API_KEY.',
+  },
+  {
+    id: 'mod6_video',
+    moduleKey: 'mod6_video',
+    name: 'Video Growth Automation (TikTok/Reels/Shorts)',
+    category: 'advanced',
+    platform: 'YouTube Data API v3 & TikTok Content API',
+    requiredEnvVars: ['YOUTUBE_API_KEY', 'TIKTOK_API_KEY', 'ELEVENLABS_API_KEY'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requiere YOUTUBE_API_KEY o TIKTOK_API_KEY.',
+  },
+  {
+    id: 'mod7_pseo',
+    moduleKey: 'mod7_pseo',
+    name: 'Programmatic SEO & Landing Page Factory',
+    category: 'advanced',
+    platform: 'Vercel Deployment API / Edge Landing Hooks',
+    requiredEnvVars: ['VERCEL_TOKEN', 'VERCEL_PROJECT_ID'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requiere VERCEL_TOKEN y VERCEL_PROJECT_ID.',
+  },
+  {
+    id: 'mod8_influencers',
+    moduleKey: 'mod8_influencers',
+    name: 'Bot de Alianzas y Micro-Influencers Outreach',
+    category: 'advanced',
+    platform: 'Instagram Graph API / Hunter Outreach API',
+    requiredEnvVars: ['INSTAGRAM_GRAPH_TOKEN', 'OUTREACH_API_KEY', 'HUNTER_API_KEY'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'APIs NO configuradas en Vercel. Se requiere INSTAGRAM_GRAPH_TOKEN o OUTREACH_API_KEY.',
+  },
+  {
+    id: 'infra_database',
+    moduleKey: 'database',
+    name: 'Base de Datos de Producción (Persistencia SQL)',
+    category: 'infrastructure',
+    platform: 'PostgreSQL Direct Pool / Supabase Database',
+    requiredEnvVars: ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'Base de datos externa no conectada (operando con archivo local temporal).',
+  },
+  {
+    id: 'infra_payments',
+    moduleKey: 'mercadopago',
+    name: 'Pasarela de Cobros Mercado Pago Uruguay',
+    category: 'infrastructure',
+    platform: 'Mercado Pago Subscriptions & Checkout API',
+    requiredEnvVars: ['MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'Credenciales de Mercado Pago ausentes en variables de Vercel.',
+  },
+  {
+    id: 'infra_gemini',
+    moduleKey: 'gemini_ai',
+    name: 'Copiloto de IA Autónomo KaSi 2.0 (Gemini API)',
+    category: 'infrastructure',
+    platform: 'Google Cloud Vertex / Google Gen AI API',
+    requiredEnvVars: ['GEMINI_API_KEY'],
+    configuredInVercel: false,
+    lastChecked: new Date().toISOString(),
+    statusText: 'GEMINI_API_KEY ausente o usando clave predeterminada.',
+  },
+];
+
 interface SuperAdminPanelProps {
   currentUser: User | null;
   allCampaigns: Campaign[];
@@ -134,6 +258,14 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
 
   // Security guard: Only render for authorized super administrators
   const isSuperAdmin = isUserSuperAdmin(currentUser);
+
+  // Guarantee that engine cards are ALWAYS visible, even during initial loading or network reconnect
+  const displayedEngines = (optimalReport?.engines && optimalReport.engines.length > 0)
+    ? optimalReport.engines
+    : DEFAULT_FALLBACK_ENGINES;
+
+  const configuredEnginesCount = optimalReport?.configuredEnginesCount ?? displayedEngines.filter((e) => e.configuredInVercel).length;
+  const totalEnginesCount = optimalReport?.totalEngines ?? displayedEngines.length;
 
   const fetchAdminData = async () => {
     setIsLoading(true);
@@ -571,7 +703,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       {/* Admin Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto border-b border-neutral-800 pb-2">
         {[
-          { id: 'optimal_performance', label: '🛡️ Funcionamiento Óptimo', icon: ShieldCheck },
+          { id: 'optimal_performance', label: '🛡️ Matriz de APIs en Vercel (11 Motores)', icon: ShieldCheck },
           { 
             id: 'marketing_alerts', 
             label: `🤖 Marketing Interno & Alertas (${dissatisfactionAlerts.filter(a => a.status === 'pending').length > 0 ? `🚨 ${dissatisfactionAlerts.filter(a => a.status === 'pending').length} Urgentes` : 'Activo'})`, 
@@ -660,7 +792,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                   )}
                 </div>
                 <div className="text-[10px] text-neutral-500">
-                  {optimalReport?.configuredEnginesCount || 0} de {optimalReport?.totalEngines || 11} configurados
+                  {configuredEnginesCount} de {totalEnginesCount} configurados
                 </div>
               </div>
 
@@ -766,12 +898,12 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               </div>
 
               <div className="text-xs text-neutral-400 font-mono">
-                {optimalReport?.configuredEnginesCount || 0} / {optimalReport?.engines?.length || 11} Conectados
+                {configuredEnginesCount} / {totalEnginesCount} Conectados
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {(optimalReport?.engines || []).map((engine) => {
+              {displayedEngines.map((engine) => {
                 const isTesting = testingEngineKey === engine.moduleKey;
                 const lastTest = testResults[engine.moduleKey];
 
@@ -1438,6 +1570,36 @@ DATABASE_URL=...`}</pre>
       {/* TAB 1: OVERVIEW & HIGH-LEVEL METRICS */}
       {adminTab === 'overview' && (
         <div className="space-y-6">
+          {/* Quick Access to Vercel APIs Matrix */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/40 via-neutral-900 to-black border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Matriz de Detección de APIs en Vercel</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                    configuredEnginesCount > 0 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  }`}>
+                    {configuredEnginesCount} / {totalEnginesCount} ACTIVOS
+                  </span>
+                </h4>
+                <p className="text-xs text-neutral-400">
+                  Comprueba en vivo si Vercel ya cargó tus credenciales de Mercado Pago, Base de Datos SQL y los 8 Motores.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdminTab('optimal_performance')}
+              className="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs transition-all cursor-pointer flex items-center gap-2 shrink-0 shadow-md shadow-emerald-500/20"
+            >
+              <span>Ver Matriz de APIs en Vercel</span>
+              <span>→</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
               <div className="text-xs text-neutral-400 flex items-center justify-between">
