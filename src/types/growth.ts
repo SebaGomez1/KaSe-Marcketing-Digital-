@@ -391,8 +391,69 @@ export const CAMPAIGN_TYPES_CATALOG: CampaignTypeDefinition[] = [
     howItWorks: 'Convierte tus videos en micro-clips para Shorts/Reels/TikTok con enlaces al video principal, inserta tus videos en artículos técnicos de alto rango de Google y difunde resúmenes en hilos de X.',
     verificationMethod: 'URL del video / canal con verificación de contador y píxel en reproducciones embebidas.',
     defaultTarget: 10000,
-    targetPresets: [2500, 5000, 10000, 25000, 50000, 100000],
+    targetPresets: [2500, 5000, 10000, 25000, 5000, 100000],
     pricePerUnitEstimateUSD: 0.045,
   },
 ];
+
+export interface EngineHealthItem {
+  id: string;
+  name: string;
+  moduleKey: string;
+  category: 'base' | 'advanced' | 'infrastructure';
+  platform: string;
+  requiredEnvVars: string[];
+  configuredInVercel: boolean;
+  latencyMs?: number;
+  lastChecked: string;
+  statusText: string;
+  testEndpoint?: string;
+  documentationUrl?: string;
+}
+
+export interface EngineValidationResult {
+  canProceed: boolean;
+  reason?: string;
+  testedPlan: string;
+  missingModules: {
+    id: string;
+    name: string;
+    platform: string;
+    missingVars: string[];
+    description: string;
+  }[];
+}
+
+export interface InternalSystemError {
+  id: string;
+  timestamp: string;
+  level: 'CRITICAL' | 'WARNING' | 'INFO';
+  location: string;
+  module: string;
+  message: string;
+  callStack?: string;
+  resolved?: boolean;
+}
+
+export interface SensitiveDataExposureAlert {
+  id: string;
+  type: 'PRIVATE_KEY' | 'HARDCODED_SECRET' | 'UNMASKED_PII' | 'DATABASE_CREDENTIAL';
+  location: string;
+  severity: 'HIGH' | 'CRITICAL' | 'MEDIUM';
+  description: string;
+  sampleMasked: string;
+  remediation: string;
+}
+
+export interface OptimalPerformanceReport {
+  overallHealth: 'OPTIMAL' | 'DEGRADED' | 'BLOCKED_PENDING_APIS';
+  securityScore: number;
+  totalEngines: number;
+  configuredEnginesCount: number;
+  engines: EngineHealthItem[];
+  errors: InternalSystemError[];
+  sensitiveDataAlerts: SensitiveDataExposureAlert[];
+  uptimeSeconds: number;
+  lastDiagnosticTimestamp: string;
+}
 

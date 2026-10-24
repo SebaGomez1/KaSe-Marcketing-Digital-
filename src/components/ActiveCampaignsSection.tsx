@@ -166,9 +166,9 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
         {filteredCampaigns.length === 0 ? (
           <div className="py-16 text-center rounded-2xl bg-neutral-900/40 border border-neutral-800 space-y-3">
             <FolderKanban className="w-10 h-10 text-neutral-600 mx-auto" />
-            <h3 className="text-base font-bold text-white">No hay campañas con este filtro</h3>
-            <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-              Crea una nueva campaña o cambia el filtro superior para ver las demás.
+            <h3 className="text-base font-bold text-white">No hay campañas registradas actualmente</h3>
+            <p className="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+              Todas las campañas previas han sido limpiadas. A partir de ahora, cada nueva campaña validará que las APIs de sus motores estén conectadas en Vercel antes de autorizar el checkout o iniciar el tráfico real.
             </p>
           </div>
         ) : (

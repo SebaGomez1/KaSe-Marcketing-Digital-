@@ -221,20 +221,67 @@ Estoy conectado directamente a los **8 motores autónomos**, tu Enlace Puente si
     },
   ]);
 
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Scroll ONLY the chat internal container, never the page window!
   useEffect(() => {
-    if (isOpen && !isMinimized) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen && !isMinimized && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }
   }, [messages, isOpen, isMinimized, isLoading]);
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     }
   }, [isOpen, isMinimized]);
+
+  // PROACTIVE AI ASSISTANT INTERVENTION ON SYSTEM OR ENGINE ERROR
+  useEffect(() => {
+    const handleErrorEvent = (e: Event) => {
+      const custom = e as CustomEvent<{
+        location?: string;
+        module?: string;
+        error?: string;
+        details?: string;
+        unconfiguredVars?: string[];
+      }>;
+      const detail = custom.detail || {};
+
+      setIsOpen(true);
+      setIsMinimized(false);
+      setIsDockedHidden(false);
+
+      const errorText = `🚨 **¿Necesitas ayuda?** Noté un error en **${detail.location || 'el sistema'}**:
+> *${detail.error || 'Verificación de motores fallida'}*
+
+**Diagnóstico de KaSi:**
+Dado que el motor **${detail.module || 'requerido'}** aún no tiene sus APIs configuradas en las variables de entorno de **Vercel** o está en mantenimiento, la plataforma **ha bloqueado el cobro y la activación** para proteger tu inversión y garantizar que sólo pagues por tráfico real.
+
+${detail.unconfiguredVars && detail.unconfiguredVars.length > 0 ? `Variables necesarias en Vercel:\n${detail.unconfiguredVars.map(v => `- \`${v}\``).join('\n')}\n\n` : ''}¿Deseas que te guíe para configurar las APIs en Vercel, o prefieres revisar las opciones y motores que **SÍ tenemos 100% operativos** en este momento?`;
+
+      const proactiveMsg: ChatMessage = {
+        id: `proactive_err_${Date.now()}`,
+        role: 'assistant',
+        text: errorText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: [
+          '📋 Ver variables necesarias en Vercel',
+          '🛡️ Ir a Funcionamiento Óptimo',
+          '⚡ ¿Cuáles módulos SÍ están activos?',
+          '💬 Hablar con soporte técnico'
+        ]
+      };
+
+      setMessages((prev) => [...prev, proactiveMsg]);
+      speakText('¿Necesitas ayuda? Noté un error en la configuración de las APIs. He abierto el asistente para ayudarte.');
+    };
+
+    window.addEventListener('kase:trigger_assistant_error', handleErrorEvent);
+    return () => window.removeEventListener('kase:trigger_assistant_error', handleErrorEvent);
+  }, [voiceEnabled]);
 
   const speakText = (text: string) => {
     if (!voiceEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -695,7 +742,7 @@ Estoy conectado directamente a los **8 motores autónomos**, tu Enlace Puente si
               </div>
 
               {/* MESSAGES LIST */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
                 {/* Offline Warning Card */}
                 {!effectiveOnline && (
                   <div className="p-3 rounded-xl bg-rose-950/70 border border-rose-500/60 text-rose-200 text-xs flex items-start gap-2.5 shadow-lg animate-pulse">

@@ -145,6 +145,11 @@ export default function App() {
     }
   }, [currentUser, activeTab]);
 
+  // Fix: Immediately scroll viewport to the top on every tab or campaign change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab, activeCampaignId]);
+
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) || campaigns[0];
 
   // Quick Action: Simulate Burst
@@ -460,17 +465,51 @@ export default function App() {
             )}
           </>
         ) : (
-          <div className="py-20 text-center space-y-4">
-            <h2 className="text-xl font-bold text-white">No hay campañas registradas</h2>
-            <p className="text-xs text-neutral-400">
-              Da de alta tu primer producto para iniciar la automatización de captación.
-            </p>
-            <button
-              onClick={handleOpenNewCampaign}
-              className="px-4 py-2 bg-emerald-400 text-black font-semibold rounded-lg text-xs cursor-pointer"
-            >
-              + Crear Primera Campaña
-            </button>
+          <div className="py-12 sm:py-20 max-w-2xl mx-auto text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto text-2xl shadow-xl shadow-emerald-500/10">
+              🚀
+            </div>
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Zero-Mock: Funcionamiento Real Garantizado</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                No hay campañas activas actualmente
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+                Todas las campañas previas han sido limpiadas. A partir de ahora, cada campaña pasará por una estricta verificación previa: la suite comprobará que las APIs de los motores correspondientes estén verdaderamente conectadas y configuradas en Vercel antes de autorizar el checkout o iniciar el tráfico.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-neutral-900/80 border border-neutral-800 text-left space-y-3 max-w-lg mx-auto text-xs text-neutral-300">
+              <div className="flex items-center gap-2 text-white font-bold text-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Protocolo de Activación Segura KaSe:</span>
+              </div>
+              <ul className="space-y-1.5 list-disc list-inside text-neutral-400 text-[11px]">
+                <li>Verificación automática de credenciales en Vercel antes de cobrar.</li>
+                <li>Bloqueo preventivo de pagos si alguna API requerida está ausente.</li>
+                <li>Monitoreo continuo en el nuevo panel de Funcionamiento Óptimo.</li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <button
+                onClick={handleOpenNewCampaign}
+                className="w-full sm:w-auto px-6 py-3 bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold rounded-xl text-xs transition-all glow-emerald cursor-pointer shadow-lg shadow-emerald-500/20"
+              >
+                + Configurar y Validar Nueva Campaña
+              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setActiveTab('admin_global')}
+                  className="w-full sm:w-auto px-5 py-3 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-200 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  🛡️ Ver Funcionamiento Óptimo
+                </button>
+              )}
+            </div>
           </div>
         )}
       </main>

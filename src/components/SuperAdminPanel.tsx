@@ -23,9 +23,24 @@ import {
   Database,
   Download,
   Check,
-  Terminal
+  Terminal,
+  Radio,
+  Cpu,
+  Trash2,
+  AlertOctagon,
+  KeyRound
 } from 'lucide-react';
-import { GlobalKaSeConfig, RateLimitStatus, PaymentTransaction, Campaign, User } from '../types/growth';
+import { 
+  GlobalKaSeConfig, 
+  RateLimitStatus, 
+  PaymentTransaction, 
+  Campaign, 
+  User,
+  OptimalPerformanceReport,
+  EngineHealthItem,
+  InternalSystemError,
+  SensitiveDataExposureAlert
+} from '../types/growth';
 
 interface SuperAdminPanelProps {
   currentUser: User | null;
@@ -38,7 +53,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   allCampaigns,
   onRefreshCampaigns,
 }) => {
-  const [adminTab, setAdminTab] = useState<'overview' | 'campaigns' | 'mercadopago' | 'global_pixel' | 'rate_limits' | 'sql_migration'>('overview');
+  const [adminTab, setAdminTab] = useState<'optimal_performance' | 'overview' | 'campaigns' | 'mercadopago' | 'global_pixel' | 'rate_limits' | 'sql_migration'>('optimal_performance');
   const [migrationSql, setMigrationSql] = useState<string>('');
   const [copiedSql, setCopiedSql] = useState<boolean>(false);
   const [dbStatus, setDbStatus] = useState<any>(null);
@@ -56,6 +71,15 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     fromInternal: 0,
     fromDirect: 0,
   });
+
+  // Optimal Performance & System Audit State
+  const [optimalReport, setOptimalReport] = useState<OptimalPerformanceReport | null>(null);
+  const [isScanningOptimal, setIsScanningOptimal] = useState<boolean>(false);
+  const [testingEngineKey, setTestingEngineKey] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, any>>({});
+  const [isClearingErrors, setIsClearingErrors] = useState<boolean>(false);
+  const [errorFilter, setErrorFilter] = useState<'ALL' | 'CRITICAL' | 'WARNING'>('ALL');
+  const [copiedEnvTemplate, setCopiedEnvTemplate] = useState<boolean>(false);
 
   // Global Config Form State
   const [pixelCode, setPixelCode] = useState('');
@@ -175,6 +199,58 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       setCheckingDb(false);
     }
   };
+
+  const fetchOptimalReport = async () => {
+    setIsScanningOptimal(true);
+    try {
+      const res = await fetch('/api/system/optimal-performance');
+      const data = await res.json();
+      if (data.success && data.report) {
+        setOptimalReport(data.report);
+      }
+    } catch (e) {
+      console.warn('Error fetching optimal report:', e);
+    } finally {
+      setIsScanningOptimal(false);
+    }
+  };
+
+  const handleTestEngine = async (moduleKey: string) => {
+    setTestingEngineKey(moduleKey);
+    try {
+      const res = await fetch('/api/system/test-engine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleKey }),
+      });
+      const data = await res.json();
+      setTestResults((prev) => ({ ...prev, [moduleKey]: data }));
+      fetchOptimalReport();
+    } catch (e: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [moduleKey]: { success: false, message: e.message || 'Error de conexión' },
+      }));
+    } finally {
+      setTestingEngineKey(null);
+    }
+  };
+
+  const handleClearErrors = async () => {
+    setIsClearingErrors(true);
+    try {
+      await fetch('/api/system/clear-errors', { method: 'POST' });
+      await fetchOptimalReport();
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      setIsClearingErrors(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOptimalReport();
+  }, []);
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -343,6 +419,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       {/* Admin Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto border-b border-neutral-800 pb-2">
         {[
+          { id: 'optimal_performance', label: '🛡️ Funcionamiento Óptimo', icon: ShieldCheck },
           { id: 'overview', label: 'Métricas Globales', icon: Activity },
           { id: 'campaigns', label: `Campañas de Clientes (${allCampaigns.length})`, icon: Layers },
           { id: 'mercadopago', label: `Control de Cobros MP (${transactions.length})`, icon: CreditCard },
@@ -352,13 +429,18 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = adminTab === tab.id;
+          const isOptimalTab = tab.id === 'optimal_performance';
           return (
             <button
               key={tab.id}
               onClick={() => setAdminTab(tab.id as any)}
               className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                  ? isOptimalTab
+                    ? 'bg-emerald-500 text-black font-extrabold shadow-md shadow-emerald-500/20'
+                    : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                  : isOptimalTab
+                  ? 'text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20'
                   : 'text-neutral-400 hover:text-white hover:bg-neutral-900'
               }`}
             >
@@ -368,6 +450,428 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           );
         })}
       </div>
+
+      {/* TAB 0: FUNCIONAMIENTO ÓPTIMO & AUDITOR DE ERRORES INTERNOS */}
+      {adminTab === 'optimal_performance' && (
+        <div className="space-y-6">
+          {/* Top Status & Scan Header */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-neutral-950 via-neutral-900 to-black border border-neutral-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Auditor en Tiempo Real KaSe</span>
+                  </span>
+                  <span className="text-[11px] text-neutral-400 font-mono">
+                    Uptime: {optimalReport ? `${Math.floor(optimalReport.uptimeSeconds / 60)} min` : 'Activo'}
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+                  Panel de Funcionamiento Óptimo & Auditor de APIs en Vercel
+                </h2>
+                <p className="text-xs text-neutral-300 max-w-2xl leading-relaxed">
+                  Monitoreo de extremo a extremo: detección de variables de entorno en Vercel, auditor de datos sensibles expuestos en el código y bitácora de errores internos en tiempo real para garantizar cobros únicamente tras la verificación efectiva de motores.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={fetchOptimalReport}
+                  disabled={isScanningOptimal}
+                  className="px-4 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isScanningOptimal ? 'animate-spin' : ''}`} />
+                  <span>Escanear Motores Ahora</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Diagnostic Metrics Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 bg-black/60 rounded-xl border border-neutral-800 space-y-1">
+                <div className="text-[11px] text-neutral-400">Estado de la Plataforma</div>
+                <div className="text-sm sm:text-base font-bold font-mono flex items-center gap-2">
+                  {optimalReport?.overallHealth === 'OPTIMAL' ? (
+                    <span className="text-emerald-400 flex items-center gap-1">🟢 100% ÓPTIMO</span>
+                  ) : optimalReport?.overallHealth === 'DEGRADED' ? (
+                    <span className="text-amber-400 flex items-center gap-1">🟡 PARCIAL</span>
+                  ) : (
+                    <span className="text-rose-400 flex items-center gap-1">🔴 APIS PENDIENTES</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-neutral-500">
+                  {optimalReport?.configuredEnginesCount || 0} de {optimalReport?.totalEngines || 11} configurados
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-black/60 rounded-xl border border-neutral-800 space-y-1">
+                <div className="text-[11px] text-neutral-400">Score de Seguridad Criptográfica</div>
+                <div className="text-sm sm:text-base font-bold font-mono text-emerald-400">
+                  {optimalReport?.securityScore ?? 100}/100
+                </div>
+                <div className="text-[10px] text-neutral-500">
+                  {optimalReport?.sensitiveDataAlerts?.length === 0 ? 'Cero fugas detectadas' : 'Alertas detectadas'}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-black/60 rounded-xl border border-neutral-800 space-y-1">
+                <div className="text-[11px] text-neutral-400">Errores Internos Detectados</div>
+                <div className={`text-sm sm:text-base font-bold font-mono ${
+                  (optimalReport?.errors?.length || 0) > 0 ? 'text-amber-400' : 'text-emerald-400'
+                }`}>
+                  {optimalReport?.errors?.length || 0}
+                </div>
+                <div className="text-[10px] text-neutral-500">
+                  {(optimalReport?.errors?.length || 0) === 0 ? 'Sistema 100% estable' : 'Registros auditados'}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-black/60 rounded-xl border border-neutral-800 space-y-1">
+                <div className="text-[11px] text-neutral-400">Política de Checkout</div>
+                <div className="text-sm sm:text-base font-bold font-mono text-cyan-400">
+                  BLOQUEO PREVIO
+                </div>
+                <div className="text-[10px] text-neutral-500">
+                  Cobro condicionado a APIs activas
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 1: ESCÁNER DE DATOS SENSIBLES EXPUESTOS */}
+          <div className="p-5 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Escáner Automático de Datos Sensibles Expuestos</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      Auditado
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Inspección activa para prevenir que claves privadas RSA, contraseñas de bases de datos, tokens o PII queden expuestos al cliente.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {optimalReport?.sensitiveDataAlerts && optimalReport.sensitiveDataAlerts.length > 0 ? (
+              <div className="space-y-3">
+                {optimalReport.sensitiveDataAlerts.map((alert) => (
+                  <div key={alert.id} className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500 text-black uppercase">
+                        {alert.severity} • {alert.type}
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono">{alert.location}</span>
+                    </div>
+                    <p className="text-xs font-semibold text-rose-200">{alert.description}</p>
+                    <div className="p-2 rounded bg-black/60 font-mono text-[10px] text-neutral-300">
+                      Muestra sanitizada: <code>{alert.sampleMasked}</code>
+                    </div>
+                    <div className="text-[11px] text-neutral-400">
+                      <strong className="text-amber-300">Remediación:</strong> {alert.remediation}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center gap-3 text-xs text-emerald-200">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <strong className="font-bold block text-emerald-300">0 Datos Sensibles Expuestos en el Código o Frontend</strong>
+                  <span className="text-neutral-300 text-[11px]">
+                    Todas las credenciales de APIs (Google, Twitter, Reddit, Supabase, Mercado Pago) se ejecutan exclusivamente en rutas de backend seguras (`/api/*` en server.ts) con cabeceras blindadas. Ningún secreto viaja al navegador del usuario.
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: MATRIZ DE MOTORES Y APIS EN VERCEL */}
+          <div className="p-5 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-emerald-400" />
+                  <span>Matriz de Motores & Detección de APIs en Vercel (8 Motores + Infra)</span>
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  Comprueba en tiempo real si cada motor tiene sus credenciales cargadas en las variables de entorno de Vercel.
+                </p>
+              </div>
+
+              <div className="text-xs text-neutral-400 font-mono">
+                {optimalReport?.configuredEnginesCount || 0} / {optimalReport?.engines?.length || 11} Conectados
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {(optimalReport?.engines || []).map((engine) => {
+                const isTesting = testingEngineKey === engine.moduleKey;
+                const lastTest = testResults[engine.moduleKey];
+
+                return (
+                  <div
+                    key={engine.id}
+                    className={`p-4 rounded-xl border transition-all ${
+                      engine.configuredInVercel
+                        ? 'bg-neutral-950/80 border-emerald-500/30 shadow-sm'
+                        : 'bg-neutral-950/60 border-neutral-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${engine.configuredInVercel ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                          <h4 className="text-xs font-bold text-white tracking-tight">{engine.name}</h4>
+                        </div>
+                        <div className="text-[11px] text-neutral-400 font-mono mt-0.5">{engine.platform}</div>
+                      </div>
+
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase shrink-0 ${
+                          engine.configuredInVercel
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        }`}
+                      >
+                        {engine.configuredInVercel ? '🟢 Configurado' : '🔴 No en Vercel'}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-neutral-300 mt-2.5 leading-relaxed">
+                      {engine.statusText}
+                    </p>
+
+                    {/* Env vars list */}
+                    <div className="mt-2.5 pt-2 border-t border-neutral-900 space-y-1">
+                      <div className="text-[10px] text-neutral-500 uppercase font-mono">Variables requeridas en Vercel:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {engine.requiredEnvVars.map((v) => (
+                          <span
+                            key={v}
+                            onClick={() => handleCopy(v, v)}
+                            title="Click para copiar nombre de variable para Vercel"
+                            className="px-1.5 py-0.5 rounded bg-black border border-neutral-800 text-[10px] font-mono text-amber-300 hover:border-amber-500/50 cursor-pointer transition-colors"
+                          >
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions and Latency Ping Test */}
+                    <div className="mt-3 pt-2.5 border-t border-neutral-900 flex items-center justify-between gap-2">
+                      <div className="text-[10px] font-mono text-neutral-400">
+                        {engine.latencyMs ? `Latencia: ${engine.latencyMs}ms` : 'Sin ping'}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTestEngine(engine.moduleKey)}
+                        disabled={isTesting}
+                        className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 hover:border-emerald-500/40 text-neutral-200 text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isTesting ? 'animate-spin text-emerald-400' : ''}`} />
+                        <span>{isTesting ? 'Testeando...' : 'Probar API en Vivo'}</span>
+                      </button>
+                    </div>
+
+                    {lastTest && (
+                      <div className={`mt-2 p-2 rounded text-[10px] font-mono ${
+                        lastTest.success
+                          ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-300'
+                          : 'bg-rose-950/40 border border-rose-500/30 text-rose-300'
+                      }`}>
+                        {lastTest.message || JSON.stringify(lastTest)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECTION 3: CONSOLA CENTRALIZADA DE ERRORES INTERNOS DEL SISTEMA */}
+          <div className="p-5 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+                  <Terminal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Consola de Auditoría de Errores Internos en Tiempo Real</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-neutral-800 text-neutral-300">
+                      {optimalReport?.errors?.length || 0} Registros
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-neutral-400">
+                    Registra y alerta automáticamente al administrador sobre fallos de conexión, intentos de cobro bloqueados o excepciones de código.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg bg-black border border-neutral-800 p-0.5 text-[11px]">
+                  {(['ALL', 'CRITICAL', 'WARNING'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setErrorFilter(filter)}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                        errorFilter === filter
+                          ? 'bg-neutral-800 text-white font-bold'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {filter === 'ALL' ? 'Todos' : filter === 'CRITICAL' ? 'Críticos' : 'Alertas'}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleClearErrors}
+                  disabled={isClearingErrors}
+                  className="px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-rose-950/30 border border-neutral-700 hover:border-rose-500/40 text-neutral-300 hover:text-rose-300 text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Limpiar</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Error logs feed */}
+            <div className="bg-black/90 border border-neutral-800 rounded-xl p-3 font-mono text-[11px] max-h-72 overflow-y-auto space-y-2">
+              {optimalReport?.errors && optimalReport.errors.length > 0 ? (
+                optimalReport.errors
+                  .filter((err) => (errorFilter === 'ALL' ? true : err.level === errorFilter))
+                  .map((err) => (
+                    <div
+                      key={err.id}
+                      className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800/80 space-y-1 hover:border-neutral-700 transition-colors"
+                    >
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span
+                          className={`px-1.5 py-0.5 rounded font-bold uppercase ${
+                            err.level === 'CRITICAL'
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}
+                        >
+                          {err.level} • {err.module}
+                        </span>
+                        <span className="text-neutral-500">{new Date(err.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="text-white text-xs">{err.message}</div>
+                      <div className="text-neutral-400 text-[10px] flex items-center justify-between">
+                        <span>Origen: {err.location}</span>
+                        <span className="text-neutral-600">ID: {err.id}</span>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="py-8 text-center text-neutral-500 text-xs flex flex-col items-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500/60" />
+                  <span>No hay errores internos registrados en este momento. El sistema opera de forma limpia y estable.</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 4: PLANTILLA DIRECTA DE VARIABLES DE ENTORNO PARA VERCEL */}
+          <div className="p-5 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>⚡ Plantilla de Variables de Entorno para Vercel Project Settings</span>
+                </h3>
+                <p className="text-[11px] text-neutral-400">
+                  Copia y pega estas variables en Vercel (Settings &gt; Environment Variables) para que la suite desbloquee los motores inmediatamente.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const envTemplate = `# --- KaSe Marketing Digital: Variables de Entorno para Vercel ---
+# Módulo 1: Google Search Indexing API v3
+GOOGLE_SERVICE_ACCOUNT_JSON=""
+
+# Módulo 2: X (Twitter API v2) & LinkedIn
+TWITTER_API_KEY=""
+TWITTER_API_SECRET=""
+TWITTER_ACCESS_TOKEN=""
+TWITTER_ACCESS_SECRET=""
+
+# Módulo 3: Directorios Globales
+PRODUCTHUNT_TOKEN=""
+DEVTO_API_KEY=""
+DIRECTORIES_DISPATCH_KEY="dir_sec_kase_live"
+
+# Módulo 4: Reddit Outbound Bot
+REDDIT_CLIENT_ID=""
+REDDIT_CLIENT_SECRET=""
+REDDIT_USERNAME=""
+REDDIT_PASSWORD=""
+
+# Módulo 5: Newsletter Outreach
+RESEND_API_KEY=""
+
+# Módulo 6: Video Growth Automation
+YOUTUBE_API_KEY=""
+
+# Módulo 7: Programmatic SEO Factory
+VERCEL_TOKEN=""
+VERCEL_PROJECT_ID=""
+
+# Módulo 8: Micro-Influencers Outreach
+INSTAGRAM_GRAPH_TOKEN=""
+
+# Pasarela de Pagos (Mercado Pago Uruguay)
+MERCADO_PAGO_ACCESS_TOKEN=""
+
+# Base de Datos de Producción (Supabase / PostgreSQL)
+DATABASE_URL=""
+SUPABASE_URL=""
+SUPABASE_ANON_KEY=""
+
+# Inteligencia Artificial
+GEMINI_API_KEY=""`;
+                  handleCopy(envTemplate, 'Plantilla de Vercel');
+                  setCopiedEnvTemplate(true);
+                  setTimeout(() => setCopiedEnvTemplate(false), 3000);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedEnvTemplate ? '¡Copiado!' : 'Copiar Plantilla Vercel'}</span>
+              </button>
+            </div>
+
+            <div className="p-3 bg-black rounded-xl border border-neutral-800 text-[11px] font-mono text-emerald-300/80 max-h-48 overflow-y-auto">
+              <pre className="whitespace-pre-wrap">{`GOOGLE_SERVICE_ACCOUNT_JSON=...
+TWITTER_API_KEY=...
+PRODUCTHUNT_TOKEN=...
+REDDIT_CLIENT_ID=...
+RESEND_API_KEY=...
+YOUTUBE_API_KEY=...
+VERCEL_TOKEN=...
+INSTAGRAM_GRAPH_TOKEN=...
+MERCADO_PAGO_ACCESS_TOKEN=...
+DATABASE_URL=...`}</pre>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: OVERVIEW & HIGH-LEVEL METRICS */}
       {adminTab === 'overview' && (

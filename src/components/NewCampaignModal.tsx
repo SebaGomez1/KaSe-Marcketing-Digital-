@@ -22,7 +22,7 @@ import {
   RefreshCw,
   Globe2
 } from 'lucide-react';
-import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User } from '../types/growth';
+import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult } from '../types/growth';
 import { GEOGRAPHICAL_DATABASE, calculateGeoFeasibility } from '../data/geoLocations';
 
 interface NewCampaignModalProps {
@@ -47,6 +47,10 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [description, setDescription] = useState('');
   const [adminSuccessCamp, setAdminSuccessCamp] = useState<Campaign | null>(null);
   const [isTestOneDollarMode, setIsTestOneDollarMode] = useState<boolean>(false);
+
+  // Engine & API Verification in Vercel State (Zero-Mock Requirement)
+  const [engineValidation, setEngineValidation] = useState<EngineValidationResult | null>(null);
+  const [isValidatingEngines, setIsValidatingEngines] = useState<boolean>(true);
 
   // Conditional Fields
   const [interactionPreferences, setInteractionPreferences] = useState('Comentarios positivos y preguntas frecuentes orientadas al nicho');
@@ -74,6 +78,29 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [plan, setPlan] = useState<'starter' | 'growth' | 'enterprise'>('starter');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch real Vercel API status for the selected plan
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    setIsValidatingEngines(true);
+
+    fetch(`/api/system/validate-engines?plan=${plan}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.success && data.validation) {
+          setEngineValidation(data.validation);
+        }
+      })
+      .catch((err) => console.warn('Error validating engines:', err))
+      .finally(() => {
+        if (isMounted) setIsValidatingEngines(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [plan, isOpen]);
 
   if (!isOpen) return null;
 
@@ -825,6 +852,78 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 <strong className="text-white">Garantía Estricta KaSe:</strong> Al registrarse de forma exacta el #{targetQuantity.toLocaleString()} ({currentTypeMeta.unitLabelPlural}), los motores autónomos se pausan al instante. No hay sobrecostes ni cobros sorpresa.
               </span>
             </div>
+
+            {/* VERCEL APIS VERIFICATION GATE (ZERO-MOCK REQUIREMENT) */}
+            <div className={`p-4 rounded-xl border text-xs space-y-3 ${
+              engineValidation && !engineValidation.canProceed
+                ? 'bg-rose-950/40 border-rose-500/50 text-rose-200'
+                : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
+            }`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  {engineValidation && !engineValidation.canProceed ? (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span className="text-rose-300">
+                        ACTIVACIÓN Y COBRO BLOQUEADOS: APIs PENDIENTES EN VERCEL
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-emerald-300">
+                        APIs de Motores 100% Verificadas y Conectadas en Vercel
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(
+                      new CustomEvent('kase:trigger_assistant_error', {
+                        detail: {
+                          location: 'Alta de Campaña',
+                          module: `Motores del Plan ${plan.toUpperCase()}`,
+                          error: engineValidation?.reason || 'Verificación de APIs en Vercel',
+                          unconfiguredVars: engineValidation?.missingModules.flatMap((m) => m.missingVars),
+                        },
+                      })
+                    );
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>🤖</span>
+                  <span>Consultar a KaSi Copilot</span>
+                </button>
+              </div>
+
+              {engineValidation && !engineValidation.canProceed ? (
+                <div className="space-y-2 text-[11px] text-neutral-300">
+                  <p className="leading-relaxed">
+                    Por política de <strong>transparencia y entrega de tráfico 100% real</strong>, ni el usuario ni el administrador pueden proceder al checkout o iniciar la campaña si los motores requeridos no tienen sus APIs configuradas en Vercel:
+                  </p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {engineValidation.missingModules.map((m) => (
+                      <div key={m.id} className="p-2 rounded-lg bg-black/60 border border-rose-900/40 text-[11px]">
+                        <div className="font-semibold text-rose-300 flex items-center justify-between">
+                          <span>🔴 {m.name}</span>
+                          <span className="font-mono text-[10px] text-neutral-400">{m.platform}</span>
+                        </div>
+                        <div className="text-neutral-400 text-[10px] mt-0.5">
+                          Variables requeridas en Vercel: <code className="text-amber-300 font-mono">{m.missingVars.join(', ')}</code>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  Todos los motores del plan <strong>{plan.toUpperCase()}</strong> tienen sus credenciales validadas. Al pasar al checkout se procederá al cobro y la campaña comenzará de inmediato con tráfico 100% real.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Sticky Modal Footer */}
@@ -840,9 +939,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (engineValidation ? !engineValidation.canProceed : false)}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  isTestOneDollarMode
+                  engineValidation && !engineValidation.canProceed
+                    ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
+                    : isTestOneDollarMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-lg shadow-amber-500/30 font-extrabold'
                     : 'bg-emerald-400 hover:bg-emerald-300 text-black glow-emerald'
                 }`}
@@ -851,6 +952,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 <span>
                   {loading
                     ? 'Preparando...'
+                    : engineValidation && !engineValidation.canProceed
+                    ? '⛔ Bloqueado: Conecta las APIs en Vercel'
                     : isKathy
                     ? isTestOneDollarMode
                       ? '💳 Pagar $1.00 USD con Mercado Pago'
