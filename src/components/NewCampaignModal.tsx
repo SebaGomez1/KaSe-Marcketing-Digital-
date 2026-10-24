@@ -263,9 +263,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     setLoading(true);
     setError(null);
 
-    if (engineValidation && !engineValidation.canProceed) {
+    if (isValidatingEngines || !engineValidation || !engineValidation.canProceed) {
       setError(
-        'Verificación de Seguridad KaSe: Se requiere que las APIs del motor estén operativas en Vercel antes de autorizar el cobro o activar la campaña.'
+        'Bloqueo Estricto de Seguridad KaSe: Se requiere que las APIs de los motores del plan estén operativas en Vercel antes de crear la campaña o autorizar el cobro. Esta protección resguarda a los usuarios para que nunca paguen por un servicio sin respaldo técnico activo.'
       );
       setLoading(false);
       return;
@@ -863,13 +863,22 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
             {/* VERCEL APIS VERIFICATION GATE (SEGURIDAD Y PROTECCIÓN AL CLIENTE) */}
             <div className={`p-4 rounded-xl border text-xs space-y-3 ${
-              engineValidation && !engineValidation.canProceed
+              isValidatingEngines
+                ? 'bg-neutral-900 border-neutral-700 text-neutral-300'
+                : (!engineValidation || !engineValidation.canProceed)
                 ? 'bg-rose-950/40 border-rose-500/50 text-rose-200'
                 : 'bg-emerald-950/30 border-emerald-500/40 text-emerald-200'
             }`}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 font-bold text-xs">
-                  {engineValidation && !engineValidation.canProceed ? (
+                  {isValidatingEngines ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+                      <span className="text-amber-300">
+                        Verificando APIs de Motores en Vercel...
+                      </span>
+                    </>
+                  ) : (!engineValidation || !engineValidation.canProceed) ? (
                     <>
                       <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
                       <span className="text-rose-300">
@@ -887,13 +896,17 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 </div>
               </div>
 
-              {engineValidation && !engineValidation.canProceed ? (
+              {isValidatingEngines ? (
+                <div className="space-y-1 text-[11px] text-neutral-400">
+                  <p>Consultando el estado de conexión de los motores del plan <strong>{plan.toUpperCase()}</strong> en las variables de entorno de Vercel...</p>
+                </div>
+              ) : (!engineValidation || !engineValidation.canProceed) ? (
                 <div className="space-y-2 text-[11px] text-neutral-300">
                   <p className="leading-relaxed">
-                    Por <strong>política de seguridad y garantía estricta de entrega de servicio 100% real</strong>, no se puede proceder al checkout ni cobrar campañas hasta que las APIs de los motores del plan <strong>{plan.toUpperCase()}</strong> estén configuradas en Vercel. Esto garantiza que el cliente nunca pague por un servicio sin respaldo técnico activo:
+                    Por <strong>política de seguridad y garantía estricta de entrega de servicio 100% real</strong>, no se puede proceder al checkout ni cobrar campañas hasta que las APIs de los motores del plan <strong>{plan.toUpperCase()}</strong> estén configuradas por la administración en Vercel. Esto garantiza que ningún usuario pague por un servicio sin respaldo técnico activo:
                   </p>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {engineValidation.missingModules.map((m) => (
+                    {(engineValidation?.missingModules || []).map((m) => (
                       <div key={m.id} className="p-2 rounded-lg bg-black/60 border border-rose-900/40 text-[11px]">
                         <div className="font-semibold text-rose-300 flex items-center justify-between">
                           <span>🔴 {m.name}</span>
@@ -906,7 +919,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                     ))}
                   </div>
                   <div className="p-2 bg-black/40 rounded border border-neutral-800 text-[10px] text-neutral-400">
-                    💡 <strong>Política Cero-APIs para el cliente:</strong> Tú como cliente no configuras ninguna API. Este bloqueo es un seguro de la app para protegerte de cobros antes de que los motores estén conectados y listos.
+                    💡 <strong>Garantía Total para el Usuario:</strong> Tú como usuario no configuras ninguna API técnica. Este bloqueo es un seguro estricto de la plataforma para protegerte de cobros antes de que los motores estén conectados y listos.
                   </div>
                 </div>
               ) : (
@@ -935,9 +948,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                disabled={loading || (engineValidation ? !engineValidation.canProceed : false)}
+                disabled={loading || isValidatingEngines || !engineValidation || !engineValidation.canProceed}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  engineValidation && !engineValidation.canProceed
+                  isValidatingEngines || !engineValidation || !engineValidation.canProceed
                     ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
                     : isTestOneDollarMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-lg shadow-amber-500/30 font-extrabold'
@@ -948,7 +961,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 <span>
                   {loading
                     ? 'Preparando...'
-                    : engineValidation && !engineValidation.canProceed
+                    : isValidatingEngines
+                    ? '⏳ Verificando APIs...'
+                    : !engineValidation || !engineValidation.canProceed
                     ? '⛔ Bloqueado: Conecta las APIs en Vercel'
                     : isKathy
                     ? isTestOneDollarMode

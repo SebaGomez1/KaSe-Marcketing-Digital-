@@ -69,6 +69,10 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
 
   // 1. REAL MERCADO PAGO REDIRECT (CHECKOUT PRO)
   const handleRealMercadoPagoCheckout = async () => {
+    if (checkingGateway || !engineValidation || !engineValidation.canProceed) {
+      setError('Bloqueo de Seguridad KaSe: Cobro prevenido porque las APIs requeridas para este plan no están configuradas en Vercel.');
+      return;
+    }
     setRedirecting(true);
     setError(null);
     try {
@@ -101,6 +105,10 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
 
   // 2. SANDBOX / DEMO SIMULATION (NO REAL MONEY CHARGED)
   const handleSimulatePaymentApproval = async () => {
+    if (checkingGateway || !engineValidation || !engineValidation.canProceed) {
+      setError('Bloqueo de Seguridad KaSe: Activación prevenida porque las APIs requeridas para este plan no están configuradas en Vercel.');
+      return;
+    }
     setLoading(true);
     setError(null);
     setIsSimulation(true);
@@ -295,9 +303,9 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <button
                     type="button"
                     onClick={handleRealMercadoPagoCheckout}
-                    disabled={redirecting || loading || (engineValidation ? !engineValidation.canProceed : false)}
+                    disabled={redirecting || loading || checkingGateway || !engineValidation || !engineValidation.canProceed}
                     className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                      engineValidation && !engineValidation.canProceed
+                      checkingGateway || !engineValidation || !engineValidation.canProceed
                         ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
                         : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
                     }`}
@@ -306,7 +314,9 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                     <span>
                       {redirecting
                         ? 'Conectando con Mercado Pago...'
-                        : engineValidation && !engineValidation.canProceed
+                        : checkingGateway
+                        ? '⏳ Verificando motores...'
+                        : !engineValidation || !engineValidation.canProceed
                         ? '⛔ Cobro Bloqueado: Conecta las APIs en Vercel'
                         : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
                     </span>
@@ -315,14 +325,16 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <button
                     type="button"
                     onClick={handleSimulatePaymentApproval}
-                    disabled={loading || redirecting || (engineValidation ? !engineValidation.canProceed : false)}
+                    disabled={loading || redirecting || checkingGateway || !engineValidation || !engineValidation.canProceed}
                     className="w-full py-2 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono text-[11px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Zap className="w-3.5 h-3.5 text-amber-400" />
                     <span>
                       {loading
                         ? 'Simulando...'
-                        : engineValidation && !engineValidation.canProceed
+                        : checkingGateway
+                        ? '⏳ Verificando motores...'
+                        : !engineValidation || !engineValidation.canProceed
                         ? '⛔ Simulación Bloqueada: APIs Faltantes'
                         : 'Ejecutar simulación técnica de prueba ($0.00)'}
                     </span>
@@ -333,9 +345,9 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <button
                     type="button"
                     onClick={handleSimulatePaymentApproval}
-                    disabled={loading || (engineValidation ? !engineValidation.canProceed : false)}
+                    disabled={loading || checkingGateway || !engineValidation || !engineValidation.canProceed}
                     className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 ${
-                      engineValidation && !engineValidation.canProceed
+                      checkingGateway || !engineValidation || !engineValidation.canProceed
                         ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
                         : 'bg-emerald-400 hover:bg-emerald-300 text-black glow-emerald cursor-pointer'
                     }`}
@@ -344,7 +356,9 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                     <span>
                       {loading
                         ? 'Confirmando Pago y Encendiendo Motores...'
-                        : engineValidation && !engineValidation.canProceed
+                        : checkingGateway
+                        ? '⏳ Verificando motores...'
+                        : !engineValidation || !engineValidation.canProceed
                         ? '⛔ Cobro Bloqueado: Conecta las APIs en Vercel'
                         : `Pagar y Activar Motores ($${amount} ${currency})`}
                     </span>
