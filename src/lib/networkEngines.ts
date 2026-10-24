@@ -271,6 +271,147 @@ export interface DetailedEngineCheck {
   documentationUrl: string;
 }
 
+export interface TokenDetectionResult {
+  token: string;
+  source: string;
+  isConfigured: boolean;
+  maskedToken?: string;
+}
+
+export function detectMercadoPagoToken(): TokenDetectionResult {
+  const envCandidates: [string, string | undefined][] = [
+    ['process.env.access_tokens', process.env.access_tokens],
+    ['process.env.ACCESS_TOKENS', process.env.ACCESS_TOKENS],
+    ['process.env.access_token', process.env.access_token],
+    ['process.env.ACCESS_TOKEN', process.env.ACCESS_TOKEN],
+    ['process.env.MERCADO_PAGO_ACCESS_TOKEN', process.env.MERCADO_PAGO_ACCESS_TOKEN],
+    ['process.env.MP_ACCESS_TOKEN', process.env.MP_ACCESS_TOKEN],
+    ['process.env.MERCADOPAGO_ACCESS_TOKEN', process.env.MERCADOPAGO_ACCESS_TOKEN],
+    ['process.env.MERCADO_PAGO_TOKEN', process.env.MERCADO_PAGO_TOKEN],
+    ['process.env.MP_TOKEN', process.env.MP_TOKEN],
+  ];
+
+  for (const [name, val] of envCandidates) {
+    if (val && val.trim().length > 10) {
+      const trimmed = val.trim();
+      const masked = trimmed.length > 12 ? `${trimmed.slice(0, 8)}...${trimmed.slice(-4)}` : '***';
+      return { token: trimmed, source: name, isConfigured: true, maskedToken: masked };
+    }
+  }
+
+  // Also check if saved in local kase_config.json
+  try {
+    const configPath = path.join(__dirname, '..', '..', 'kase_config.json');
+    if (fs.existsSync(configPath)) {
+      const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (parsed?.mercadoPagoAccessToken && parsed.mercadoPagoAccessToken.trim().length > 10) {
+        const trimmed = parsed.mercadoPagoAccessToken.trim();
+        const masked = trimmed.length > 12 ? `${trimmed.slice(0, 8)}...${trimmed.slice(-4)}` : '***';
+        return { token: trimmed, source: 'Panel SuperAdmin (kase_config.json)', isConfigured: true, maskedToken: masked };
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return { token: '', source: 'No detectado', isConfigured: false };
+}
+
+export async function testMercadoPagoApiLive(tokenToTest?: string): Promise<{
+  success: boolean;
+  status: string;
+  statusCode?: number;
+  latencyMs: number;
+  message: string;
+  source: string;
+  tokenMasked?: string;
+  accountDetails?: any;
+}> {
+  const detected = detectMercadoPagoToken();
+  const token = (tokenToTest || detected.token || '').trim();
+
+  if (!token || token.length < 10) {
+    return {
+      success: false,
+      status: 'UNCONFIGURED',
+      latencyMs: 0,
+      source: detected.source,
+      message: 'No se detectó ningún Access Token en Vercel ni en el panel. Variables inspeccionadas: access_tokens, ACCESS_TOKENS, MERCADO_PAGO_ACCESS_TOKEN, MP_ACCESS_TOKEN.',
+    };
+  }
+
+  const masked = token.length > 12 
+    ? `${token.slice(0, 8)}...${token.slice(-4)}`
+    : '***';
+
+  const startTime = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch('https://api.mercadopago.com/users/me', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const latencyMs = Date.now() - startTime;
+
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        success: true,
+        status: 'AUTHENTICATED_AND_OPERATIONAL',
+        statusCode: res.status,
+        latencyMs,
+        source: detected.source,
+        tokenMasked: masked,
+        accountDetails: {
+          id: data.id,
+          nickname: data.nickname,
+          country_id: data.country_id || 'UY',
+          site_id: data.site_id || 'MLU',
+          email: data.email,
+        },
+        message: `¡Conexión EN VIVO verificada con Mercado Pago! (HTTP ${res.status}, ${latencyMs}ms). Token: ${masked} vía ${detected.source}.`,
+      };
+    } else if (res.status === 401 || res.status === 403) {
+      return {
+        success: false,
+        status: 'AUTHENTICATION_FAILED',
+        statusCode: res.status,
+        latencyMs,
+        source: detected.source,
+        tokenMasked: masked,
+        message: `Mercado Pago rechazó el token (HTTP ${res.status} Unauthorized). Verifica que hayas copiado el Access Token de Producción completo (empieza con APP_USR-) sin espacios ni comillas.`,
+      };
+    } else {
+      return {
+        success: false,
+        status: 'UNEXPECTED_STATUS',
+        statusCode: res.status,
+        latencyMs,
+        source: detected.source,
+        tokenMasked: masked,
+        message: `Mercado Pago respondió con código HTTP ${res.status}. Latencia: ${latencyMs}ms.`,
+      };
+    }
+  } catch (err: any) {
+    const latencyMs = Date.now() - startTime;
+    return {
+      success: false,
+      status: 'NETWORK_TIMEOUT_OR_ERROR',
+      latencyMs,
+      source: detected.source,
+      tokenMasked: masked,
+      message: `Error de red al consultar api.mercadopago.com: ${err.message}`,
+    };
+  }
+}
+
 export function getAllEnginesHealth(): DetailedEngineCheck[] {
   const now = new Date().toISOString();
 
@@ -334,11 +475,8 @@ export function getAllEnginesHealth(): DetailedEngineCheck[] {
     (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
   );
 
-  const hasMercadoPago = !!(
-    process.env.MERCADO_PAGO_ACCESS_TOKEN ||
-    process.env.MP_ACCESS_TOKEN ||
-    process.env.MERCADOPAGO_ACCESS_TOKEN
-  );
+  const mpDetection = detectMercadoPagoToken();
+  const hasMercadoPago = mpDetection.isConfigured;
 
   const hasGemini = !!(
     process.env.GEMINI_API_KEY &&
@@ -487,13 +625,13 @@ export function getAllEnginesHealth(): DetailedEngineCheck[] {
       name: 'Pasarela de Cobros Mercado Pago Uruguay',
       category: 'infrastructure',
       platform: 'Mercado Pago Subscriptions & Checkout API',
-      requiredEnvVars: ['MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
+      requiredEnvVars: ['access_tokens', 'MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
       configuredInVercel: hasMercadoPago,
       latencyMs: hasMercadoPago ? 85 : undefined,
       lastChecked: now,
       statusText: hasMercadoPago
-        ? 'Credenciales de Mercado Pago configuradas para cobros reales.'
-        : 'Credenciales de Mercado Pago ausentes en variables de Vercel.',
+        ? `Credenciales de Mercado Pago detectadas y activas (Origen: ${mpDetection.source}, Token: ${mpDetection.maskedToken}). Listo para cobros en vivo.`
+        : 'Credenciales de Mercado Pago ausentes. Soporta nombres en Vercel: "access_tokens" o "MERCADO_PAGO_ACCESS_TOKEN".',
       documentationUrl: 'https://www.mercadopago.com.uy/developers',
     },
     {

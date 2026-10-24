@@ -204,7 +204,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <span>Modo Demostración / Prueba Técnica</span>
                 </div>
                 <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                  Las credenciales privadas de cobro real (<code className="text-amber-100 bg-amber-950/60 px-1 rounded">MERCADO_PAGO_ACCESS_TOKEN</code>) aún no están configuradas en Vercel. Por seguridad, el sistema no solicita tarjetas de crédito reales y te permite <strong>probar la activación de los motores con $0.00 de costo</strong>.
+                  Las credenciales privadas de cobro real (<code className="text-amber-100 bg-amber-950/60 px-1 rounded">access_tokens</code> o <code className="text-amber-100 bg-amber-950/60 px-1 rounded">MERCADO_PAGO_ACCESS_TOKEN</code>) aún no están configuradas en Vercel. Por seguridad, el sistema no solicita tarjetas de crédito reales y te permite <strong>probar la activación de los motores con $0.00 de costo</strong>.
                 </p>
               </div>
             )}

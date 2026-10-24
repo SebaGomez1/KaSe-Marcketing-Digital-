@@ -157,10 +157,10 @@ const DEFAULT_FALLBACK_ENGINES: EngineHealthItem[] = [
     name: 'Pasarela de Cobros Mercado Pago Uruguay',
     category: 'infrastructure',
     platform: 'Mercado Pago Subscriptions & Checkout API',
-    requiredEnvVars: ['MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
+    requiredEnvVars: ['access_tokens', 'MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
     configuredInVercel: false,
     lastChecked: new Date().toISOString(),
-    statusText: 'Credenciales de Mercado Pago ausentes en variables de Vercel.',
+    statusText: 'Credenciales de Mercado Pago (access_tokens o MERCADO_PAGO_ACCESS_TOKEN) ausentes en variables de Vercel.',
   },
   {
     id: 'infra_gemini',
@@ -224,6 +224,16 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [isClearingErrors, setIsClearingErrors] = useState<boolean>(false);
   const [errorFilter, setErrorFilter] = useState<'ALL' | 'CRITICAL' | 'WARNING'>('ALL');
   const [copiedEnvTemplate, setCopiedEnvTemplate] = useState<boolean>(false);
+  const [serverEnvInfo, setServerEnvInfo] = useState<{
+    isVercel: boolean;
+    vercelEnv: string;
+    vercelRegion: string;
+    mpSource: string;
+    mpConfigured: boolean;
+    mpMasked: string | null;
+    serverTime: string;
+  } | null>(null);
+  const [lastScanTime, setLastScanTime] = useState<string>('');
 
   // Global Config Form State
   const [pixelCode, setPixelCode] = useState('');
@@ -460,6 +470,10 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       if (data.success && data.report) {
         setOptimalReport(data.report);
       }
+      if (data.environment) {
+        setServerEnvInfo(data.environment);
+      }
+      setLastScanTime(new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }));
     } catch (e) {
       console.warn('Error fetching optimal report:', e);
     } finally {
@@ -897,8 +911,61 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 </p>
               </div>
 
-              <div className="text-xs text-neutral-400 font-mono">
-                {configuredEnginesCount} / {totalEnginesCount} Conectados
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchOptimalReport}
+                  disabled={isScanningOptimal}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isScanningOptimal ? 'animate-spin' : ''}`} />
+                  <span>{isScanningOptimal ? 'Escaneando...' : 'Escanear Ahora en Vivo'}</span>
+                </button>
+                <div className="text-xs text-neutral-400 font-mono px-2.5 py-1 rounded bg-black border border-neutral-800">
+                  {configuredEnginesCount} / {totalEnginesCount} Conectados
+                </div>
+              </div>
+            </div>
+
+            {/* REAL-TIME ENVIRONMENT DETECTION BANNER */}
+            <div className="p-4 rounded-xl bg-black/60 border border-neutral-800 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-400">Dominio actual:</span>
+                  <span className="font-mono font-bold text-white bg-neutral-900 px-2 py-0.5 rounded border border-neutral-700">
+                    {typeof window !== 'undefined' ? window.location.host : 'localhost:3000'}
+                  </span>
+                  {typeof window !== 'undefined' && window.location.host.includes('vercel.app') ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      🟢 Producción Vercel Activa
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      🟡 Vista Previa AI Studio (Dev Container)
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-[11px] font-mono text-neutral-400">
+                  Último chequeo: <strong className="text-neutral-200">{lastScanTime || 'Al cargar'}</strong>
+                </div>
+              </div>
+
+              {/* CLARIFICATION NOTE FOR KATHY */}
+              <div className="p-3 rounded-lg bg-neutral-950 border border-cyan-500/30 text-xs space-y-1.5">
+                <div className="font-bold text-cyan-300 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Diagnóstico Transparente: ¿Por qué no detectaba `access_tokens` y cómo funciona al instante?</span>
+                </div>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  <strong>1. Nombre de Variable:</strong> Ya configuramos el sistema para que detecte de forma automática tanto <code className="text-emerald-400 bg-black px-1 rounded">access_tokens</code> (en plural, tal como lo guardaste en Vercel) como <code className="text-emerald-400 bg-black px-1 rounded">MERCADO_PAGO_ACCESS_TOKEN</code>.
+                </p>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  <strong>2. ¿Dónde se lee?:</strong> Si abres tu proyecto en tu enlace de Vercel (<code className="text-cyan-300 bg-black px-1 rounded">https://kase-marcketing-digital.vercel.app</code>), Vercel inyecta tu variable en el servidor inmediatamente tras terminar el Redeploy. En cambio, en esta ventana de vista previa de AI Studio, corre un contenedor independiente en Google Cloud.
+                </p>
+                <p className="text-[11px] text-neutral-300 leading-relaxed">
+                  <strong>3. Prueba en Vivo:</strong> Puedes pulsar el botón <em>"Probar API en Vivo"</em> en la tarjeta de Mercado Pago abajo para verificar la autenticación directa con los servidores de Mercado Pago Uruguay.
+                </p>
               </div>
             </div>
 
@@ -1953,35 +2020,39 @@ DATABASE_URL=...`}</pre>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              {/* Var 1: MERCADO_PAGO_ACCESS_TOKEN */}
+              {/* Var 1: MERCADO_PAGO_ACCESS_TOKEN & access_tokens */}
               <div className="p-3.5 bg-black rounded-xl border border-neutral-800 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-mono font-bold text-emerald-400">1. Key en Vercel:</span>
-                  <button
-                    onClick={() => handleCopy('MERCADO_PAGO_ACCESS_TOKEN', 'token_key')}
-                    className="text-[11px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono px-2 py-0.5 rounded bg-neutral-900 border border-neutral-700 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedVar === 'token_key' ? '¡Copiado!' : 'Copiar Nombre'}</span>
-                  </button>
+                  <span className="text-[11px] font-mono font-bold text-emerald-400">1. Key en Vercel (Soporta ambos nombres):</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleCopy('access_tokens', 'token_key_alt')}
+                      className="text-[10px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono px-1.5 py-0.5 rounded bg-neutral-900 border border-neutral-700 cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedVar === 'token_key_alt' ? '¡Copiado!' : 'access_tokens'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleCopy('MERCADO_PAGO_ACCESS_TOKEN', 'token_key')}
+                      className="text-[10px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono px-1.5 py-0.5 rounded bg-neutral-900 border border-neutral-700 cursor-pointer"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedVar === 'token_key' ? '¡Copiado!' : 'MERCADO_PAGO_ACCESS_TOKEN'}</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="font-mono text-xs font-bold text-white bg-neutral-900/90 px-2.5 py-1.5 rounded border border-neutral-700/80 select-all">
-                  MERCADO_PAGO_ACCESS_TOKEN
+                <div className="font-mono text-xs font-bold text-white bg-neutral-900/90 px-2.5 py-1.5 rounded border border-neutral-700/80 flex items-center justify-between select-all">
+                  <span className="text-emerald-300">access_tokens</span>
+                  <span className="text-[10px] text-neutral-400">o MERCADO_PAGO_ACCESS_TOKEN</span>
                 </div>
                 <div className="text-[11px] text-neutral-400">
-                  <span className="text-neutral-500">Valor actual en sistema: </span>
-                  {mpAccessToken ? (
+                  <span className="text-neutral-500">Detección en sistema: </span>
+                  {serverEnvInfo?.mpConfigured || mpAccessToken ? (
                     <span className="text-emerald-400 font-mono font-semibold">
-                      {mpAccessToken.slice(0, 14)}...
-                      <button
-                        onClick={() => handleCopy(mpAccessToken, 'token_val')}
-                        className="ml-2 text-[10px] text-cyan-400 underline cursor-pointer"
-                      >
-                        {copiedVar === 'token_val' ? '¡Copiado!' : 'Copiar valor'}
-                      </button>
+                      🟢 Configurado ({serverEnvInfo?.mpSource || 'Panel / Env'}) {serverEnvInfo?.mpMasked ? `[${serverEnvInfo.mpMasked}]` : ''}
                     </span>
                   ) : (
-                    <span className="text-amber-400 font-mono">No ingresado aún (pégalo abajo en el formulario)</span>
+                    <span className="text-amber-400 font-mono">No detectado aún (pégalo abajo en el formulario o en Vercel)</span>
                   )}
                 </div>
               </div>

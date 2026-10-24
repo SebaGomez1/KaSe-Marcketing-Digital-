@@ -22,6 +22,8 @@ import {
   getAllEnginesHealth,
   validateCampaignEnginesForPlan,
   scanForSensitiveDataExposure,
+  detectMercadoPagoToken,
+  testMercadoPagoApiLive,
 } from './src/lib/networkEngines.ts';
 import { generateKaSiReply, KaSiReplyResult } from './src/lib/kasiKnowledgeEngine.ts';
 
@@ -1657,7 +1659,8 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
 
   const cleanAmount = Number(amount || 490);
   const cleanTitle = title || (campaign ? `Campaña KaSe - ${campaign.name}` : 'Plan KaSe Marketing Digital');
-  const token = (kaseGlobalConfig.mercadoPagoAccessToken || process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim();
+  const mpDetected = detectMercadoPagoToken();
+  const token = (kaseGlobalConfig.mercadoPagoAccessToken || mpDetected.token || '').trim();
 
   // If a real production or test Access Token is provided, call Mercado Pago API directly
   if (token && token.length > 15) {
@@ -1848,15 +1851,25 @@ app.post('/api/payments/mercadopago/webhook', (req: Request, res: Response) => {
 
 // Endpoint para entregar la configuración y clave pública de Mercado Pago
 app.get('/api/payments/mercadopago/config', (_req: Request, res: Response): void => {
-  const publicKey = (process.env.MERCADO_PAGO_PUBLIC_KEY || kaseGlobalConfig.mercadoPagoPublicKey || '').trim();
-  const hasAccessToken = !!(process.env.MERCADO_PAGO_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
-  const isLive = !!(publicKey && hasAccessToken);
+  const mpDetected = detectMercadoPagoToken();
+  const publicKey = (
+    process.env.MERCADO_PAGO_PUBLIC_KEY ||
+    process.env.public_key ||
+    process.env.PUBLIC_KEY ||
+    process.env.MP_PUBLIC_KEY ||
+    kaseGlobalConfig.mercadoPagoPublicKey ||
+    ''
+  ).trim();
+  const hasAccessToken = !!(mpDetected.token || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
+  const isLive = hasAccessToken;
   
   res.json({
     success: true,
     hasConfig: isLive,
     isLive,
     publicKey: publicKey || null,
+    source: mpDetected.source,
+    maskedToken: mpDetected.maskedToken || null,
     gateway: 'Mercado Pago Uruguay',
     environment: isLive ? 'production' : 'demo_sandbox'
   });
@@ -2273,7 +2286,7 @@ app.get('/api/engines/status', (_req: Request, res: Response): void => {
       postgresConfigured: isPostgresConfigured,
     },
     paymentGateway: {
-      mercadoPagoConfigured: !!(process.env.MERCADO_PAGO_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken),
+      mercadoPagoConfigured: detectMercadoPagoToken().isConfigured || !!kaseGlobalConfig.mercadoPagoAccessToken,
     },
   });
 });
@@ -2534,7 +2547,8 @@ app.post('/api/admin/create-test-plan-campaign', async (req: Request, res: Respo
   saveCampaignsToFile();
 
   // Create checkout preference with real token if present
-  const token = (kaseGlobalConfig.mercadoPagoAccessToken || process.env.MERCADO_PAGO_ACCESS_TOKEN || '').trim();
+  const mpTestDetected = detectMercadoPagoToken();
+  const token = (kaseGlobalConfig.mercadoPagoAccessToken || mpTestDetected.token || '').trim();
   let prefId = `mp_pref_test_1usd_${Date.now()}`;
   let checkoutUrl = `https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=${prefId}`;
   let isLive = false;
@@ -2696,8 +2710,19 @@ app.get('/api/system/optimal-performance', (_req: Request, res: Response): void 
       ? 'DEGRADED'
       : 'BLOCKED_PENDING_APIS';
 
+    const mpInfo = detectMercadoPagoToken();
+
     res.json({
       success: true,
+      environment: {
+        isVercel: !!process.env.VERCEL,
+        vercelEnv: process.env.VERCEL_ENV || (process.env.VERCEL ? 'production' : 'local_preview'),
+        vercelRegion: process.env.VERCEL_REGION || 'local',
+        mpSource: mpInfo.source,
+        mpConfigured: mpInfo.isConfigured,
+        mpMasked: mpInfo.maskedToken || null,
+        serverTime: new Date().toISOString(),
+      },
       report: {
         overallHealth,
         securityScore: sensitiveScan.securityScore,
@@ -2715,6 +2740,15 @@ app.get('/api/system/optimal-performance', (_req: Request, res: Response): void 
   }
 });
 
+app.get('/api/system/test-mercadopago-live', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const liveCheck = await testMercadoPagoApiLive();
+    res.json({ success: liveCheck.success, ...liveCheck });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/system/test-engine', async (req: Request, res: Response): Promise<void> => {
   try {
     const { moduleKey } = req.body;
@@ -2724,6 +2758,38 @@ app.post('/api/system/test-engine', async (req: Request, res: Response): Promise
     if (!target) {
       res.status(404).json({ error: 'Motor no reconocido' });
       return;
+    }
+
+    // Special live verification for Mercado Pago
+    if (moduleKey === 'mercadopago') {
+      const liveMpResult = await testMercadoPagoApiLive();
+      if (liveMpResult.success) {
+        res.json({
+          success: true,
+          engine: { ...target, latencyMs: liveMpResult.latencyMs, configuredInVercel: true },
+          pingStatus: 'HEALTHY_CONNECTED',
+          latencyMs: liveMpResult.latencyMs,
+          message: liveMpResult.message,
+          details: liveMpResult,
+        });
+        return;
+      } else {
+        logSystemError(
+          'WARNING',
+          'Test Mercado Pago en Vivo',
+          'mercadopago',
+          liveMpResult.message
+        );
+        res.json({
+          success: false,
+          engine: target,
+          pingStatus: liveMpResult.status,
+          latencyMs: liveMpResult.latencyMs,
+          message: liveMpResult.message,
+          details: liveMpResult,
+        });
+        return;
+      }
     }
 
     if (!target.configuredInVercel) {
