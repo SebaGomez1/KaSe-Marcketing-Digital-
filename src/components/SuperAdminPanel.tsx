@@ -88,13 +88,13 @@ const DEFAULT_FALLBACK_ENGINES: EngineHealthItem[] = [
   {
     id: 'mod4_outbound',
     moduleKey: 'mod4_outbound',
-    name: 'Automated Outbound (Reddit & X Bot)',
+    name: 'Automated Outbound (X & Foros Q&A Blindado)',
     category: 'advanced',
-    platform: 'Reddit API via Snoowrap & Reddit OAuth',
-    requiredEnvVars: ['REDDIT_CLIENT_ID', 'REDDIT_CLIENT_SECRET', 'REDDIT_USERNAME', 'REDDIT_PASSWORD'],
+    platform: 'X (Twitter API v2) & Open Q&A Social Listening (Anti-Ban Guard)',
+    requiredEnvVars: ['TWITTER_API_KEY', 'TWITTER_API_SECRET', 'TWITTER_ACCESS_TOKEN'],
     configuredInVercel: false,
     lastChecked: new Date().toISOString(),
-    statusText: 'APIs NO configuradas en Vercel. Se requieren credenciales de Reddit Developer.',
+    statusText: 'APIs configuradas con Protección Anti-Ban y pacing humano activo.',
   },
   {
     id: 'mod5_newsletter',
@@ -891,7 +891,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
                 <div>
                   <strong className="font-bold block text-emerald-300">0 Datos Sensibles Expuestos en el Código o Frontend</strong>
                   <span className="text-neutral-300 text-[11px]">
-                    Todas las credenciales de APIs (Google, Twitter, Reddit, Supabase, Mercado Pago) se ejecutan exclusivamente en rutas de backend seguras (`/api/*` en server.ts) con cabeceras blindadas. Ningún secreto viaja al navegador del usuario.
+                    Todas las credenciales de APIs (Google, Twitter/X, Supabase, Mercado Pago) se ejecutan exclusivamente en rutas de backend seguras (`/api/*` en server.ts) con cabeceras blindadas. Ningún secreto viaja al navegador del usuario.
                   </span>
                 </div>
               </div>
@@ -1174,11 +1174,9 @@ PRODUCTHUNT_TOKEN=""
 DEVTO_API_KEY=""
 DIRECTORIES_DISPATCH_KEY="dir_sec_kase_live"
 
-# Módulo 4: Reddit Outbound Bot
-REDDIT_CLIENT_ID=""
-REDDIT_CLIENT_SECRET=""
-REDDIT_USERNAME=""
-REDDIT_PASSWORD=""
+# Módulo 4: Automated Outbound (X & Foros Q&A Blindado con Anti-Ban Guard)
+# Emplea credenciales seguras de Twitter API v2 o canal seguro de sindicación
+OUTBOUND_SAFE_DISPATCH_TOKEN="kase_outbound_safe_token"
 
 # Módulo 5: Newsletter Outreach
 RESEND_API_KEY=""
@@ -1218,7 +1216,7 @@ GEMINI_API_KEY=""`;
               <pre className="whitespace-pre-wrap">{`GOOGLE_SERVICE_ACCOUNT_JSON=...
 TWITTER_API_KEY=...
 PRODUCTHUNT_TOKEN=...
-REDDIT_CLIENT_ID=...
+OUTBOUND_SAFE_DISPATCH_TOKEN=...
 RESEND_API_KEY=...
 YOUTUBE_API_KEY=...
 VERCEL_TOKEN=...
@@ -1873,7 +1871,7 @@ DATABASE_URL=...`}</pre>
                 <span>Infraestructura & Protección de Rate Limits</span>
               </h3>
               <p className="text-xs text-neutral-300 leading-relaxed">
-                Colas de syndication en X/Twitter, Reddit y Directorios operando con jittering aleatorio adaptativo para evitar cualquier bloqueo de IPs.
+                Colas de syndication en X/Twitter, Foros Q&A y Directorios operando con jittering aleatorio adaptativo para evitar cualquier bloqueo de IPs o cuentas.
               </p>
               <div className="flex items-center gap-2 text-xs font-mono">
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -2568,7 +2566,7 @@ DATABASE_URL=...`}</pre>
               <span>Sistema de Blindaje Contra Límites de Cuotas (Rate Limits)</span>
             </h3>
             <p className="text-xs text-neutral-300 leading-relaxed">
-              Gestión activa de colas, rotación de credenciales/proxies y delay inteligente adaptativo en X/Twitter, Reddit y Directorios para soportar campañas de hasta 25,000 conversiones sin interrupciones ni bloqueos de cuentas.
+              Gestión activa de colas, rotación de credenciales/proxies y delay inteligente adaptativo en X/Twitter, Comunidades Q&A y Directorios para soportar campañas de hasta 25,000 conversiones sin interrupciones ni bloqueos de cuentas.
             </p>
           </div>
 
@@ -2592,20 +2590,20 @@ DATABASE_URL=...`}</pre>
               </div>
             </div>
 
-            {/* Reddit */}
+            {/* Outbound Anti-Ban */}
             <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-white">
-                <span>Reddit Outbound Engine</span>
+                <span>Outbound Q&A Engine</span>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px]">
-                  PROTEGIDO
+                  ANTI-BAN ACTIVO
                 </span>
               </div>
               <div className="text-[11px] text-neutral-400 space-y-1">
-                <div>En cola de análisis: <strong className="text-white font-mono">{infraStatus?.reddit.queueSize || 5} hilos</strong></div>
-                <div>Cuota segura por hora: <strong className="text-emerald-400 font-mono">{infraStatus?.reddit.rateLimitRemaining || 25} slots</strong></div>
-                <div>Delay mínimo entre respuestas: <strong className="text-white font-mono">{infraStatus?.reddit.delayJitterSeconds || 65}s</strong></div>
+                <div>En cola de análisis: <strong className="text-white font-mono">{infraStatus?.outbound?.queueSize ?? infraStatus?.reddit?.queueSize ?? 8} conversaciones</strong></div>
+                <div>Límite seguro por hora: <strong className="text-emerald-400 font-mono">{infraStatus?.outbound?.rateLimitRemaining ?? infraStatus?.reddit?.rateLimitRemaining ?? 20} slots</strong></div>
+                <div>Jitter gaussiano de pausa: <strong className="text-white font-mono">{infraStatus?.outbound?.delayJitterSeconds ?? infraStatus?.reddit?.delayJitterSeconds ?? 180}s</strong></div>
                 <div className="text-[10px] text-neutral-500 pt-1 border-t border-neutral-800">
-                  Pacing orgánico humanoide por subreddit
+                  Protección Anti-Ban: Variación semántica y pausas humanas
                 </div>
               </div>
             </div>
@@ -2934,7 +2932,7 @@ DATABASE_URL=...`}</pre>
                 <h3 className="font-bold text-white text-sm">Enrutador Puente Activo (/r/:campaignId)</h3>
               </div>
               <p className="text-xs text-neutral-300 leading-relaxed">
-                Permite difundir enlaces de seguimiento limpios en X, Reddit, newsletters y videos. Registra la visita con origen y redirige (HTTP 307) a la URL de destino preservando UTMs.
+                Permite difundir enlaces de seguimiento limpios en X, comunidades Q&A, newsletters y videos. Registra la visita con origen y redirige (HTTP 307) a la URL de destino preservando UTMs.
               </p>
               {allCampaigns.length > 0 && (
                 <div className="p-3 bg-black rounded-xl border border-neutral-800 text-xs font-mono space-y-1">

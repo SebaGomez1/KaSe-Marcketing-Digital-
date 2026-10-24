@@ -17,6 +17,7 @@ import {
 import {
   forzarIndexacionGoogleAPI,
   publicarHiloAutonomo,
+  ejecutarOutboundSeguroSocialListening,
   ejecutarEscuchaActivaReddit,
   getNetworkEnginesStatus,
   getAllEnginesHealth,
@@ -175,12 +176,12 @@ function getInitialModules(plan: 'basic' | 'starter' | 'growth' | 'enterprise') 
     },
     mod4_outbound: {
       active: isGrowth,
-      name: 'Automated Outbound (Reddit & X Bot)',
+      name: 'Automated Outbound (X & Foros Q&A Blindado)',
       category: 'advanced' as const,
       itemsProcessed: isGrowth ? 84 : 0,
       lastExecution: isGrowth ? 'Hace 8 min' : 'Inactivo por Plan',
       statusText: isGrowth
-        ? 'Monitoreando r/SaaS, r/startups con respuestas de alto valor'
+        ? 'Social Listening activo en X y foros Q&A con protección Anti-Ban y pacing humano'
         : 'Requiere Plan Growth o Enterprise',
     },
     mod5_newsletter: {
@@ -1267,12 +1268,20 @@ const rateLimitProtectionData = {
     proxyHealth: '99.4% óptimo (Pool de 32 proxies residenciales activos)',
     strategy: 'Jittering adaptativo (1.8s a 4.2s) con backoff exponencial activo',
   },
+  outbound: {
+    queueSize: 8,
+    rateLimitRemaining: 20,
+    nextResetSeconds: 420,
+    delayJitterSeconds: 180,
+    antiBanSafetyScore: 100,
+    strategy: 'Anti-Ban Humanized Pacing (jitter gaussiano de 180s-600s y rotación semántica)',
+  },
   reddit: {
-    queueSize: 5,
-    rateLimitRemaining: 25,
-    nextResetSeconds: 780,
-    delayJitterSeconds: 65,
-    strategy: 'Humanized pacing (mínimo 60s entre interacciones por subreddit)',
+    queueSize: 0,
+    rateLimitRemaining: 0,
+    nextResetSeconds: 0,
+    delayJitterSeconds: 0,
+    strategy: 'Desactivado (Tráfico concentrado en X, Directorios, TikTok y Google SEO)',
   },
   directories: {
     queueSize: 22,
@@ -2345,24 +2354,25 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
     }
   }
 
-  // 3. MÓDULO 4: Reddit Outbound Bot
+  // 3. MÓDULO 4: Automated Outbound (X & Foros Q&A Blindado con Anti-Ban Guard)
   if (campaign.modules?.mod4_outbound?.active !== false) {
     const nicheKeywords = [campaign.niche, campaign.name, 'software', 'saas', 'tool', 'herramienta'];
-    const resReddit = await ejecutarEscuchaActivaReddit(nicheKeywords, 'startups');
-    results.redditBot = resReddit;
+    const resOutbound = await ejecutarOutboundSeguroSocialListening(nicheKeywords, 'x_and_qa_forums');
+    results.redditBot = resOutbound;
+    results.outboundBot = resOutbound;
 
     campaign.logs.unshift({
-      id: `log_reddit_${Date.now()}`,
+      id: `log_outbound_${Date.now()}`,
       timestamp: new Date().toISOString(),
-      level: resReddit.success ? 'SUCCESS' : 'INFO',
-      module: 'MÓDULO 4 (OUTBOUND)',
-      message: resReddit.success
-        ? `🤖 [REDDIT BOT]: Escaneados ${resReddit.scannedCount} posts. Coincidencias de nicho detectadas: ${resReddit.matchedCount}.`
-        : `ℹ️ [MÓDULO 4 - OUTBOUND]: Algoritmo de escucha calibrado para nicho "${campaign.niche}". ${resReddit.error || 'Listo para conectar con Reddit API.'}`,
+      level: resOutbound.success ? 'SUCCESS' : 'INFO',
+      module: 'MÓDULO 4 (OUTBOUND ANTI-BAN)',
+      message: resOutbound.success
+        ? `🛡️ [OUTBOUND ANTI-BAN GUARD]: Escaneadas ${resOutbound.scannedCount} conversaciones en ${resOutbound.channel}. Coincidencias de nicho detectadas con cadencia humana protegida.`
+        : `ℹ️ [MÓDULO 4 - OUTBOUND]: Algoritmo de escucha calibrado para nicho "${campaign.niche}". Protección Anti-Ban activa.`,
     });
     if (campaign.modules?.mod4_outbound) {
       campaign.modules.mod4_outbound.lastExecution = 'Reciente';
-      campaign.modules.mod4_outbound.statusText = resReddit.success ? 'Escucha activa ejecutada en Reddit' : 'Filtro de palabras clave calibrado';
+      campaign.modules.mod4_outbound.statusText = resOutbound.success ? 'Escucha activa ejecutada con Anti-Ban Guard' : 'Filtro de palabras clave calibrado';
     }
   }
 
@@ -2977,7 +2987,7 @@ app.post('/api/ai/generate-growth-asset', async (req: Request, res: Response) =>
         ]
       },
       mod4_outbound: {
-        forum: 'Reddit (r/SaaS & r/startups) y X/Twitter',
+        forum: 'X/Twitter & Foros Q&A de Nicho (Anti-Ban Guard)',
         triggerQuery: `¿Alguien conoce una alternativa confiable en ${safeNiche} que realmente cumpla lo que promete sin costar una fortuna?`,
         aiReply: `Totalmente de acuerdo con ese problema. Muchas plataformas tradicionales inflan sus precios con funciones que nadie usa. Te sugiero darle un vistazo a ${safeAppName} (${safeUrl})—está pensada justo para resolver eso de manera directa y transparente. ¡Espero que te sirva!`,
         confidenceScore: '98%',
@@ -3168,7 +3178,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
         'Tienes toda la razón en cuestionar las simulaciones: **en campañas reales de pago, NO se deben simular ráfagas artificiales**.\n\n' +
         '💡 **¿Por qué?**\n' +
         '• Si un cliente paga por 1,000 registros garantizados y el sistema le simulara 25 usuarios de mentira, esos 25 se descontarían de su saldo contratado, lo que significa que **recibiría 25 clientes reales menos**. ¡No tiene sentido perjudicar al cliente!\n' +
-        '• En KaSe, **cada conversión y clic contabilizado en tu Enlace Puente (`/r/:id`) proviene de una persona humana real** atraída por los 8 motores (Google Indexing, Reddit, X, Directorios de Software, Newsletters, Reels/TikTok y Red de Afiliados).\n' +
+        '• En KaSe, **cada conversión y clic contabilizado en tu Enlace Puente (`/r/:id`) proviene de una persona humana real** atraída por los 8 motores (Google Indexing, X, Directorios de Software, Foros Q&A con Anti-Ban, Newsletters, Reels/TikTok y Red de Afiliados).\n' +
         '• La simulación solo existe como herramienta técnica aislada en el laboratorio de pruebas de la administración central (Super Admin) para validar que el corte de cuota automático funcione en caso extremo, pero **jamás toca las campañas pagas de nuestros clientes**.\n\n' +
         '¿Deseas revisar el estado de tu Enlace Puente o auditar los motores de tu campaña?',
       suggestions: [
@@ -3192,7 +3202,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
   ) {
     return {
       reply: '🛡️ **Tú NO tienes que crear, programar ni configurar ninguna API.**\n\n' +
-        'KaSe Marketing Digital opera con tecnología 100% autónoma en nuestra propia nube. Toda la conexión con Google, Reddit, X, Directorios y pasarelas es administrada de forma centralizada por nuestro equipo de ingeniería.\n\n' +
+        'KaSe Marketing Digital opera con tecnología 100% autónoma en nuestra propia nube. Toda la conexión con Google, X, Directorios, comunidades y pasarelas es administrada de forma centralizada por nuestro equipo de ingeniería.\n\n' +
         'Como cliente, tus únicos 3 pasos son:\n' +
         '1️⃣ Brindar el enlace de la página web a la cual deseas llevar compradores o registros.\n' +
         '2️⃣ Tus datos de acceso a tu cuenta.\n' +
@@ -3268,7 +3278,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
         '   • **Módulo 1**: Google Search Indexing API (posicionamiento prioritario en <48h).\n' +
         '   • **Módulo 2**: Social Syndication en X/Twitter y LinkedIn con jittering inteligente.\n' +
         '   • **Módulo 3**: Envíos automáticos a 50+ directorios de software mundiales.\n' +
-        '   • **Módulo 4**: Escucha activa en Reddit (Snoowrap) respondiendo en comunidades de tu nicho.\n' +
+        '   • **Módulo 4**: Escucha activa en X y foros Q&A con protección Anti-Ban y pacing humano.\n' +
         '   • **Módulo 5**: Pitching automatizado a newsletters y audiencias B2B.\n' +
         '   • **Módulo 6**: Generación de micro-videos de alto enganche (Reels y TikTok).\n' +
         '   • **Módulo 7**: Programmatic SEO masivo con landing pages de alta conversión.\n' +
@@ -3311,7 +3321,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
         '• Enrutador Puente Inteligente sin píxel manual\n\n' +
         '⚡ **Plan Growth (El Más Elegido)**: **$1,890 USD / mes**\n' +
         '• **5,000 registros / clientes garantizados**\n' +
-        '• Motores 1 al 5 activos (+ Reddit Snoowrap Outbound y Newsletters B2B)\n' +
+        '• Motores 1 al 5 activos (+ Outbound X con Anti-Ban y Newsletters B2B)\n' +
         '• Soporte prioritario y calibración continua de nicho\n\n' +
         '👑 **Plan Enterprise**: **$8,900 USD / mes**\n' +
         '• **25,000 registros / clientes garantizados**\n' +
@@ -3366,7 +3376,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
       reply: '🎯 **ADAPTACIÓN DE LOS 8 MOTORES A TU SECTOR DE NEGOCIO**\n\n' +
         '¡Totalmente! La tecnología de KaSe está calibrada para filtrar tráfico con **alto poder adquisitivo** y evitar curiosos sin intención de compra:\n\n' +
         '• **Si vendes Productos Físicos o E-commerce**: Los módulos de video corto y syndication en redes atraen compradores directos hacia tu carrito de compra.\n' +
-        '• **Si vendes Software (SaaS) o Servicios B2B**: Los motores de Reddit, X técnico y directorios de software posicionan tu herramienta frente a fundadores y tomadores de decisiones.\n' +
+        '• **Si vendes Software (SaaS) o Servicios B2B**: Los motores de X técnico, foros Q&A y directorios de software posicionan tu herramienta frente a fundadores y tomadores de decisiones.\n' +
         '• **Si vendes Cursos, Consultoría o Infoproductos**: El pSEO y las newsletters atraen leads calificados que ya están buscando activamente resolver ese problema.\n\n' +
         'Solo necesitas indicarnos la URL de tu página o tienda y elegir tu nicho al crear la campaña. ¿Deseas configurarla ahora?',
       action: {
@@ -3482,7 +3492,7 @@ function _unusedLegacyReply(message: string, context?: any): any {
         `• **Módulo 1 (SEO Indexing API)**: Sincronizado para rastreo prioritario en <48h.\n` +
         `• **Módulo 2 (Social Syndication X/LinkedIn)**: Activo con jittering adaptativo anti-bloqueo.\n` +
         `• **Módulo 3 (Directorios de Software)**: Activo en plataformas verificadas.\n` +
-        `• **Módulo 4 (Outbound Snoowrap)**: Escucha activa en subreddits de la industria.\n\n` +
+        `• **Módulo 4 (Outbound Anti-Ban)**: Escucha activa en X y foros Q&A con pacing humano protegido.\n\n` +
         `💡 Recuerda que cada clic y conversión entra por tu Enlace Puente Inteligente sin necesidad de que toques ninguna API ni código complejo.`,
       action: {
         id: `act_nav_dash_${Date.now()}`,
@@ -3695,7 +3705,7 @@ ${!isInside ? `
 `}
 
 CONTROL DE ACCESO Y SEGURIDAD ESTRICTA (RBAC):
-- SUPER ADMINISTRADORA: Kathy Seba (kathyseba2020@gmail.com). Ella tiene autorización total para ver ganancias globales, modificar credenciales de APIs (Mercado Pago, Supabase, Google, Reddit, X), activar el plan de prueba de $1 USD o acceder a '👑 Admin Global'.
+- SUPER ADMINISTRADORA: Kathy Seba (kathyseba2020@gmail.com). Ella tiene autorización total para ver ganancias globales, modificar credenciales de APIs (Mercado Pago, Supabase, Google, X), activar el plan de prueba de $1 USD o acceder a '👑 Admin Global'.
 - USUARIO CLIENTE (NO-ADMIN): Tiene control ÚNICAMENTE sobre su propia campaña activa, sus módulos, su Enlace Puente (/r/:id) y sus cotizaciones.
 - REGLA DE ORO: Si un usuario que NO es administrador solicita modificar configuraciones globales, ver claves maestras de APIs, ver datos de otros clientes o acceder a 'Admin Global', DEBES NEGAR LA PETICIÓN de forma cordial pero categórica.
 

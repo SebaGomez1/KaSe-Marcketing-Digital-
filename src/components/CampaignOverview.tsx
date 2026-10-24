@@ -423,7 +423,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
                 </span>
               </div>
               <p className="text-neutral-400 text-[11px] leading-relaxed">
-                Outbound en Reddit & X con respuestas de valor contextual y motor de pitching para newsletters.
+                Outbound en X & Foros Q&A con respuestas de valor contextual, protección Anti-Ban y motor de pitching para newsletters.
               </p>
             </div>
 

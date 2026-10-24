@@ -144,7 +144,8 @@ export interface GlobalKaSeConfig {
 
 export interface RateLimitStatus {
   twitter: { queueSize: number; rateLimitRemaining: number; nextResetSeconds: number; proxyHealth: string };
-  reddit: { queueSize: number; rateLimitRemaining: number; nextResetSeconds: number; delayJitterSeconds: number };
+  outbound: { queueSize: number; rateLimitRemaining: number; nextResetSeconds: number; delayJitterSeconds: number; antiBanSafetyScore?: number };
+  reddit?: { queueSize: number; rateLimitRemaining: number; nextResetSeconds: number; delayJitterSeconds: number; antiBanSafetyScore?: number };
   directories: { queueSize: number; activeProxies: number; healthyProxiesCount: number };
   ipWarmingMod5: {
     warmupDay: number;
@@ -277,12 +278,12 @@ export const GROWTH_MODULES_CATALOG: ModuleDefinition[] = [
   {
     id: 'mod4_outbound',
     number: 4,
-    title: 'Automated Outbound (Reddit & X Bot)',
-    subtitle: 'Escucha Social Activa & Respuestas Contextuales',
-    description: 'Detección de usuarios con problemas reales en foros y respuestas con IA.',
-    purpose: 'Captar clientes que están activamente quejándose o buscando una solución como la tuya ahora mismo.',
-    howItWorks: 'Monitorea en segundo plano palabras clave de dolor en comunidades como Reddit (r/SaaS, r/startups) y X. Cuando alguien pide una recomendación, la IA redacta una respuesta útil, sincera y propone tu app como solución.',
-    deliverable: 'Intervenciones naturales en discusiones de alto tráfico que convierten a usuarios interesados en registrados.',
+    title: 'Automated Outbound (X & Foros Q&A Blindado)',
+    subtitle: 'Escucha Social Inteligente & Respuestas de Alto Valor Anti-Ban',
+    description: 'Detección en tiempo real de intención de compra en X/Twitter, Quora y foros abiertos con cadencia humana protegida.',
+    purpose: 'Captar clientes que están activamente buscando una solución a su problema ahora mismo sin riesgo de spam ni bloqueos de cuentas.',
+    howItWorks: 'Monitorea palabras clave de alta intención en X/Twitter y comunidades abiertas de preguntas y respuestas. La IA genera respuestas de valor educativo con pausas adaptativas (jitter estocástico de 180s a 600s), rotación de variaciones semánticas y control de frecuencia para blindar tus cuentas contra cualquier penalización.',
+    deliverable: 'Intervenciones humanas orgánicas con alto engagement que canalizan tráfico con alta intención de compra.',
     category: 'advanced',
     requiredPlan: 'growth',
     accentColor: 'text-indigo-400',

@@ -160,7 +160,7 @@ export const ModulesGrid: React.FC<ModulesGridProps> = ({
                   : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
               }`}
             >
-              Growth: Reddit & Newsletters (4, 5)
+              Growth: Outbound X & Newsletters (4, 5)
             </button>
             <button
               onClick={() => setActiveFilter('enterprise')}
@@ -342,7 +342,7 @@ export const ModulesGrid: React.FC<ModulesGridProps> = ({
               <span>Generación y Publicación Multicanal</span>
             </div>
             <p className="text-neutral-300 leading-relaxed text-[11px]">
-              Los 8 módulos redactan contenido especializado según su canal (artículos SEO para Google, hilos en X, respuestas en Reddit, micro-videos virales o fichas de directorios), incorporando automáticamente tu Enlace Puente Inteligente.
+              Los 8 módulos redactan contenido especializado según su canal (artículos SEO para Google, hilos en X, respuestas de alto valor en foros Q&A con protección Anti-Ban, micro-videos virales o fichas de directorios), incorporando automáticamente tu Enlace Puente Inteligente.
             </p>
           </div>
 

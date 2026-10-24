@@ -88,7 +88,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
       reply: '🛡️ **POLÍTICA DE TRÁFICO 100% HUMANO Y CUOTA PROTEGIDA EN KaSe**\n\n' +
         'Tienes toda la razón en dudar de las simulaciones: **en campañas reales de pago, NO se deben simular ráfagas artificiales**.\n\n' +
         '• **Por qué no simulamos**: Si pagas por 1,000 registros y el sistema te simulara 25 usuarios ficticios, esos 25 se descontarían de tu saldo contratado, lo que significa que **recibirías 25 clientes reales menos**. ¡No tiene sentido perjudicar tu negocio!\n' +
-        '• **Tráfico 100% Real**: Cada clic y conversión en tu Enlace Puente (`/r/:id`) proviene de personas reales atraídas por los 8 motores (Google Indexing, Reddit, X, Directorios de Software, Newsletters, Reels/TikTok y Afiliados).\n' +
+        '• **Tráfico 100% Real**: Cada clic y conversión en tu Enlace Puente (`/r/:id`) proviene de personas reales atraídas por los 8 motores (Google Indexing, X, Directorios de Software, Foros Q&A con Anti-Ban, Newsletters, Reels/TikTok y Afiliados).\n' +
         '• **Auto-Pausa Segura**: Cumplida tu meta contratada, los motores se detienen automáticamente para que nunca pagues de más.' +
         subtlePitch,
       action: !isInside ? {
@@ -133,7 +133,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
 
     return {
       reply: '🛡️ **TÚ NO TIENES QUE CREAR, PROGRAMAR NI CONFIGURAR NINGUNA API.**\n\n' +
-        'KaSe Marketing Digital opera con tecnología 100% autónoma en nuestra nube. Toda la conexión con Google Search Console, Reddit, X, Directorios y pasarelas es administrada de forma centralizada por nuestro equipo de ingeniería.\n\n' +
+        'KaSe Marketing Digital opera con tecnología 100% autónoma en nuestra nube. Toda la conexión con Google Search Console, X, Directorios, comunidades y pasarelas es administrada de forma centralizada por nuestro equipo de ingeniería.\n\n' +
         'Como usuario, tus únicos 3 pasos son:\n' +
         '1️⃣ Brindar el enlace de la página web a la cual deseas llevar compradores o registros.\n' +
         '2️⃣ Tus datos de acceso a tu cuenta.\n' +
@@ -269,7 +269,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
           '1️⃣ **Indexación Relámpago**: Módulo 1 envía tus URLs a Google Indexing API para posicionarte en menos de 48 horas.\n' +
           '2️⃣ **Syndication Social**: Módulo 2 publica hilos de alto valor en X/Twitter y LinkedIn.\n' +
           '3️⃣ **Directorios Globales**: Módulo 3 lista tu producto en 50+ directorios de software.\n' +
-          '4️⃣ **Reddit & Newsletters**: Módulos 4 y 5 ejecutan escucha activa y pitch B2B para compradores listos.\n' +
+          '4️⃣ **Outbound X & Newsletters**: Módulos 4 y 5 ejecutan escucha activa de alta intención en X y foros Q&A con protección Anti-Ban y pitch B2B para compradores listos.\n' +
           '5️⃣ **Viralidad & SEO Masivo**: Módulos 6, 7 y 8 generan micro-videos (Reels/TikTok), miles de páginas pSEO y alianzas con influencers.\n\n' +
           'Todo el tráfico llega filtrado a tu web a través del Enrutador Puente (`/r/:id`), sumando +1 de forma atómica y apagándose cuando se alcanza la meta contratada.\n\n' +
           '👉 **Para ver los motores en acción y configurar tu primera campaña, crea tu cuenta gratuita ahora:**',
@@ -292,10 +292,10 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
         reply: '🚀 **ARQUITECTURA DE TUS 8 MOTORES AUTÓNOMOS · KaSe**\n\n' +
           'Tu plataforma está respaldada por una infraestructura monolítica de alto rendimiento:\n\n' +
           '• **Módulos Base (1, 2, 3)**: Google Indexing API + X/LinkedIn + 50 Directorios. (Incluidos en Plan Starter).\n' +
-          '• **Módulos Growth (4, 5)**: Reddit Snoowrap Outbound + Newsletters B2B. Multiplican por 5 tu alcance calificado.\n' +
+          '• **Módulos Growth (4, 5)**: Outbound en X y Foros Q&A con Anti-Ban Guard + Newsletters B2B. Multiplican por 5 tu alcance calificado.\n' +
           '• **Módulos Enterprise (6, 7, 8)**: TikTok/Reels virales + Programmatic SEO masivo + Red de 30% con influencers.\n\n' +
           (camp
-            ? `💡 **Venta Sutil**: Tu campaña activa *"${campName}"* tiene activos los módulos de tu plan actual. Si deseas dar el salto a captar 5,000 clientes con Reddit y Newsletters, el **Plan Growth ($1,890)** es la mejor inversión para escalar rápidamente.`
+            ? `💡 **Venta Sutil**: Tu campaña activa *"${campName}"* tiene activos los módulos de tu plan actual. Si deseas dar el salto a captar 5,000 clientes con Outbound X y Newsletters, el **Plan Growth ($1,890)** es la mejor inversión para escalar rápidamente.`
             : `💡 **Sugerencia**: Como tus motores están esperando, dar de alta tu primera campaña hoy pondrá a trabajar de inmediato a Google y las redes a tu favor. ¿La creamos ahora?`),
         action: {
           id: `act_nav_plans_${Date.now()}`,
@@ -337,7 +337,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
         reply: '💳 **PLANES Y PRECIOS TRANSPARENTES · KaSe MARKETING**\n\n' +
           'Solo pagas por **resultados garantizados y usuarios reales**. Pasarela oficial con Mercado Pago Uruguay:\n\n' +
           '🌱 **Starter**: **$490 USD / mes** ➔ 1,000 clientes/registros garantizados.\n' +
-          '⚡ **Growth**: **$1,890 USD / mes** ➔ 5,000 clientes garantizados + Reddit Snoowrap y Newsletters.\n' +
+          '⚡ **Growth**: **$1,890 USD / mes** ➔ 5,000 clientes garantizados + Outbound X con Anti-Ban y Newsletters.\n' +
           '👑 **Enterprise**: **$8,900 USD / mes** ➔ 25,000 clientes garantizados + TikTok/Reels virales y pSEO masivo.\n\n' +
           '🔒 Sin cobros ocultos ni costos por clic imprevistos. Cumplida la meta, se auto-pausa.\n\n' +
           '👉 **Para elegir tu plan y comenzar, crea tu cuenta gratuita en 30 segundos:**',
@@ -359,7 +359,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
       return {
         reply: '💳 **GESTIÓN DE PLANES Y COBROS · MERCADO PAGO URUGUAY**\n\n' +
           '• **Plan Starter ($490 USD)**: 1,000 registros garantizados. Ideal para validar un producto.\n' +
-          '• **Plan Growth ($1,890 USD)**: 5,000 registros garantizados + Reddit Outbound y Newsletters B2B. *(El más rentable por costo por lead)*.\n' +
+          '• **Plan Growth ($1,890 USD)**: 5,000 registros garantizados + Outbound X con Anti-Ban y Newsletters B2B. *(El más rentable por costo por lead)*.\n' +
           '• **Plan Enterprise ($8,900 USD)**: 25,000 registros garantizados + los 8 motores a máxima frecuencia.\n\n' +
           (isSuperAdmin
             ? '🧪 **Autoprueba de $1.00 USD (Kathy Seba)**: Tienes habilitada la prueba de $1.00 USD para verificar la acreditación bancaria en tu cuenta de Mercado Pago.'
@@ -412,7 +412,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
         reply: '🎯 **ADAPTACIÓN TOTAL A TU SECTOR DE NEGOCIO**\n\n' +
           '¡Totalmente! KaSe cuenta con filtros de targeting algorítmico para atraer **compradores reales con tarjeta en mano** y descartar curiosos:\n\n' +
           '• **E-commerce y Moda**: Micro-videos virales y syndication visual hacia tu catálogo.\n' +
-          '• **SaaS y Software B2B**: Reddit técnico, X y directorios de software mundial.\n' +
+          '• **SaaS y Software B2B**: X técnico, comunidades Q&A y directorios de software mundial.\n' +
           '• **Cursos y Servicios Profesionales**: pSEO en Google para personas con intención de compra inmediata.\n\n' +
           '👉 **Regístrate gratis ahora mismo** para seleccionar tu nicho y lanzar tu primera campaña:',
         action: {
@@ -432,7 +432,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
     } else {
       return {
         reply: '🎯 **CALIBRACIÓN DE NICHO PARA TU CUENTA · KaSe**\n\n' +
-          `Nuestros 8 motores ya cuentan con librerías de keywords y subreddits adaptados a tu sector.\n\n` +
+          `Nuestros 8 motores ya cuentan con librerías de keywords y clusters de intención adaptados a tu sector.\n\n` +
           `💡 **Estrategia Comercial Sugerida**: La mayoría de nuestros clientes con mejores resultados activan una campaña principal para su producto estrella y una **segunda campaña complementaria** para ofertas estacionales o paquetes de mayor ticket.\n\n` +
           `¿Deseas que preparemos una nueva campaña específica para tu nicho?`,
         action: {
@@ -702,7 +702,7 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
       if (pct >= 60) {
         growthPitch = `\n\n📈 **Venta Sutil de Escalamiento**: Ya has alcanzado el **${pct}% de tu meta**. Al llegar al 100%, el sistema se auto-apaga para protegerte. Si deseas mantener el flujo de ventas activo sin interrupciones, te recomiendo ampliar tu cuota al **Plan Growth ($1,890)** con 5,000 registros adicionales.`;
       } else {
-        growthPitch = `\n\n💡 **Optimización**: Los motores están syndicando tráfico orgánico. Si deseas acelerar los resultados agregando Reddit Outbound y Newsletters B2B, puedes subir al Plan Growth en cualquier momento.`;
+        growthPitch = `\n\n💡 **Optimización**: Los motores están syndicando tráfico orgánico. Si deseas acelerar los resultados agregando Outbound en X con Anti-Ban y Newsletters B2B, puedes subir al Plan Growth en cualquier momento.`;
       }
 
       return {

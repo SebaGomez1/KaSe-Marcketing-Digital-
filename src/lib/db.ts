@@ -175,7 +175,7 @@ export function mapRowToCampaign(
     mod1_seo: { active: true, name: 'SEO Técnico Avanzado', category: 'base', itemsProcessed: 48, lastExecution: 'Hace 14 min', statusText: 'API Google Indexing activa' },
     mod2_social: { active: true, name: 'Social Media Syndication', category: 'base', itemsProcessed: 116, lastExecution: 'Hace 32 min', statusText: 'Sindicación en X y LinkedIn' },
     mod3_directories: { active: true, name: 'Programmatic Launching', category: 'base', itemsProcessed: 39, lastExecution: 'Hace 1 h', statusText: 'Directorios verificados' },
-    mod4_outbound: { active: row.plan === 'growth' || row.plan === 'enterprise', name: 'Automated Outbound', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Reddit & X' },
+    mod4_outbound: { active: row.plan === 'growth' || row.plan === 'enterprise', name: 'Automated Outbound & Social Outreach', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'X / Twitter & Foros Q&A (Anti-Ban Guard)' },
     mod5_newsletter: { active: row.plan === 'growth' || row.plan === 'enterprise', name: 'Newsletter Outreach', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Warming óptimo' },
     mod6_video: { active: row.plan === 'enterprise', name: 'Video Growth Automation', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'TikTok/Reels' },
     mod7_pseo: { active: row.plan === 'enterprise', name: 'Programmatic SEO', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Páginas comparativas' },
