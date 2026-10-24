@@ -231,12 +231,19 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
 👉 Para ver los motores en acción y configurar tu primer embudo de clientes, **crea tu cuenta gratuita en 30 segundos**:`;
 
   const defaultSuggestions = currentUser
-    ? [
-        '🚀 Auditar mi campaña actual',
-        '➕ Crear nueva campaña',
-        '💳 Planes y ampliaciones',
-        '🔌 Ver mi Enlace Puente'
-      ]
+    ? activeCampaign
+      ? [
+          '📊 Ver Dashboard en vivo',
+          '🔌 Ver Enlace Puente',
+          '🚀 Auditar mi campaña actual',
+          '💳 Planes y Precios'
+        ]
+      : [
+          '🚀 Ir a Campañas Activas',
+          '💳 Ver Planes y Precios',
+          '➕ Configurar Nueva Campaña',
+          '🛡️ Funcionamiento Óptimo'
+        ]
     : [
         '📝 Crear cuenta gratuita',
         '🚀 ¿Cómo funciona KaSe?',
@@ -465,7 +472,12 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
       } else if (action.type === 'toggle_status' && onToggleCampaignStatus) {
         await onToggleCampaignStatus();
       } else if (action.type === 'navigate' && action.target && onNavigateTab) {
-        onNavigateTab(action.target);
+        if (!activeCampaign && (action.target === 'dashboard' || action.target === 'integration' || action.target === 'modules')) {
+          onNavigateTab('active_campaigns');
+        } else {
+          onNavigateTab(action.target);
+        }
+        setIsMinimized(true);
       } else if (action.type === 'new_campaign') {
         if (!currentUser && onOpenAuthModal) {
           onOpenAuthModal();
@@ -519,12 +531,19 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         role: 'assistant',
         text: `¡Historial reiniciado! ✨🤖 Estoy listo para asistirte en cualquier motor, botón o campaña de KaSe. ¿Qué te gustaría hacer? 🚀`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: currentUser ? [
-          '🚀 Auditar mi campaña actual',
-          '➕ Crear nueva campaña',
-          '💳 Planes y ampliaciones',
-          '🔌 Ver mi Enlace Puente'
-        ] : [
+        suggestions: currentUser ? (
+          activeCampaign ? [
+            '📊 Ver Dashboard en vivo',
+            '🔌 Ver Enlace Puente',
+            '🚀 Auditar mi campaña actual',
+            '💳 Planes y Precios'
+          ] : [
+            '🚀 Ir a Campañas Activas',
+            '💳 Ver Planes y Precios',
+            '➕ Configurar Nueva Campaña',
+            '🛡️ Funcionamiento Óptimo'
+          ]
+        ) : [
           '📝 Crear cuenta gratuita',
           '🚀 ¿Cómo funciona KaSe?',
           '💰 Ver planes y precios',

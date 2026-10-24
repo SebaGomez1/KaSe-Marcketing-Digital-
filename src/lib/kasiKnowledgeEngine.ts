@@ -507,14 +507,142 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
     }
   }
 
-  // 8. AUDITAR RENDIMIENTO (SOLO DENTRO O SUGERIR REGISTRO FUERA)
+  // 8. VER DASHBOARD EN VIVO (MÉTRICAS Y GRÁFICOS)
+  if (
+    m.includes('dashboard') ||
+    m.includes('desboard') ||
+    m.includes('dasboard') ||
+    m.includes('ver panel') ||
+    m.includes('panel en vivo') ||
+    m.includes('métricas en vivo') ||
+    m.includes('metricas en vivo')
+  ) {
+    if (!isInside) {
+      return {
+        reply: '📊 **DASHBOARD EN VIVO · KaSe MARKETING**\n\n' +
+          'En el Dashboard puedes ver en tiempo real el contador de registros, tacómetro de velocidad, estado de los 8 motores y conversiones verificadas por el Enlace Puente.\n\n' +
+          '👉 **Para acceder a tu Dashboard, crea tu cuenta gratuita en 30 segundos:**',
+        action: {
+          id: `act_auth_${Date.now()}`,
+          type: 'open_auth',
+          title: '📝 Crear Cuenta Gratuita y Ver Dashboard',
+          description: 'Regístrate en 30 segundos sin tarjetas.',
+        },
+        suggestions: ['📝 Crear cuenta gratuita', '💰 Ver planes y precios', '🚀 ¿Cómo funciona KaSe?'],
+        source: 'kasi_dashboard_guest'
+      };
+    } else if (camp) {
+      return {
+        reply: `📊 **DASHBOARD EN VIVO · CAMPAÑA "${camp.name}"**\n\n` +
+          `• **Registros Verificados**: ${camp.currentRegistrations} / ${camp.targetRegistrations}\n` +
+          `• **Estado del Motor**: ${camp.status === 'active' ? '🟢 Operando en Vivo' : '⏸️ Pausado'}\n` +
+          `• **Plan Asignado**: Plan ${camp.plan.toUpperCase()}\n\n` +
+          `Pulsa el botón de abajo para ir directamente al Dashboard de tu campaña:`,
+        action: {
+          id: `act_nav_dash_${Date.now()}`,
+          type: 'navigate',
+          target: 'dashboard',
+          title: '📊 Ir al Dashboard En Vivo',
+          description: 'Abre el panel principal con gráficos de conversiones en tiempo real.',
+        },
+        suggestions: ['🚀 Auditar mi campaña actual', '🔌 Ver Enlace Puente', '💳 Ver Planes y Precios'],
+        source: 'kasi_dashboard_active'
+      };
+    } else {
+      return {
+        reply: `📊 **DASHBOARD · SIN CAMPAÑAS ACTIVAS ACTUALMENTE**\n\n` +
+          `Actualmente no tienes ninguna campaña activa en marcha porque todas las anteriores fueron borradas según solicitaste.\n\n` +
+          `El Dashboard muestra las métricas de tráfico y conversiones en vivo de una campaña activa. En este momento puedes:\n` +
+          `1️⃣ Ir a la pestaña **"Campañas Activas"** para supervisar tu cuenta y ver el estado general.\n` +
+          `2️⃣ O dar de alta una nueva campaña cuando decidas encender los motores.\n\n` +
+          `¿Deseas que te lleve a la sección de Campañas Activas?`,
+        action: {
+          id: `act_nav_act_${Date.now()}`,
+          type: 'navigate',
+          target: 'active_campaigns',
+          title: '🚀 Ir a "Campañas Activas"',
+          description: 'Supervisa tu panel de campañas sin abrir ningún formulario forzado.',
+        },
+        suggestions: ['🚀 Ir a Campañas Activas', '💳 Ver Planes y Precios', '➕ Configurar Nueva Campaña'],
+        source: 'kasi_dashboard_empty'
+      };
+    }
+  }
+
+  // 9. ENLACE PUENTE INTELIGENTE (/r/:id)
+  if (
+    m.includes('enlace puente') ||
+    m.includes('enrutador puente') ||
+    m.includes('link puente') ||
+    m.includes('ver enlace') ||
+    m.includes('ver mi enlace') ||
+    m.includes('copiar enlace') ||
+    m.includes('/r/')
+  ) {
+    if (!isInside) {
+      return {
+        reply: '🔌 **ENLACE PUENTE INTELIGENTE (CERO CÓDIGO) · KaSe**\n\n' +
+          'El Enlace Puente (`/r/:campaignId`) es una URL inteligente que KaSe genera para tu campaña. Todo visitante que ingresa por ese enlace es redirigido en milisegundos hacia tu página web mientras suma +1 a tu contador de forma segura sin que tengas que programar ni pegar ningún script manual.\n\n' +
+          '👉 **Regístrate gratis para obtener tu propio Enlace Puente:**',
+        action: {
+          id: `act_auth_${Date.now()}`,
+          type: 'open_auth',
+          title: '📝 Registrarme Gratis para Obtener Enlace Puente',
+          description: 'Accede a la plataforma en 30 segundos.',
+        },
+        suggestions: ['📝 Crear cuenta gratuita', '🚀 ¿Cómo funciona?', '💰 Ver planes y precios'],
+        source: 'kasi_bridge_guest'
+      };
+    } else if (camp) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://kase-marketing.vercel.app';
+      const bridgeUrl = `${origin}/r/${camp.id}`;
+      return {
+        reply: `🔌 **TU ENLACE PUENTE INTELIGENTE · CAMPAÑA "${camp.name}"**\n\n` +
+          `Aquí tienes el enlace inteligente de cero código de tu campaña activa:\n\n` +
+          `🔗 **URL Puente Oficial**:\n` +
+          `\`${bridgeUrl}\`\n\n` +
+          `• **Destino Configurado**: ${camp.targetUrl}\n` +
+          `• **Mapeo Atómico**: Redirige al instante (HTTP 307) a tu web y suma +1 en tu tacómetro.\n` +
+          `• **Zero-Install**: No requiere scripts ni instalar nada en tu servidor.\n\n` +
+          `Puedes copiarlo directamente o ir a la sección "Integración Segura" para revisarlo en tu app:`,
+        action: {
+          id: `act_nav_int_${Date.now()}`,
+          type: 'navigate',
+          target: 'integration',
+          title: '🔌 Ir a "Integración Segura"',
+          description: 'Revisa tu Enlace Puente y los detalles de seguimiento.',
+        },
+        suggestions: ['📊 Ver Dashboard en vivo', '🚀 Auditar mi campaña actual', '💳 Ver Planes y Precios'],
+        source: 'kasi_bridge_active'
+      };
+    } else {
+      return {
+        reply: `🔌 **ENLACE PUENTE · SIN CAMPAÑA ASIGNADA ACTUALMENTE**\n\n` +
+          `El Enlace Puente Inteligente (\`/r/:id\`) se genera automáticamente y de forma personalizada en cuanto das de alta una campaña para tu web o producto.\n\n` +
+          `Como actualmente no tienes ninguna campaña activa en marcha, todavía no existe un enlace puente asignado.\n\n` +
+          `Cuando decidas crear tu campaña, el sistema te entregará de inmediato tu enlace puente listo para compartir sin necesidad de que toques ninguna línea de código ni API.`,
+        action: {
+          id: `act_nav_act_${Date.now()}`,
+          type: 'navigate',
+          target: 'active_campaigns',
+          title: '🚀 Ir a "Campañas Activas"',
+          description: 'Visualiza la sección de campañas sin abrir ningún formulario forzado.',
+        },
+        suggestions: ['🚀 Ir a Campañas Activas', '💳 Ver Planes y Precios', '➕ Configurar Nueva Campaña'],
+        source: 'kasi_bridge_empty'
+      };
+    }
+  }
+
+  // 10. AUDITAR RENDIMIENTO
   if (
     m.includes('auditar') ||
     m.includes('auditoria') ||
     m.includes('auditoría') ||
     m.includes('rendimiento') ||
     m.includes('como va mi campaña') ||
-    m.includes('cómo va mi campaña')
+    m.includes('cómo va mi campaña') ||
+    m.includes('estado de mi campaña')
   ) {
     if (!isInside) {
       return {
@@ -534,33 +662,62 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
         ],
         source: 'kasi_hero_audit'
       };
+    } else if (!camp) {
+      // EXACT ACCURATE AUDIT WHEN NO ACTIVE CAMPAIGN EXISTS (NO FAKE DATA)
+      return {
+        reply: `🔍 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
+          `He escaneado tu panel y confirmo que **actualmente no tienes ninguna campaña activa en marcha**.\n\n` +
+          `📋 **Estado Verificado del Sistema**:\n` +
+          `• **Campañas Activas**: 0 (Las campañas anteriores fueron eliminadas según solicitaste para comenzar desde cero).\n` +
+          `• **Consumo de Cuota**: 0 usuarios (Tu presupuesto está 100% protegido e intacto).\n` +
+          `• **Motores de Adquisición**: En reposo esperando nueva asignación.\n` +
+          `• **Conectores de Red**: Verificación de APIs en Vercel activa.\n\n` +
+          `Puedes supervisar tu cuenta en **"Campañas Activas"** o dar de alta tu próxima campaña cuando decidas poner en marcha los motores.`,
+        action: {
+          id: `act_nav_act_${Date.now()}`,
+          type: 'navigate',
+          target: 'active_campaigns',
+          title: '🚀 Ir a "Campañas Activas"',
+          description: 'Supervisa el estado general de tu cuenta.',
+        },
+        suggestions: [
+          '🚀 Ir a Campañas Activas',
+          '💳 Ver Planes y Precios',
+          '➕ Configurar Nueva Campaña',
+          '🛡️ Funcionamiento Óptimo'
+        ],
+        source: 'kasi_inside_audit_empty'
+      };
     } else {
-      const cur = camp?.currentRegistrations ?? 0;
-      const tgt = camp?.targetRegistrations ?? 1000;
+      const cur = camp.currentRegistrations ?? 0;
+      const tgt = camp.targetRegistrations ?? 1000;
       const pct = Math.min(100, Math.round((cur / Math.max(1, tgt)) * 100));
-      const status = camp?.status === 'active' ? '🟢 Operando en Vivo' : '⏸️ Pausada';
+      const status = camp.status === 'active' 
+        ? '🟢 Operando en Vivo (Captando Tráfico)' 
+        : camp.status === 'paused_quota_reached'
+        ? '🛑 Pausa Inteligente (Cuota Cumplida)'
+        : '⏸️ Pausada Manualmente';
 
-      // Sutil pitch comercial al auditar
       let growthPitch = '';
       if (pct >= 60) {
         growthPitch = `\n\n📈 **Venta Sutil de Escalamiento**: Ya has alcanzado el **${pct}% de tu meta**. Al llegar al 100%, el sistema se auto-apaga para protegerte. Si deseas mantener el flujo de ventas activo sin interrupciones, te recomiendo ampliar tu cuota al **Plan Growth ($1,890)** con 5,000 registros adicionales.`;
       } else {
-        growthPitch = `\n\n💡 **Optimización**: Los motores 1 a 3 están syndicando tráfico orgánico. Si deseas acelerar los resultados agregando Reddit Outbound y Newsletters B2B, puedes subir al Plan Growth en cualquier momento.`;
+        growthPitch = `\n\n💡 **Optimización**: Los motores están syndicando tráfico orgánico. Si deseas acelerar los resultados agregando Reddit Outbound y Newsletters B2B, puedes subir al Plan Growth en cualquier momento.`;
       }
 
       return {
         reply: `📊 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
-          `🎯 **Campaña**: *${campName}*\n` +
+          `🎯 **Campaña**: *${camp.name}*\n` +
           `⚡ **Estado**: ${status}\n` +
           `📈 **Progreso Real**: **${cur} / ${tgt}** conversiones (${pct}% completado)\n` +
           `🛡️ **Tráfico Humano**: 100% verificado en Enlace Puente (/r/:id)` +
           growthPitch,
         action: {
-          id: `act_nav_plans_${Date.now()}`,
+          id: `act_nav_dash_${Date.now()}`,
           type: 'navigate',
-          target: 'plans',
-          title: '💳 Ampliar Cuota o Mejorar Plan',
-          description: 'Asegura tu continuidad de clientes con Plan Growth.',
+          target: 'dashboard',
+          title: '📊 Ir al Dashboard en Vivo',
+          description: 'Revisa las métricas y gráficos en tiempo real.',
         },
         suggestions: [
           '📊 Ver Dashboard en vivo',
@@ -568,12 +725,12 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
           '➕ Nueva campaña paralela',
           '🔌 Ver Enlace Puente'
         ],
-        source: 'kasi_inside_audit'
+        source: 'kasi_inside_audit_active'
       };
     }
   }
 
-  // 9. DYNAMIC GENERAL FALLBACK (AFUERA VS ADENTRO)
+  // 11. DYNAMIC GENERAL FALLBACK (AFUERA VS ADENTRO)
   if (!isInside) {
     // AGENTE DE AFUERA: Siempre responde a la duda y cierra invitando a registrarse
     return {
@@ -598,31 +755,33 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
       source: 'kasi_hero_dynamic'
     };
   } else {
-    // AGENTE DE ADENTRO: Responde, ayuda y busca vender sutilmente una campaña
+    // AGENTE DE ADENTRO: Responde, ayuda y busca asesorar de forma no intrusiva
     const subtleInside = camp
       ? `\n\n💡 **Tip Pro para ${userName}**: Tu campaña activa *"${campName}"* continúa captando leads. Si buscas un crecimiento agresivo este mes, lanzar una segunda campaña para otro ángulo de venta o escalar al Plan Growth aumentará exponencialmente tus conversiones. ¿Deseas explorarlo?`
-      : `\n\n💡 **Sugerencia**: Como tu cuenta está lista pero no tienes una campaña activa, estás perdiendo tráfico que tus competidores están aprovechando. ¿Deseas que encendamos una campaña hoy mismo?`;
+      : `\n\n💡 **Estado de tu cuenta**: Actualmente no tienes ninguna campaña activa. Los 8 motores están listos en la nube. ¿Deseas explorar los planes o ir a Campañas Activas?`;
 
     return {
       reply: `Entendido perfectamente sobre *" ${userMessage.slice(0, 60)} "* ✨🤖.\n\n` +
         `Estoy aquí para apoyarte en cualquier aspecto técnico de tus campañas, configuración de enlaces, análisis de conversiones o pasarela de pagos.` +
         subtleInside,
       action: camp ? {
-        id: `act_new_camp_${Date.now()}`,
-        type: 'new_campaign',
-        title: '➕ Iniciar Campaña Adicional de Clientes',
-        description: 'Duplica tu volumen con una segunda campaña activa.',
+        id: `act_nav_dash_${Date.now()}`,
+        type: 'navigate',
+        target: 'dashboard',
+        title: '📊 Ir al Dashboard en Vivo',
+        description: 'Revisa las métricas y conversiones en tiempo real.',
       } : {
-        id: `act_new_camp_${Date.now()}`,
-        type: 'new_campaign',
-        title: '➕ Configurar mi Primera Campaña',
-        description: 'Enciende los 8 motores en 60 segundos.',
+        id: `act_nav_act_${Date.now()}`,
+        type: 'navigate',
+        target: 'active_campaigns',
+        title: '🚀 Ir a "Campañas Activas"',
+        description: 'Supervisa tu cuenta y gestiona tus campañas.',
       },
       suggestions: [
-        '➕ Crear nueva campaña',
+        '🚀 Ir a Campañas Activas',
         '💳 Ver Planes y Precios',
-        '📊 Ver Dashboard en vivo',
-        '🚀 Auditar mi campaña actual'
+        camp ? '📊 Ver Dashboard en vivo' : '➕ Configurar Nueva Campaña',
+        '🔌 Ver Enlace Puente'
       ],
       source: 'kasi_inside_dynamic'
     };

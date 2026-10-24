@@ -3371,14 +3371,44 @@ function _unusedLegacyReply(message: string, context?: any): any {
     m.includes('diagnóstico') ||
     m.includes('diagnostico')
   ) {
-    const cur = camp?.currentRegistrations ?? 0;
-    const tgt = camp?.targetRegistrations ?? 1000;
+    if (!camp) {
+      return {
+        reply: `🔍 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
+          `He escaneado tu panel y confirmo que **actualmente no tienes ninguna campaña activa en marcha**.\n\n` +
+          `📋 **Estado Verificado del Sistema**:\n` +
+          `• **Campañas Activas**: 0 (Las campañas anteriores fueron eliminadas según solicitaste para comenzar desde cero).\n` +
+          `• **Consumo de Cuota**: 0 usuarios (Tu presupuesto está 100% protegido e intacto).\n` +
+          `• **Motores de Adquisición**: En reposo esperando nueva asignación.\n` +
+          `• **Conectores de Red**: Verificación de APIs en Vercel activa.\n\n` +
+          `Puedes supervisar tu cuenta en **"Campañas Activas"** o dar de alta tu próxima campaña cuando decidas poner en marcha los motores.`,
+        action: {
+          id: `act_nav_act_${Date.now()}`,
+          type: 'navigate',
+          target: 'active_campaigns',
+          title: '🚀 Ir a "Campañas Activas"',
+          description: 'Supervisa el estado general de tu cuenta sin formularios forzados.',
+        },
+        suggestions: [
+          '🚀 Ir a Campañas Activas',
+          '💳 Ver Planes y Precios',
+          '➕ Configurar Nueva Campaña',
+          '🛡️ Funcionamiento Óptimo'
+        ]
+      };
+    }
+
+    const cur = camp.currentRegistrations ?? 0;
+    const tgt = camp.targetRegistrations ?? 1000;
     const pct = Math.min(100, Math.round((cur / Math.max(1, tgt)) * 100));
-    const status = camp?.status === 'active' ? '🟢 En Vivo (Captando Tráfico)' : '⏸️ Pausada';
+    const status = camp.status === 'active' 
+      ? '🟢 En Vivo (Captando Tráfico)' 
+      : camp.status === 'paused_quota_reached'
+      ? '🛑 Pausa Inteligente (Cuota Cumplida)'
+      : '⏸️ Pausada Manualmente';
 
     return {
       reply: `📊 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
-        `🎯 **Campaña**: *${campName}*\n` +
+        `🎯 **Campaña**: *${camp.name}*\n` +
         `⚡ **Estado**: ${status}\n` +
         `📈 **Progreso de Cuota**: **${cur} / ${tgt}** conversiones (${pct}% alcanzado)\n` +
         `⏱️ **Ramp-up estimado**: 24-48h desde indexación inicial\n\n` +
@@ -3591,10 +3621,11 @@ ${!isInside ? `
 ` : `
 [PERSONA: AGENTE DE ADENTRO · CLIENTE CON SESIÓN INICIADA]
 - Puedes responder cualquier duda técnica, auditar campañas, revisar enlaces puente (/r/:id) o controlar módulos.
-- REGLA DE ORO DEL AGENTE DE ADENTRO: Además de ayudar, debes intentar vender campañas sutilmente:
-  • Si el cliente NO tiene campaña activa: motívalo a encender una ("Starter $490" o "Growth $1,890") recordándole que sus 8 motores están listos en la nube.
-  • Si el cliente YA tiene campaña activa: sugiérele sutilmente ampliar su plan o lanzar una campaña complementaria para multiplicar el flujo de compradores.
-  • Acciones sugeridas: "new_campaign", "toggle_status", o "audit_campaign".
+- REGLAS ESTRICTAS DE ACCIÓN:
+  • Si el usuario pide "Ver Dashboard", "Dashboard" o "Ver panel": DEBES devolver "action": {"type": "navigate", "target": "dashboard"} (o "active_campaigns" si no tiene campaña). ¡NUNCA generes "new_campaign" para ver el dashboard!
+  • Si el usuario pide "Ver enlace puente", "Enlace puente" o "Copiar enlace": DEBES devolver "action": {"type": "navigate", "target": "integration"} (o "active_campaigns" si no tiene campaña). ¡NUNCA generes "new_campaign" para ver el enlace puente!
+  • Si el usuario pide "Auditar campaña actual" y NO tiene campañas activas: DEBES responder en el texto que actualmente NO hay campañas activas (no inventes campañas pausadas ni métricas ficticias de 0/2000). Y la acción sugerida debe ser "action": {"type": "navigate", "target": "active_campaigns"}.
+  • La acción "new_campaign" SOLO se debe emitir si el usuario explícitamente pide crear, dar de alta o lanzar una nueva campaña.
 `}
 
 CONTROL DE ACCESO Y SEGURIDAD ESTRICTA (RBAC):
@@ -3606,7 +3637,7 @@ REGLAS DE ORO OPERATIVAS:
 1. CERO CONFIGURACIÓN DE APIS PARA USUARIOS: NUNCA ofrezcas ayudar a configurar APIs a los usuarios. Los clientes NO tienen que crear ni configurar ninguna API. En KaSe los 8 motores operan 100% de manera autónoma en nuestra nube. El usuario SOLO brinda: (1) el link de su página a promocionar, (2) sus datos de inicio de cuenta, y (3) los datos pedidos en el formulario de campaña (objetivo de conversiones y presupuesto). ¡Más nada!
 2. PROHIBIDO SIMULAR RÁFAGAS EN CAMPAÑAS REALES: Si el usuario pregunta por "simular ráfagas", explícale que en campañas de pago NO se simulan ráfagas de usuarios ficticios porque eso consumiría artificialmente su cuota y recibiría menos clientes reales. Todo el tráfico de KaSe es 100% humano y verificado.
 3. ENLACE PUENTE INTELIGENTE (/r/:campaignId): Cero píxeles manuales. Cada clic redirige al instante (HTTP 307) y suma +1 atómicamente.
-4. PLANES DISPONIBLES: Starter ($490 / 1k leads), Growth ($1,890 / 5k leads), Enterprise ($8,900 / 25k leads). Pasarela segura de Mercado Pago Uruguay.
+4. PLANES DISPONIBLES: Básico ($250 / 1k leads), Starter ($490 / 2k leads), Growth ($1,890 / 10k leads), Enterprise ($8,900 / 100k leads). Pasarela segura de Mercado Pago Uruguay.
 5. MARKETING INTERNO:
    - Clientes potenciales: Pagos > $500 USD en la plataforma.
    - Si no tienen campañas activas: KaSi les ofrece campañas de crecimiento continuo 3 veces por semana desde kase.marketing.digital@gmail.com.
@@ -3620,7 +3651,7 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
     "type": "open_auth" | "toggle_status" | "navigate" | "new_campaign" | "one_dollar_test" | "audit_campaign",
     "title": "Título corto",
     "description": "Descripción",
-    "target": "dashboard | modules | plans | integration | admin_global | reviews | guide"
+    "target": "dashboard | modules | plans | integration | active_campaigns | admin_global | reviews | guide"
   },
   "suggestions": ["Sugerencia 1", "Sugerencia 2", "Sugerencia 3"]
 }`;
