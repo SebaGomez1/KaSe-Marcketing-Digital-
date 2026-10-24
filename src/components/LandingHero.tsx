@@ -332,6 +332,18 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                   <span>Instalar App en Celular / PC</span>
                 </button>
               )}
+
+              {/* DIRECT ACCESS TO KASI AI FROM HERO */}
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('kase-open-kasi'));
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-purple-500/10"
+              >
+                <span>🤖</span>
+                <span>Chatear con KaSi (IA)</span>
+              </button>
             </div>
 
             {/* Quick Actions if already logged in */}

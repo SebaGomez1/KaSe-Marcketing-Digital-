@@ -23,6 +23,7 @@ import {
   validateCampaignEnginesForPlan,
   scanForSensitiveDataExposure,
 } from './src/lib/networkEngines.ts';
+import { generateKaSiReply, KaSiReplyResult } from './src/lib/kasiKnowledgeEngine.ts';
 
 dotenv.config();
 
@@ -3024,22 +3025,21 @@ Devuelve formato JSON válido y estructurado.`;
 });
 
 // SMART HIGH-INTELLIGENCE RESPONSE ENGINE FOR KASI (Deep domain knowledge, actionable tools, zero-install bridge)
-export interface KaSiAssistantResponse {
-  reply: string;
-  action?: {
-    id: string;
-    type: 'toggle_status' | 'navigate' | 'new_campaign' | 'simulate_burst' | 'reset_counter' | 'install_app' | 'one_dollar_test' | 'audit_campaign';
-    title: string;
-    description: string;
-    target?: string;
-    count?: number;
-    payload?: any;
-  };
-  suggestions?: string[];
-  source?: string;
-}
+export type KaSiAssistantResponse = KaSiReplyResult;
 
 function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantResponse {
+  const isInside = !!(context?.isInside || context?.userEmail);
+  const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+  return generateKaSiReply(message, {
+    isInside,
+    currentUser: context?.userEmail ? { email: context.userEmail, role: isSuperAdmin ? 'super_admin' : 'client' } as any : null,
+    activeCampaign: context?.activeCampaign,
+    activeTab: context?.activeTab,
+    isSuperAdmin,
+  });
+}
+
+function _unusedLegacyReply(message: string, context?: any): any {
   const m = message.toLowerCase().trim();
   const camp = context?.activeCampaign;
   const campName = camp?.name || 'tu campaña';
@@ -3573,12 +3573,29 @@ app.post('/api/ai/code-assistant', async (req: Request, res: Response) => {
   const campNiche = camp?.niche || 'Tecnología / SaaS';
   const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
   const userEmail = context?.userEmail;
+  const isInside = !!(context?.isInside || userEmail);
 
   const systemPrompt = `Eres KaSi ✨🤖, el Agente de Inteligencia Artificial de Élite y Especialista en Crecimiento Autónomo de "KaSe - Marketing Digital" (fundado por Kathy Seba).
 
-TU PERFIL Y MISIÓN:
-- Eres altamente inteligente, empático, resolutivo, analítico y directo. Hablas siempre en español impecable, usando formato markdown legible (negritas, viñetas, código).
-- Respondes de manera natural y útil a CUALQUIER pregunta sobre marketing, adquisición de clientes, tráfico, negocios, SaaS, e-commerce, o la plataforma KaSe, tanto para usuarios registrados como para visitantes desde celulares o computadoras.
+MODALIDAD DUAL DE PERSONA SEGÚN CONTEXTO DEL USUARIO:
+${!isInside ? `
+[PERSONA: AGENTE DE AFUERA · VISITANTE SIN SESIÓN EN EL HERO / WEB]
+- Tu misión con el visitante es responder sus preguntas sobre cómo funciona KaSe, tráfico real, planes y garantía.
+- REGLA DE ORO DEL AGENTE DE AFUERA: Siempre, sin excepción, al final de tu respuesta debes invitar y guiar al visitante a crear su cuenta gratuita en 30 segundos para activar o cotizar su campaña.
+- En tu JSON de respuesta debes incluir SIEMPRE la acción:
+  "action": {
+    "type": "open_auth",
+    "title": "Crear Cuenta Gratuita",
+    "description": "Regístrate en 30 segundos y activa tus motores de tráfico"
+  }
+` : `
+[PERSONA: AGENTE DE ADENTRO · CLIENTE CON SESIÓN INICIADA]
+- Puedes responder cualquier duda técnica, auditar campañas, revisar enlaces puente (/r/:id) o controlar módulos.
+- REGLA DE ORO DEL AGENTE DE ADENTRO: Además de ayudar, debes intentar vender campañas sutilmente:
+  • Si el cliente NO tiene campaña activa: motívalo a encender una ("Starter $490" o "Growth $1,890") recordándole que sus 8 motores están listos en la nube.
+  • Si el cliente YA tiene campaña activa: sugiérele sutilmente ampliar su plan o lanzar una campaña complementaria para multiplicar el flujo de compradores.
+  • Acciones sugeridas: "new_campaign", "toggle_status", o "audit_campaign".
+`}
 
 CONTROL DE ACCESO Y SEGURIDAD ESTRICTA (RBAC):
 - SUPER ADMINISTRADORA: Kathy Seba (kathyseba2020@gmail.com). Ella tiene autorización total para ver ganancias globales, modificar credenciales de APIs (Mercado Pago, Supabase, Google, Reddit, X), activar el plan de prueba de $1 USD o acceder a '👑 Admin Global'.
@@ -3600,7 +3617,7 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
 {
   "reply": "Texto de tu respuesta en markdown...",
   "action": {
-    "type": "toggle_status" | "navigate" | "new_campaign" | "one_dollar_test",
+    "type": "open_auth" | "toggle_status" | "navigate" | "new_campaign" | "one_dollar_test" | "audit_campaign",
     "title": "Título corto",
     "description": "Descripción",
     "target": "dashboard | modules | plans | integration | admin_global | reviews | guide"

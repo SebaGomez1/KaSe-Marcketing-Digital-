@@ -33,9 +33,11 @@ import {
   CheckCircle2,
   TrendingUp,
   Cpu,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus
 } from 'lucide-react';
 import { Campaign, User } from '../types/growth';
+import { generateKaSiReply } from '../lib/kasiKnowledgeEngine';
 
 export interface KaseAssistantWidgetProps {
   activeTab?: string;
@@ -56,7 +58,7 @@ export interface KaseAssistantWidgetProps {
 
 export interface ActionProposal {
   id: string;
-  type: 'toggle_status' | 'navigate' | 'new_campaign' | 'install_app' | 'one_dollar_test' | 'reset_counter' | 'simulate_burst' | 'audit_campaign';
+  type: 'toggle_status' | 'navigate' | 'new_campaign' | 'install_app' | 'one_dollar_test' | 'reset_counter' | 'simulate_burst' | 'audit_campaign' | 'open_auth';
   title: string;
   description: string;
   target?: string;
@@ -197,34 +199,49 @@ export const KaseAssistantWidget: React.FC<KaseAssistantWidgetProps> = ({
     };
   }, []);
 
+  // Allow Hero or any other UI component to open KaSi on demand
+  useEffect(() => {
+    const handleOpenEvent = (e: any) => {
+      setIsOpen(true);
+      setIsMinimized(false);
+      setIsDockedHidden(false);
+      if (e?.detail?.message) {
+        handleSendMessage(e.detail.message);
+      }
+    };
+
+    window.addEventListener('kase-open-kasi', handleOpenEvent);
+    return () => window.removeEventListener('kase-open-kasi', handleOpenEvent);
+  }, []);
+
   const effectiveOnline = isOnline !== undefined ? isOnline : localOnline;
 
   const defaultGreeting = currentUser
-    ? `¡Hola ${(currentUser.name || 'Empresario').split(' ')[0]}! Soy **KaSi** ✨🤖, tu Copiloto de Crecimiento de KaSe.
+    ? `¡Hola ${(currentUser.name || 'Empresario').split(' ')[0]}! ✨🤖 Soy **KaSi 2.0**, tu Copiloto Inteligente de KaSe.
 
-🎯 **Campaña Activa**: ${activeCampaign ? `*${activeCampaign.name}* (${activeCampaign.currentRegistrations}/${activeCampaign.targetRegistrations} conversiones)` : '*Vista General*'}
+🎯 **Campaña Activa**: ${activeCampaign ? `*${activeCampaign.name}* (${activeCampaign.currentRegistrations}/${activeCampaign.targetRegistrations} conversiones)` : '*Sin campaña activa*'}
 
-¿En qué puedo ayudarte hoy con la captación y escalamiento de tu negocio? 🚀💬`
-    : `¡Hola! Soy **KaSi** ✨🤖, el especialista en adquisición de clientes de KaSe Marketing Digital.
+¿En qué puedo ayudarte hoy con tu tráfico? ${activeCampaign ? 'Puedo auditar tus números, revisar los módulos o asesorarte para potenciar tus ventas.' : 'Tus 8 motores están listos: ¿deseas que encendamos una nueva campaña para tu web?'}`
+    : `¡Hola! Soy **KaSi 2.0** ✨🤖, tu asesor de crecimiento de KaSe Marketing Digital.
 
-Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio en piloto automático.
+Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio en piloto automático mediante 8 motores autónomos en la nube.
 
-🛡️ **Claridad total:** Tú **NO tienes que crear ni configurar ninguna API**. La infraestructura y los 8 motores funcionan de manera 100% autónoma en nuestra nube. Tú sólo brindas el link de tu web a promocionar y tus metas de campaña.
+🛡️ **Claridad total:** Tú **NO tienes que crear ni configurar ninguna API**. Toda la infraestructura opera de manera 100% autónoma en nuestra nube.
 
-¿Deseas saber cómo funciona la plataforma, conocer los planes o registrarte gratis?`;
+👉 Para ver los motores en acción y configurar tu primer embudo de clientes, **crea tu cuenta gratuita en 30 segundos**:`;
 
   const defaultSuggestions = currentUser
     ? [
         '🚀 Auditar mi campaña actual',
         '➕ Crear nueva campaña',
-        '💳 Ver planes y precios',
-        '⭐ Valora nuestro servicio'
+        '💳 Planes y ampliaciones',
+        '🔌 Ver mi Enlace Puente'
       ]
     : [
-        '¿Cómo funciona KaSe?',
-        '¿Tengo que configurar APIs?',
+        '📝 Crear cuenta gratuita',
+        '🚀 ¿Cómo funciona KaSe?',
         '💰 Ver planes y precios',
-        '📝 Crear cuenta gratuita'
+        '🛡️ ¿Tengo que configurar APIs?'
       ];
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -234,8 +251,33 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
       text: defaultGreeting,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       suggestions: defaultSuggestions,
+      action: !currentUser ? {
+        id: 'welcome-auth-proposal',
+        type: 'open_auth',
+        title: 'Crear Cuenta Gratuita',
+        description: 'Regístrate en 30 segundos y activa tus motores de tráfico'
+      } : undefined
     },
   ]);
+
+  // Sync greeting when currentUser changes (e.g. login or logout)
+  useEffect(() => {
+    setMessages([
+      {
+        id: `welcome_${currentUser ? 'in' : 'out'}_${Date.now()}`,
+        role: 'assistant',
+        text: defaultGreeting,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: defaultSuggestions,
+        action: !currentUser ? {
+          id: `welcome_auth_${Date.now()}`,
+          type: 'open_auth',
+          title: 'Crear Cuenta Gratuita',
+          description: 'Regístrate en 30 segundos y activa tus motores de tráfico'
+        } : undefined
+      },
+    ]);
+  }, [currentUser?.email]);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -322,15 +364,22 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
       }
     }
 
+    let replyData: any = null;
+
     try {
       const historyPayload = messages.slice(-5).map((m) => ({
         role: m.role === 'user' ? 'user' : 'model',
         text: m.text,
       }));
 
+      // Abort controller with 6-second timeout so cellular phones never hang
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const res = await fetch('/api/ai/code-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ 
           message: actualText, 
           history: historyPayload,
@@ -348,58 +397,72 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
             } : null,
             isSuperAdmin: currentUser?.role === 'super_admin',
             userEmail: currentUser?.email,
+            isInside: !!currentUser,
           }
         }),
       });
 
-      if (!res.ok) {
-        throw new Error(`Server returned ${res.status}`);
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const parsed = await res.json();
+          if (parsed && parsed.reply) {
+            replyData = parsed;
+          }
+        }
       }
-
-      const data = await res.json();
-
-      const assistantMsg: ChatMessage = {
-        id: `assistant_${Date.now()}`,
-        role: 'assistant',
-        text: data.reply || 'He recibido tu mensaje. ¿En qué más puedo apoyarte?',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        action: data.action,
-        suggestions: data.suggestions || [
-          '🚀 Auditar mi campaña',
-          '➕ Nueva campaña',
-          '💳 Planes y precios',
-          '🛡️ ¿Cómo garantizan visitas reales?'
-        ],
-        source: data.source,
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-      speakText(assistantMsg.text);
-    } catch (err) {
-      console.error('Error contacting KaSi assistant:', err);
-      const errorMsg: ChatMessage = {
-        id: `assistant_err_${Date.now()}`,
-        role: 'assistant',
-        text: 'He detectado una breve intermitencia de red desde tu conexión móvil. ⚡📱\n\nPuedes pulsar abajo para reintentar tu consulta o elegir una de las opciones rápidas.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: [
-          '🔄 Reintentar mi mensaje',
-          '💰 ¿Cuáles son los planes y precios?',
-          '🚀 ¿Cómo funciona KaSe?',
-          '➕ Quiero crear una campaña'
-        ]
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsLoading(false);
+    } catch (networkErr) {
+      // Backend unreachable, timed out, or static deployment: silently activate local KaSi engine
+      console.warn('Backend API unreachable or timed out, activating local KaSi engine');
     }
+
+    // Bulletproof: If backend didn't return valid JSON, generate instantaneous reply locally
+    if (!replyData) {
+      replyData = generateKaSiReply(actualText, {
+        isInside: !!currentUser,
+        currentUser,
+        activeCampaign,
+        activeTab,
+        isSuperAdmin: currentUser?.role === 'super_admin'
+      });
+    }
+
+    const assistantMsg: ChatMessage = {
+      id: `assistant_${Date.now()}`,
+      role: 'assistant',
+      text: replyData.reply || 'He recibido tu mensaje. ¿En qué más puedo apoyarte?',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      action: replyData.action,
+      suggestions: replyData.suggestions || (
+        currentUser ? [
+          '🚀 Auditar mi campaña actual',
+          '➕ Nueva campaña',
+          '💳 Planes y ampliaciones',
+          '🔌 Ver Enlace Puente'
+        ] : [
+          '📝 Crear cuenta gratuita',
+          '🚀 ¿Cómo funciona KaSe?',
+          '💰 Ver planes y precios',
+          '🛡️ ¿Tengo que configurar APIs?'
+        ]
+      ),
+      source: replyData.source || 'kase_autonomous_engine',
+    };
+
+    setMessages((prev) => [...prev, assistantMsg]);
+    speakText(assistantMsg.text);
+    setIsLoading(false);
   };
 
   // Execute interactive action with explicit user confirmation
   const handleExecuteAction = async (msgId: string, action: ActionProposal) => {
     setExecutingActionId(action.id);
     try {
-      if (action.type === 'toggle_status' && onToggleCampaignStatus) {
+      if (action.type === 'open_auth' && onOpenAuthModal) {
+        onOpenAuthModal();
+      } else if (action.type === 'toggle_status' && onToggleCampaignStatus) {
         await onToggleCampaignStatus();
       } else if (action.type === 'navigate' && action.target && onNavigateTab) {
         onNavigateTab(action.target);
@@ -456,11 +519,16 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         role: 'assistant',
         text: `¡Historial reiniciado! ✨🤖 Estoy listo para asistirte en cualquier motor, botón o campaña de KaSe. ¿Qué te gustaría hacer? 🚀`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestions: [
+        suggestions: currentUser ? [
           '🚀 Auditar mi campaña actual',
           '➕ Crear nueva campaña',
-          '💳 ¿Cuáles son los precios de los planes?',
-          '🛡️ ¿Cómo garantizan clientes reales?'
+          '💳 Planes y ampliaciones',
+          '🔌 Ver mi Enlace Puente'
+        ] : [
+          '📝 Crear cuenta gratuita',
+          '🚀 ¿Cómo funciona KaSe?',
+          '💰 Ver planes y precios',
+          '🛡️ ¿Tengo que configurar APIs?'
         ]
       },
     ]);
@@ -468,6 +536,8 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
 
   const getActionIcon = (type: string) => {
     switch (type) {
+      case 'open_auth':
+        return <UserPlus className="w-3.5 h-3.5 text-emerald-400" />;
       case 'toggle_status':
         return activeCampaign?.status === 'active' ? <Pause className="w-3.5 h-3.5 text-amber-400" /> : <Play className="w-3.5 h-3.5 text-emerald-400" />;
       case 'new_campaign':
@@ -662,61 +732,115 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
 
               {/* TOP QUICK ACTION BAR */}
               <div className="px-3 py-1.5 bg-neutral-950/80 border-b border-neutral-900 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[10px]">
-                {activeCampaign && (
-                  <button
-                    type="button"
-                    onClick={() => handleSendMessage(activeCampaign.status === 'active' ? 'Pausa mi campaña' : 'Reanuda mi campaña')}
-                    className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
-                  >
-                    {activeCampaign.status === 'active' ? (
-                      <>
-                        <Pause className="w-2.5 h-2.5 text-amber-400" />
-                        <span>Pausar Motores</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-2.5 h-2.5 text-emerald-400" />
-                        <span>Reanudar Motores</span>
-                      </>
+                {!currentUser ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenAuthModal) onOpenAuthModal();
+                        else handleSendMessage('Quiero registrarme y crear mi cuenta gratuita');
+                      }}
+                      className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1 font-medium shadow-sm shadow-emerald-950"
+                    >
+                      <UserPlus className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Crear Cuenta Gratis</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('¿Cómo funciona el tráfico autónomo de KaSe?')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🚀</span>
+                      <span>¿Cómo Funciona?</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('¿Cuáles son los planes y precios para empezar?')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>💰</span>
+                      <span>Planes y Precios</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('¿Tengo que configurar alguna API o código?')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Cero APIs</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('¿Cómo se garantiza que las visitas y clientes son 100% reales?')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>👥</span>
+                      <span>Tráfico Real</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {activeCampaign && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendMessage(activeCampaign.status === 'active' ? 'Pausa mi campaña' : 'Reanuda mi campaña')}
+                        className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        {activeCampaign.status === 'active' ? (
+                          <>
+                            <Pause className="w-2.5 h-2.5 text-amber-400" />
+                            <span>Pausar Motores</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-2.5 h-2.5 text-emerald-400" />
+                            <span>Reanudar Motores</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('Audita mi campaña activa en tiempo real')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <BarChart3 className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Auditoría en Vivo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('Quiero dar de alta una nueva campaña')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-sky-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Plus className="w-2.5 h-2.5 text-sky-400" />
+                      <span>+ Nueva Campaña</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('¿Cómo puedo escalar mi campaña a un plan superior para multiplicar visitas?')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-amber-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                      <span>Escalar Visitas</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('Explícame cómo funciona el Enrutador Puente sin píxel')}
+                      className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-teal-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🔌</span>
+                      <span>Enrutador Puente</span>
+                    </button>
+                  </>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Audita mi campaña activa en tiempo real')}
-                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  <BarChart3 className="w-2.5 h-2.5 text-emerald-400" />
-                  <span>Auditoría en Vivo</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('¿Cómo se garantiza que las visitas y clientes son 100% reales?')}
-                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
-                  <span>Tráfico 100% Real</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Quiero dar de alta una nueva campaña')}
-                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-sky-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-2.5 h-2.5 text-sky-400" />
-                  <span>+ Nueva Campaña</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage('Explícame cómo funciona el Enrutador Puente sin píxel')}
-                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-teal-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  <span>🔌</span>
-                  <span>Enrutador Puente</span>
-                </button>
               </div>
 
               {/* MESSAGES LIST */}
