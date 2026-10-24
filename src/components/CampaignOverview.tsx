@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   Target, 
@@ -9,13 +9,18 @@ import {
   Play, 
   ArrowUpRight,
   Code2,
-  Radio
+  Radio,
+  Star,
+  MessageSquare,
+  Send,
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { Campaign } from '../types/growth';
 
 interface CampaignOverviewProps {
   campaign: Campaign;
-  onSimulateBurst: (count: number) => void;
+  onSimulateBurst?: (count: number) => void;
   onOpenIntegration: () => void;
   onOpenModules: () => void;
   onOpenGuide: () => void;
@@ -25,7 +30,6 @@ interface CampaignOverviewProps {
 
 export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   campaign,
-  onSimulateBurst,
   onOpenIntegration,
   onOpenModules,
   onOpenGuide,
@@ -33,6 +37,59 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   isSimulating = false,
 }) => {
   const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
+
+  // Weekly Satisfaction Survey Modal State
+  const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
+  const [surveyStars, setSurveyStars] = useState(5);
+  const [surveyFeedback, setSurveyFeedback] = useState('');
+  const [isSubmittingSurvey, setIsSubmittingSurvey] = useState(false);
+  const [surveyResultMsg, setSurveyResultMsg] = useState<{ type: 'success' | 'alert'; text: string } | null>(null);
+
+  const handleSubmitSurvey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingSurvey(true);
+    setSurveyResultMsg(null);
+    try {
+      const res = await fetch('/api/marketing/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientEmail: campaign.billing?.payerEmail || 'cliente@kase.com',
+          clientName: campaign.name,
+          ratingStars: surveyStars,
+          message: surveyFeedback,
+          campaignId: campaign.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.isDissatisfied) {
+        setSurveyResultMsg({
+          type: 'alert',
+          text: '🚨 Tu comentario ha sido recibido. El Agente de IA ha generado una alerta urgente a la administración de Kathy Seba (Super Admin) para atender tu desconformidad con máxima prioridad.',
+        });
+      } else {
+        setSurveyResultMsg({
+          type: 'success',
+          text: '⭐ ¡Muchas gracias por tu valoración de conformidad! Tu retroalimentación nos ayuda a seguir optimizando los 8 motores.',
+        });
+      }
+      setTimeout(() => {
+        if (!data.isDissatisfied) {
+          setIsSurveyModalOpen(false);
+          setSurveyResultMsg(null);
+          setSurveyFeedback('');
+        }
+      }, 3500);
+    } catch (err) {
+      console.error('Error submitting satisfaction feedback:', err);
+      setSurveyResultMsg({
+        type: 'alert',
+        text: 'Hubo un error al enviar tu valoración. Por favor intenta nuevamente.',
+      });
+    } finally {
+      setIsSubmittingSurvey(false);
+    }
+  };
   const progressPercent = Math.min(100, Math.round((currentRegistrations / targetRegistrations) * 100));
   const remaining = Math.max(0, targetRegistrations - currentRegistrations);
   const isQuotaReached = status === 'paused_quota_reached' || currentRegistrations >= targetRegistrations;
@@ -61,12 +118,19 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto flex-wrap">
+          <button
+            onClick={() => setIsSurveyModalOpen(true)}
+            className="w-full sm:w-auto px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-md text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <Star className="w-3.5 h-3.5 fill-emerald-400 text-emerald-400" />
+            <span>⭐ Valorar Campaña</span>
+          </button>
           <button
             onClick={onOpenGuide}
             className="w-full sm:w-auto px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-md text-xs font-medium text-emerald-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
           >
-            <span>Ver Guía Paso a Paso</span>
+            <span>Ver Guía</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
           <button
@@ -280,16 +344,14 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
           {campaign.recentConversions.length === 0 ? (
             <div className="py-12 text-center space-y-3">
               <Code2 className="w-8 h-8 text-neutral-600 mx-auto" />
-              <div className="text-sm text-neutral-300 font-medium">Aún no hay registros contabilizados</div>
-              <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-                Integra el Píxel o Webhook en tu página de confirmación, o utiliza el Simulador de Cuota para probar.
+              <div className="text-sm text-neutral-300 font-medium">Esperando primeras conversiones orgánicas</div>
+              <p className="text-xs text-neutral-400 max-w-sm mx-auto leading-relaxed">
+                Tus 8 motores de adquisición están activos. Cada usuario humano que ingrese mediante tu Enlace Puente Inteligente aparecerá aquí de forma automática e inmediata.
               </p>
-              <button
-                onClick={() => onSimulateBurst(5)}
-                className="px-3 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-md hover:bg-emerald-500/20 transition-colors cursor-pointer"
-              >
-                Enviar 5 Registros de Prueba
-              </button>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Tráfico 100% Humano · Sin Bots ni Cuotas Quemadas</span>
+              </div>
             </div>
           ) : (
             <div className="divide-y divide-neutral-800/80 max-h-80 overflow-y-auto pr-1">
@@ -389,6 +451,109 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 5. WEEKLY SATISFACTION SURVEY MODAL (1x WEEK PROTOCOL) */}
+      {isSurveyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-md bg-neutral-950 border border-emerald-500/30 rounded-2xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <Star className="w-5 h-5 fill-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Encuesta Semanal de Satisfacción
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Remitente oficial: kase.marketing.digital@gmail.com
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSurveyModalOpen(false)}
+                className="text-neutral-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitSurvey} className="space-y-4">
+              <div className="space-y-1.5 text-center py-2">
+                <label className="text-xs font-medium text-neutral-300 block">
+                  ¿Cómo calificarías el desempeño de tu campaña esta semana?
+                </label>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setSurveyStars(star)}
+                      className="p-1 text-2xl transition-transform hover:scale-110 cursor-pointer"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${
+                          star <= surveyStars
+                            ? 'text-amber-400 fill-amber-400'
+                            : 'text-neutral-700'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[11px] font-mono text-neutral-400 mt-1">
+                  {surveyStars >= 4 ? '🟢 Conforme con el servicio' : '🔴 Desconforme (Alerta inmediata al Administrador)'}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-neutral-300 flex items-center justify-between">
+                  <span>Mensaje de conformidad o desconformidad:</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">KaSi AI Supervisor</span>
+                </label>
+                <textarea
+                  value={surveyFeedback}
+                  onChange={(e) => setSurveyFeedback(e.target.value)}
+                  placeholder="Escribe aquí tu opinión, sugerencia o motivo de desconformidad si algo no cumple tus expectativas..."
+                  rows={3}
+                  className="w-full bg-neutral-900 border border-neutral-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white placeholder-neutral-500 focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
+              {surveyResultMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${
+                    surveyResultMsg.type === 'alert'
+                      ? 'bg-amber-950/40 border-amber-500/50 text-amber-300'
+                      : 'bg-emerald-950/40 border-emerald-500/50 text-emerald-300'
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{surveyResultMsg.text}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSurveyModalOpen(false)}
+                  className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingSurvey}
+                  className="px-5 py-2 bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className={`w-3.5 h-3.5 ${isSubmittingSurvey ? 'animate-spin' : ''}`} />
+                  <span>{isSubmittingSurvey ? 'Enviando...' : 'Enviar Valoración'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

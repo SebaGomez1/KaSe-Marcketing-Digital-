@@ -32,7 +32,8 @@ import {
   Flame,
   CheckCircle2,
   TrendingUp,
-  Cpu
+  Cpu,
+  ShieldCheck
 } from 'lucide-react';
 import { Campaign, User } from '../types/growth';
 
@@ -313,6 +314,14 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
     setInputMessage('');
     setIsLoading(true);
 
+    let actualText = text;
+    if (text.startsWith('🔄 Reintentar')) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user' && !m.text.startsWith('🔄 Reintentar'));
+      if (lastUserMsg) {
+        actualText = lastUserMsg.text;
+      }
+    }
+
     try {
       const historyPayload = messages.slice(-5).map((m) => ({
         role: m.role === 'user' ? 'user' : 'model',
@@ -323,7 +332,7 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          message: text, 
+          message: actualText, 
           history: historyPayload,
           context: {
             activeTab,
@@ -357,9 +366,9 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         action: data.action,
         suggestions: data.suggestions || [
           '🚀 Auditar mi campaña',
-          '🧪 Probar simulador de cuota',
           '➕ Nueva campaña',
-          '💳 Planes y precios'
+          '💳 Planes y precios',
+          '🛡️ ¿Cómo garantizan visitas reales?'
         ],
         source: data.source,
       };
@@ -371,12 +380,13 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
       const errorMsg: ChatMessage = {
         id: `assistant_err_${Date.now()}`,
         role: 'assistant',
-        text: '¡Aquí estoy! He tenido un micro-retraso con la red, pero mantengo sincronizados todos tus motores. ¿Deseas pausar tu campaña, revisar tus 8 módulos o crear una nueva?',
+        text: 'He detectado una breve intermitencia de red desde tu conexión móvil. ⚡📱\n\nPuedes pulsar abajo para reintentar tu consulta o elegir una de las opciones rápidas.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestions: [
-          '🚀 Auditar mi campaña actual',
-          '🧪 Simular ráfaga de 25 registros',
-          '➕ Crear nueva campaña'
+          '🔄 Reintentar mi mensaje',
+          '💰 ¿Cuáles son los planes y precios?',
+          '🚀 ¿Cómo funciona KaSe?',
+          '➕ Quiero crear una campaña'
         ]
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -400,14 +410,12 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
           onOpenNewCampaign();
         }
       } else if (action.type === 'simulate_burst') {
-        const count = action.count || 25;
-        if (onSimulateBurst) {
-          await onSimulateBurst(count);
-        } else if (activeCampaign) {
+        // Only SuperAdmin or local dev
+        if (currentUser?.role === 'super_admin' && activeCampaign) {
           await fetch(`/api/campaigns/${activeCampaign.id}/simulate-burst`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ count }),
+            body: JSON.stringify({ count: action.count || 25 }),
           });
         }
       } else if (action.type === 'install_app' && onOpenInstallModal) {
@@ -450,9 +458,9 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestions: [
           '🚀 Auditar mi campaña actual',
-          '🧪 Simular ráfaga de 25 registros',
           '➕ Crear nueva campaña',
-          '💳 ¿Cuáles son los precios de los planes?'
+          '💳 ¿Cuáles son los precios de los planes?',
+          '🛡️ ¿Cómo garantizan clientes reales?'
         ]
       },
     ]);
@@ -685,11 +693,11 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
 
                 <button
                   type="button"
-                  onClick={() => handleSendMessage('Simula una ráfaga de 25 registros para verificar cuota')}
-                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-amber-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
+                  onClick={() => handleSendMessage('¿Cómo se garantiza que las visitas y clientes son 100% reales?')}
+                  className="px-2 py-0.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-emerald-300 border border-neutral-800 whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  <Zap className="w-2.5 h-2.5 text-amber-400" />
-                  <span>+25 Registros</span>
+                  <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>Tráfico 100% Real</span>
                 </button>
 
                 <button

@@ -3040,10 +3040,11 @@ export interface KaSiAssistantResponse {
 }
 
 function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantResponse {
-  const m = message.toLowerCase();
+  const m = message.toLowerCase().trim();
   const camp = context?.activeCampaign;
   const campName = camp?.name || 'tu campaña';
   const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+  const userEmail = context?.userEmail;
 
   // 0. CONTROL DE ACCESO ESTRICTO (RBAC: SUPER ADMIN VS USUARIO CLIENTE)
   const isAdminActionRequested = 
@@ -3069,7 +3070,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
         '• **Seguridad Bancaria**: Las credenciales de pasarela, tokens de encriptación y llaves maestras de base de datos están bajo protocolo Zero-Access.\n' +
         '• **Privacidad de Usuarios**: Cada cliente gestiona su propia campaña sin visibilidad sobre métricas de terceros.\n\n' +
         '💡 **¿En qué sí puedo ayudarte en tu panel?**:\n' +
-        '• Auditar tu campaña actual y el avance de tu cuota.\n' +
+        '• Auditar tu campaña actual y el avance de tu cuota real.\n' +
         '• Revisar tus 8 motores de adquisición orgánica.\n' +
         '• Obtener tu Enlace Puente Inteligente (`/r/:id`) de 1 clic.\n' +
         '• Resolver cualquier consulta de tu producto o facturación.',
@@ -3082,254 +3083,242 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 0. VISITANTES NO REGISTRADOS EN EL HERO (LIMITAR RESPUESTAS A INCENTIVAR REGISTRO)
-  if (!context?.userEmail) {
-    if (m.includes('api') || m.includes('apis')) {
-      return {
-        reply: '🛡️ **En KaSe tú NO tienes que crear ni configurar ninguna API.**\n\n' +
-          'Nuestra infraestructura y los 8 motores de adquisición orgánica operan de manera 100% autónoma en la nube.\n\n' +
-          'Como usuario sólo necesitas:\n' +
-          '1. El enlace de la página web que deseas promocionar.\n' +
-          '2. Tus datos de inicio de cuenta (nombre, correo y contraseña).\n' +
-          '3. Los datos del formulario de campaña (objetivo de conversiones y presupuesto).\n\n' +
-          '¡Más nada! ¿Te gustaría crear tu cuenta gratuita ahora mismo para acceder?',
-        suggestions: ['📝 Crear cuenta gratuita', '¿Cómo funciona KaSe?', '💰 Ver planes y precios']
-      };
-    }
+  // 1. CLARIFICACIÓN CRÍTICA: SIMULACIÓN DE RÁFAGA / TRÁFICO REAL VS FICTICIO
+  if (
+    m.includes('simular') ||
+    m.includes('rafaga') ||
+    m.includes('ráfaga') ||
+    m.includes('simulacion') ||
+    m.includes('simulación') ||
+    m.includes('falso') ||
+    m.includes('fake') ||
+    m.includes('bot') ||
+    m.includes('bots') ||
+    m.includes('es real') ||
+    m.includes('son reales')
+  ) {
     return {
-      reply: '¡Hola! Soy **KaSi** ✨🤖, el especialista en captación de KaSe Marketing Digital.\n\n' +
-        'Ayudamos a emprendedores y negocios a conseguir clientes reales y ventas en piloto automático.\n\n' +
-        '• **Cero curiosos**: Filtramos el tráfico para compradores con alto poder adquisitivo.\n' +
-        '• **Apagado exacto**: Cumplida la meta contratada, los motores se detienen automáticamente.\n' +
-        '• **Sin APIs**: Tú sólo brindas el link de tu web y tus metas.\n\n' +
-        '¿Deseas registrarte gratis para explorar la plataforma?',
-      suggestions: ['📝 Crear cuenta gratuita', '¿Cómo funciona KaSe?', '💰 Ver planes y precios']
+      reply: '🛡️ **POLÍTICA DE TRÁFICO 100% REAL Y CUOTA PROTEGIDA EN KaSe**\n\n' +
+        'Tienes toda la razón en cuestionar las simulaciones: **en campañas reales de pago, NO se deben simular ráfagas artificiales**.\n\n' +
+        '💡 **¿Por qué?**\n' +
+        '• Si un cliente paga por 1,000 registros garantizados y el sistema le simulara 25 usuarios de mentira, esos 25 se descontarían de su saldo contratado, lo que significa que **recibiría 25 clientes reales menos**. ¡No tiene sentido perjudicar al cliente!\n' +
+        '• En KaSe, **cada conversión y clic contabilizado en tu Enlace Puente (`/r/:id`) proviene de una persona humana real** atraída por los 8 motores (Google Indexing, Reddit, X, Directorios de Software, Newsletters, Reels/TikTok y Red de Afiliados).\n' +
+        '• La simulación solo existe como herramienta técnica aislada en el laboratorio de pruebas de la administración central (Super Admin) para validar que el corte de cuota automático funcione en caso extremo, pero **jamás toca las campañas pagas de nuestros clientes**.\n\n' +
+        '¿Deseas revisar el estado de tu Enlace Puente o auditar los motores de tu campaña?',
+      suggestions: [
+        '🚀 Auditar mi campaña actual',
+        '🔌 Ver mi Enlace Puente (/r/:id)',
+        '💳 Ver planes y precios',
+        '📊 Ir al Dashboard'
+      ]
     };
   }
 
-  // 1. CLARIFICACIÓN DE APIS (LOS USUARIOS NUNCA CONFIGURAN APIS)
+  // 2. CLARIFICACIÓN DE APIS (LOS USUARIOS NUNCA CONFIGURAN APIS)
   if (
     m.includes('api') ||
     m.includes('apis') ||
     m.includes('configurar api') ||
-    m.includes('por que me pides todas las apis') ||
-    m.includes('porque me pides todas las apis') ||
-    m.includes('donde pongo las apis')
+    m.includes('configurar apis') ||
+    m.includes('donde pongo las apis') ||
+    m.includes('por que me pides api') ||
+    m.includes('porque me pides api')
   ) {
     return {
-      reply: '🛡️ **Tú NO tienes que crear ni configurar ninguna API.**\n\n' +
-        'KaSe opera con tecnología 100% autónoma. Como usuario cliente, tus únicas interacciones son:\n\n' +
-        '1️⃣ El link de tu página web a la cual deseas llevar tráfico calificado.\n' +
-        '2️⃣ Tus datos de inicio de cuenta.\n' +
-        '3️⃣ Los datos que seleccionas en el formulario de campaña (tipo de meta, nicho y presupuesto).\n\n' +
-        '¡Más nada! Todo el enrutamiento y los 8 motores de adquisición operan en nuestros servidores.',
+      reply: '🛡️ **Tú NO tienes que crear, programar ni configurar ninguna API.**\n\n' +
+        'KaSe Marketing Digital opera con tecnología 100% autónoma en nuestra propia nube. Toda la conexión con Google, Reddit, X, Directorios y pasarelas es administrada de forma centralizada por nuestro equipo de ingeniería.\n\n' +
+        'Como cliente, tus únicos 3 pasos son:\n' +
+        '1️⃣ Brindar el enlace de la página web a la cual deseas llevar compradores o registros.\n' +
+        '2️⃣ Tus datos de acceso a tu cuenta.\n' +
+        '3️⃣ Seleccionar tu objetivo de conversiones y presupuesto en el formulario de campaña.\n\n' +
+        '¡Más nada! Del resto se encargan los 8 motores en segundo plano.',
       suggestions: [
-        '🚀 Auditar mi campaña actual',
         '➕ Crear nueva campaña',
         '💳 Ver planes y precios',
+        '🚀 ¿Cómo funcionan los 8 motores?',
         '🔌 Ver Enlace Puente'
       ]
     };
   }
 
-  // 2. DIAGNÓSTICO TÉCNICO Y RESOLUCIÓN DE ERRORES EN LA APP
+  // 3. SALUDOS Y PRESENTACIÓN CORDIAL
   if (
-    m.includes('error') ||
-    m.includes('falla') ||
-    m.includes('fallo') ||
-    m.includes('no funciona') ||
-    m.includes('problema') ||
-    m.includes('no suma') ||
-    m.includes('no carga') ||
-    m.includes('404') ||
-    m.includes('se trabó') ||
-    m.includes('se trabo') ||
-    m.includes('se paró') ||
-    m.includes('se paro')
+    m === 'hola' ||
+    m === 'buenas' ||
+    m === 'buen dia' ||
+    m === 'buen día' ||
+    m === 'buenas tardes' ||
+    m === 'buenas noches' ||
+    m === 'hey' ||
+    m === 'hola!' ||
+    m === 'hola kasi' ||
+    m.startsWith('hola ') ||
+    m.startsWith('buenos dias') ||
+    m.startsWith('buen dia') ||
+    m.startsWith('buenas ') ||
+    m === 'que tal' ||
+    m === 'qué tal' ||
+    m === 'como estas' ||
+    m === 'cómo estás'
   ) {
-    // Caso A: Contador no suma o visitas no suben
-    if (m.includes('suma') || m.includes('contador') || m.includes('visita') || m.includes('clic') || m.includes('registro')) {
-      return {
-        reply: '🛠️ **DIAGNÓSTICO TÉCNICO · CONTADOR Y ENRUTADOR PUENTE**\n\n' +
-          '• **Causa Raíz Detectada**: Los clics o visitas solo suman cuando entran a través del **Enrutador Puente Inteligente** (`/r/:campaignId`). Si compartes tu URL directa sin el puente, el servidor no puede interceptar el evento atómico.\n' +
-          '• **Estado de la Base de Datos**: Tabla `conversions` activa en Supabase/PostgreSQL.\n' +
-          '• **Solución Inmediata**: Ve a la pestaña "Integración Segura", copia tu enlace `/r/:id` y utilízalo en tus publicaciones o anuncios. Cada clic sumará +1 y redirigirá de inmediato al visitante sin demoras.',
-        action: {
-          id: `act_err_int_${Date.now()}`,
-          type: 'navigate',
-          target: 'integration',
-          title: '🔌 Copiar mi Enlace Puente Inteligente',
-          description: 'Abre la sección de integración para obtener tu enlace de seguimiento automático.',
-        },
-        suggestions: [
-          '🔌 Ir a Integración Segura',
-          '🧪 Probar simulación (+25)',
-          '📊 Ver Dashboard'
-        ]
-      };
-    }
-
-    // Caso B: Campaña pausada automáticamente
-    if (m.includes('pausó') || m.includes('pauso') || m.includes('paró') || m.includes('frenó') || m.includes('cuota') || m.includes('meta')) {
-      const cur = camp?.currentRegistrations ?? 0;
-      const tgt = camp?.targetRegistrations ?? 1000;
-      return {
-        reply: '🛡️ **DIAGNÓSTICO TÉCNICO · SISTEMA DE PROTECCIÓN DE CUOTA**\n\n' +
-          `• **Causa Raíz**: La función de protección \`evaluateQuotaAndEnforce()\` se activa automáticamente cuando los registros alcanzan o superan la meta contratada (${cur}/${tgt}).\n` +
-          '• **Objetivo**: Garantizar contractualmente que el cliente **NUNCA gaste de más ni pague un solo centavo adicional** fuera de su cuota.\n' +
-          '• **Solución Inmediata**: Puedes ampliar tu cuota pasando a un plan superior (Growth o Enterprise) o reiniciar el contador de prueba.',
-        action: {
-          id: `act_quota_fix_${Date.now()}`,
-          type: 'navigate',
-          target: 'plans',
-          title: '💳 Ampliar Cuota en Planes y Precios',
-          description: 'Aumenta tu volumen de usuarios garantizados para reactivar los motores.',
-        },
-        suggestions: [
-          '💳 Ampliar mi plan',
-          '🔄 Resetear contador de prueba',
-          '📊 Ver Dashboard'
-        ]
-      };
-    }
-
-    // Caso C: Error en pasarela o Mercado Pago
-    if (m.includes('mercado pago') || m.includes('pago') || m.includes('tarjeta') || m.includes('checkout')) {
-      if (isSuperAdmin) {
-        return {
-          reply: '💳 **DIAGNÓSTICO TÉCNICO PASARELA MERCADO PAGO URUGUAY (ADMIN)**\n\n' +
-            '• **Estado de Credenciales**: Verificando `MERCADO_PAGO_ACCESS_TOKEN` y `MERCADO_PAGO_PUBLIC_KEY`.\n' +
-            '• **Solución para Kathy Seba**: Puedes ejecutar la autoprueba en vivo de **$1.00 USD** con el botón de abajo para verificar que la pasarela redirige al checkout oficial de Mercado Pago Uruguay y acredita en tu cuenta.',
-          action: {
-            id: `act_mp_fix_${Date.now()}`,
-            type: 'one_dollar_test',
-            title: '💳 Ejecutar Autoprueba de $1.00 USD',
-            description: 'Abre el checkout de Mercado Pago para confirmar que la pasarela está 100% activa.',
-          },
-          suggestions: [
-            '💳 Probar $1 USD en Mercado Pago',
-            '👑 Ir a Admin Global',
-            '📊 Ver Transacciones'
-          ]
-        };
-      } else {
-        return {
-          reply: '💳 **DIAGNÓSTICO TÉCNICO DE COBRO · CLIENTE**\n\n' +
-            '• Si tu pago fue rechazado por el banco, verifica que tu tarjeta esté habilitada para compras online o prueba con otro medio de pago admitido por Mercado Pago.\n' +
-            '• Tu suscripción se activará inmediatamente en cuanto Mercado Pago emita la notificación de cobro aprobado.',
-          action: {
-            id: `act_retry_pay_${Date.now()}`,
-            type: 'navigate',
-            target: 'plans',
-            title: '💳 Reintentar Pago en Planes y Precios',
-            description: 'Selecciona tu plan preferido para abrir el checkout oficial.',
-          },
-          suggestions: [
-            '💳 Reintentar en Planes y Precios',
-            '🚀 Auditar mi campaña activa',
-            '📊 Ir al Dashboard'
-          ]
-        };
-      }
-    }
-
-    // Caso D: Error general o URL destino
+    const greetingName = userEmail ? (userEmail.split('@')[0]) : 'amigo emprendedor';
     return {
-      reply: '🔍 **ANÁLISIS DE ESTADO DEL SISTEMA · KaSi 2.0**\n\n' +
-        'He escaneado los componentes clave de tu plataforma:\n' +
-        '1️⃣ **Enrutador Puente**: Operativo (HTTP 307 + registro atómico).\n' +
-        '2️⃣ **Base de Datos**: PostgreSQL / Supabase sincronizado con fallback local redundante.\n' +
-        '3️⃣ **Motores**: Módulos 1 a 8 calibrados con jittering anti-bloqueo.\n\n' +
-        '¿Cuál es el síntoma específico que experimentas? Puedes pedirme simular una ráfaga, pausar la campaña o llevarte a la sección adecuada.',
+      reply: `¡Hola, ${greetingName}! ✨🤖 Soy **KaSi 2.0**, tu Agente de Inteligencia Artificial y Especialista en Crecimiento de **KaSe Marketing Digital** (fundado por Kathy Seba).\n\n` +
+        `Estoy aquí para ayudarte a escalar tu negocio y conseguir clientes y ventas reales en piloto automático.\n\n` +
+        `• **Cero APIs para ti**: Solo nos das tu link y nosotros desplegamos los 8 motores.\n` +
+        `• **Tráfico 100% Humano**: Sin bots ni simulaciones que quemen tu cuota.\n` +
+        `• **Garantía Exacta**: Al cumplir la meta que contrataste, los motores se detienen automáticamente para que nunca pagues de más.\n\n` +
+        `¿En qué puedo apoyarte hoy? Puedes preguntarme sobre precios, cómo funciona la tecnología, cómo dar de alta una campaña o auditar tus números. 🚀`,
       suggestions: [
-        '🚀 Auditar mi campaña actual',
-        '🧪 Probar simulación (+25)',
+        '💰 ¿Cuáles son los planes y precios?',
+        '🚀 ¿Cómo funciona KaSe?',
+        '➕ Quiero crear una campaña',
+        '🛡️ ¿Tengo que configurar alguna API?'
+      ]
+    };
+  }
+
+  // 4. CÓMO FUNCIONA LA APLICACIÓN Y LOS MOTORES
+  if (
+    m.includes('como funciona') ||
+    m.includes('cómo funciona') ||
+    m.includes('de que trata') ||
+    m.includes('de qué trata') ||
+    m.includes('explicame') ||
+    m.includes('explícame') ||
+    m.includes('que es kase') ||
+    m.includes('qué es kase') ||
+    m.includes('que hacen') ||
+    m.includes('qué hacen') ||
+    m.includes('como me consiguen clientes') ||
+    m.includes('cómo me consiguen clientes') ||
+    m.includes('motores')
+  ) {
+    return {
+      reply: '🚀 **¿CÓMO FUNCIONA KaSe MARKETING DIGITAL?**\n\n' +
+        'KaSe es una plataforma autónoma de captación omnicanal. Funciona en 3 pasos muy simples:\n\n' +
+        '1️⃣ **Configuración en 60 segundos**: Ingresas el link de tu web, producto o red social, y defines cuántos clientes o registros deseas conseguir.\n' +
+        '2️⃣ **Despliegue de los 8 Motores Autónomos**:\n' +
+        '   • **Módulo 1**: Google Search Indexing API (posicionamiento prioritario en <48h).\n' +
+        '   • **Módulo 2**: Social Syndication en X/Twitter y LinkedIn con jittering inteligente.\n' +
+        '   • **Módulo 3**: Envíos automáticos a 50+ directorios de software mundiales.\n' +
+        '   • **Módulo 4**: Escucha activa en Reddit (Snoowrap) respondiendo en comunidades de tu nicho.\n' +
+        '   • **Módulo 5**: Pitching automatizado a newsletters y audiencias B2B.\n' +
+        '   • **Módulo 6**: Generación de micro-videos de alto enganche (Reels y TikTok).\n' +
+        '   • **Módulo 7**: Programmatic SEO masivo con landing pages de alta conversión.\n' +
+        '   • **Módulo 8**: Red de afiliados e influencers con 30% recurrente.\n' +
+        '3️⃣ **Enrutador Puente Inteligente (`/r/:id`)**: Todo el tráfico llega filtrado hacia tu web. Cada visitante suma de forma atómica y, al llegar al 100% de la meta contratada, el sistema se auto-apaga para proteger tu dinero.',
+      suggestions: [
+        '💰 Ver planes y precios',
+        '➕ Crear nueva campaña ahora',
+        '🔌 ¿Cómo uso mi Enlace Puente?',
+        '🛡️ ¿Tengo que configurar APIs?'
+      ]
+    };
+  }
+
+  // 5. MERCADO PAGO, PRECIOS Y PLANES
+  if (
+    m.includes('mercadopago') ||
+    m.includes('mercado pago') ||
+    m.includes('pago') ||
+    m.includes('precio') ||
+    m.includes('precios') ||
+    m.includes('cuanto vale') ||
+    m.includes('cuánto vale') ||
+    m.includes('cuanto cuesta') ||
+    m.includes('cuánto cuesta') ||
+    m.includes('costo') ||
+    m.includes('costos') ||
+    m.includes('planes') ||
+    m.includes('plan') ||
+    m.includes('dolar') ||
+    m.includes('dólar') ||
+    m.includes('tarifa')
+  ) {
+    return {
+      reply: '💳 **PLANES Y PRECIOS TRANSPARENTES · MERCADO PAGO URUGUAY**\n\n' +
+        'En KaSe cobramos exclusivamente por **resultados y clientes garantizados** a través de checkout protegido con acreditación bancaria segura:\n\n' +
+        '🌱 **Plan Starter**: **$490 USD / mes**\n' +
+        '• **1,000 registros / clientes garantizados**\n' +
+        '• Motores 1, 2 y 3 activos (Google Indexing API, X/LinkedIn y 50+ Directorios de Software)\n' +
+        '• Enrutador Puente Inteligente sin píxel manual\n\n' +
+        '⚡ **Plan Growth (El Más Elegido)**: **$1,890 USD / mes**\n' +
+        '• **5,000 registros / clientes garantizados**\n' +
+        '• Motores 1 al 5 activos (+ Reddit Snoowrap Outbound y Newsletters B2B)\n' +
+        '• Soporte prioritario y calibración continua de nicho\n\n' +
+        '👑 **Plan Enterprise**: **$8,900 USD / mes**\n' +
+        '• **25,000 registros / clientes garantizados**\n' +
+        '• Los 8 motores omnicanal a máxima frecuencia (+ TikTok/Reels virales, pSEO masivo e Influencers)\n' +
+        '• Servicio VIP con ejecutiva de cuenta dedicada\n\n' +
+        (isSuperAdmin 
+          ? '🧪 **Autoprueba de $1.00 USD**: Como Super Admin (Kathy Seba), tienes acceso exclusivo para probar un cobro en vivo de $1.00 USD y confirmar la acreditación bancaria directa.'
+          : '🔒 Pagos procesados con tarjeta de crédito/débito en un entorno cifrado y seguro.'),
+      action: isSuperAdmin ? {
+        id: `act_mp_test_${Date.now()}`,
+        type: 'one_dollar_test',
+        title: '💳 Iniciar Autoprueba de $1.00 USD',
+        description: 'Abre el checkout de Mercado Pago para verificar la pasarela.',
+      } : {
+        id: `act_nav_plans_${Date.now()}`,
+        type: 'navigate',
+        target: 'plans',
+        title: '💳 Ver y Contratar Planes en "Planes y Precios"',
+        description: 'Explora los planes y cotiza tu volumen de clientes deseado.',
+      },
+      suggestions: [
+        '➕ Crear nueva campaña',
+        '🚀 ¿Cómo funciona KaSe?',
         '🔌 Ver mi Enlace Puente',
-        '📊 Ver Dashboard'
+        '⭐ Ver opiniones de clientes'
       ]
     };
   }
 
-  // 3. AUDITORÍA EN TIEMPO REAL DE LA CAMPAÑA ACTIVA
+  // 6. NICHOS Y SECTORES DE NEGOCIO (E-commerce, SaaS, Inmobiliaria, Cursos, Ropa, etc.)
   if (
-    m.includes('auditar') ||
-    m.includes('auditoria') ||
-    m.includes('auditoría') ||
-    m.includes('analizar mi campaña') ||
-    m.includes('cómo va mi campaña') ||
-    m.includes('como va mi campaña') ||
-    m.includes('rendimiento') ||
-    m.includes('diagnóstico') ||
-    m.includes('diagnostico')
+    m.includes('tienda') ||
+    m.includes('ropa') ||
+    m.includes('moda') ||
+    m.includes('ecommerce') ||
+    m.includes('e-commerce') ||
+    m.includes('saas') ||
+    m.includes('software') ||
+    m.includes('curso') ||
+    m.includes('cursos') ||
+    m.includes('inmobiliaria') ||
+    m.includes('restaurante') ||
+    m.includes('servicios') ||
+    m.includes('b2b') ||
+    m.includes('abogado') ||
+    m.includes('clinica') ||
+    m.includes('infoproducto') ||
+    m.includes('mi negocio') ||
+    m.includes('sirve para')
   ) {
-    const cur = camp?.currentRegistrations ?? 48;
-    const tgt = camp?.targetRegistrations ?? 1000;
-    const pct = Math.min(100, Math.round((cur / Math.max(1, tgt)) * 100));
-    const status = camp?.status === 'active' ? '🟢 En Vivo (Captando Tráfico)' : '⏸️ Pausada';
-
     return {
-      reply: `📊 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
-        `🎯 **Campaña**: *${campName}*\n` +
-        `⚡ **Estado**: ${status}\n` +
-        `📈 **Progreso de Cuota**: **${cur} / ${tgt}** usuarios (${pct}% alcanzado)\n` +
-        `⏱️ **Ramp-up estimado**: 24-48h desde indexación inicial\n\n` +
-        `🛠️ **Diagnóstico de Motores de Adquisición**:\n` +
-        `• **Módulo 1 (SEO Indexing API)**: 12 URLs sincronizadas para rastreo prioritario en <48h. Calificación: **ÓPTIMO (98/100)**.\n` +
-        `• **Módulo 2 (Social Syndication X/LinkedIn)**: Hilos técnicos activos con jittering adaptativo. Calificación: **ACTIVO (94/100)**.\n` +
-        `• **Módulo 3 (Directorios de Software)**: Listado en 39 de 52 plataformas mundiales verificadas. Calificación: **ALTO IMPACTO**.\n` +
-        `• **Módulo 4 (Outbound Snoowrap)**: Escucha activa calibrada para subreddits de la industria.\n\n` +
-        `💡 **Recomendación Estratégica**: Tu Enlace Puente Inteligente está operativo. Puedes acelerar la validación ejecutando una ráfaga simulada de 25 registros en el botón de abajo para verificar el corte automático atómico. 🚀`,
+      reply: '🎯 **ADAPTACIÓN DE LOS 8 MOTORES A TU SECTOR DE NEGOCIO**\n\n' +
+        '¡Totalmente! La tecnología de KaSe está calibrada para filtrar tráfico con **alto poder adquisitivo** y evitar curiosos sin intención de compra:\n\n' +
+        '• **Si vendes Productos Físicos o E-commerce**: Los módulos de video corto y syndication en redes atraen compradores directos hacia tu carrito de compra.\n' +
+        '• **Si vendes Software (SaaS) o Servicios B2B**: Los motores de Reddit, X técnico y directorios de software posicionan tu herramienta frente a fundadores y tomadores de decisiones.\n' +
+        '• **Si vendes Cursos, Consultoría o Infoproductos**: El pSEO y las newsletters atraen leads calificados que ya están buscando activamente resolver ese problema.\n\n' +
+        'Solo necesitas indicarnos la URL de tu página o tienda y elegir tu nicho al crear la campaña. ¿Deseas configurarla ahora?',
       action: {
-        id: `act_audit_${Date.now()}`,
-        type: 'simulate_burst',
-        count: 25,
-        title: '🧪 Simular Ráfaga de 25 Registros',
-        description: 'Verifica la suma inmediata en el contador y la protección de cuota.',
+        id: `act_new_camp_${Date.now()}`,
+        type: 'new_campaign',
+        title: '➕ Iniciar Campaña para mi Negocio',
+        description: 'Abre el formulario para configurar tu nicho y meta de clientes.',
       },
       suggestions: [
-        '🧪 Simular ráfaga de 25 registros',
-        '📊 Ver Dashboard en vivo',
-        '🚀 Ver detalles de los 8 motores',
-        '🔌 Ver Enlace Puente (/r/:id)'
+        '➕ Configurar mi campaña',
+        '💰 Ver planes y precios',
+        '🚀 Ver los 8 motores',
+        '🛡️ ¿Tengo que configurar APIs?'
       ]
     };
   }
 
-  // 4. SIMULACIÓN DE RÁFAGA DIRECTA
-  if (
-    m.includes('simular') ||
-    m.includes('simulacion') ||
-    m.includes('simulación') ||
-    m.includes('ráfaga') ||
-    m.includes('rafaga') ||
-    m.includes('probar cuota') ||
-    m.includes('probar registros')
-  ) {
-    const burstCount = m.includes('100') ? 100 : m.includes('10') ? 10 : 25;
-    return {
-      reply: `¡Excelente prueba técnica! ⚡🧪\n\n` +
-        `He preparado la acción para simular **+${burstCount} registros de usuarios** en tu campaña activa *"${campName}"*.\n\n` +
-        `Esta simulación:\n` +
-        `1️⃣ Ingresa los eventos a través de la canalización de tráfico seguro.\n` +
-        `2️⃣ Suma atómicamente al contador de cuota en vivo.\n` +
-        `3️⃣ Ejecuta la verificación de cuota \`evaluateQuotaAndEnforce()\`: si el contador llega a la meta, suspende automáticamente los motores para garantizar cero sobrecosto.\n\n` +
-        `Presiona el botón de abajo para ejecutar la ráfaga de inmediato:`,
-      action: {
-        id: `act_burst_${Date.now()}`,
-        type: 'simulate_burst',
-        count: burstCount,
-        title: `🧪 Ejecutar Ráfaga de +${burstCount} Registros`,
-        description: `Dispara +${burstCount} conversiones simuladas para verificar el corte de cuota.`,
-      },
-      suggestions: [
-        `🧪 Simular +${burstCount} registros`,
-        '📊 Ver Dashboard',
-        '🚀 Ver los 8 motores'
-      ]
-    };
-  }
-
-  // 5. AYUDA DIRECTA PARA CREAR O HACER UNA CAMPAÑA
+  // 7. AYUDA PARA CREAR O LANZAR UNA CAMPAÑA
   if (
     m.includes('hacer una campaña') ||
     m.includes('hacer campaña') ||
@@ -3346,15 +3335,16 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     m.includes('quiero crear una campaña') ||
     m.includes('dar de alta') ||
     m.includes('lanzar campaña') ||
-    m.includes('empezar campaña')
+    m.includes('empezar campaña') ||
+    m.includes('nueva campaña')
   ) {
     return {
-      reply: '¡Claro que sí, con mucho gusto! 🚀✨ Como tu Copiloto Inteligente, te acompaño paso a paso para configurar tu campaña en 60 segundos:\n\n' +
-        '1️⃣ **Nombre de tu App o Servicio**: Ej. *"FinPulse SaaS"* o *"Tienda ModaElite"*.\n' +
-        '2️⃣ **URL de Destino**: La dirección donde tus clientes comprarán o se registrarán.\n' +
-        '3️⃣ **Nicho o Sector**: Ej. *"B2B SaaS"*, *"E-commerce"*, *"Finanzas"*, etc.\n' +
-        '4️⃣ **Meta Garantizada**: Cuántos clientes o registros deseas recibir (desde 1,000 en Starter hasta 25,000+ en Enterprise).\n\n' +
-        '👇 **He preparado la acción directa aquí abajo.** Presiona el botón verde para abrir el modal y darla de alta al instante:',
+      reply: '¡Excelente decisión! 🚀✨ Configurar tu campaña en KaSe toma menos de 60 segundos. No necesitas conocimientos técnicos:\n\n' +
+        '1️⃣ **Nombre de tu Marca o Producto**: Por ejemplo, *"Tienda Nova"* o *"MiApp SaaS"*.\n' +
+        '2️⃣ **URL de Destino**: El enlace de tu web a donde quieres que lleguen las personas.\n' +
+        '3️⃣ **Nicho**: El sector al que perteneces (ej. E-commerce, Tecnología, Finanzas, Salud).\n' +
+        '4️⃣ **Meta Garantizada**: Cuántos clientes o registros deseas (desde 1,000 en Starter hasta 25,000+ en Enterprise).\n\n' +
+        '👇 Pulsa el botón verde para abrir el asistente de configuración al instante:',
       action: {
         id: `act_new_camp_${Date.now()}`,
         type: 'new_campaign',
@@ -3363,17 +3353,135 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
       },
       suggestions: [
         '💳 ¿Cuáles son los precios de los planes?',
-        '🔌 ¿Cómo funciona el Enrutador Puente sin código?',
+        '🔌 ¿Cómo funciona el Enrutador Puente?',
         '🚀 Ver estado de los 8 motores'
       ]
     };
   }
 
-  // 6. PAUSAR O REANUDAR CAMPAÑA
+  // 8. AUDITORÍA EN TIEMPO REAL DE LA CAMPAÑA ACTIVA
+  if (
+    m.includes('auditar') ||
+    m.includes('auditoria') ||
+    m.includes('auditoría') ||
+    m.includes('analizar mi campaña') ||
+    m.includes('cómo va mi campaña') ||
+    m.includes('como va mi campaña') ||
+    m.includes('rendimiento') ||
+    m.includes('diagnóstico') ||
+    m.includes('diagnostico')
+  ) {
+    const cur = camp?.currentRegistrations ?? 0;
+    const tgt = camp?.targetRegistrations ?? 1000;
+    const pct = Math.min(100, Math.round((cur / Math.max(1, tgt)) * 100));
+    const status = camp?.status === 'active' ? '🟢 En Vivo (Captando Tráfico)' : '⏸️ Pausada';
+
+    return {
+      reply: `📊 **INFORME DE AUDITORÍA AUTÓNOMA · KaSi 2.0**\n\n` +
+        `🎯 **Campaña**: *${campName}*\n` +
+        `⚡ **Estado**: ${status}\n` +
+        `📈 **Progreso de Cuota**: **${cur} / ${tgt}** conversiones (${pct}% alcanzado)\n` +
+        `⏱️ **Ramp-up estimado**: 24-48h desde indexación inicial\n\n` +
+        `🛠️ **Diagnóstico de Motores de Adquisición**:\n` +
+        `• **Módulo 1 (SEO Indexing API)**: Sincronizado para rastreo prioritario en <48h.\n` +
+        `• **Módulo 2 (Social Syndication X/LinkedIn)**: Activo con jittering adaptativo anti-bloqueo.\n` +
+        `• **Módulo 3 (Directorios de Software)**: Activo en plataformas verificadas.\n` +
+        `• **Módulo 4 (Outbound Snoowrap)**: Escucha activa en subreddits de la industria.\n\n` +
+        `💡 Recuerda que cada clic y conversión entra por tu Enlace Puente Inteligente sin necesidad de que toques ninguna API ni código complejo.`,
+      action: {
+        id: `act_nav_dash_${Date.now()}`,
+        type: 'navigate',
+        target: 'dashboard',
+        title: '📊 Ver Métricas en Dashboard',
+        description: 'Abre el panel principal para ver los gráficos de conversiones en tiempo real.',
+      },
+      suggestions: [
+        '📊 Ver Dashboard en vivo',
+        '🚀 Ver detalles de los 8 motores',
+        '🔌 Ver Enlace Puente (/r/:id)',
+        '💳 Ampliar mi plan de conversiones'
+      ]
+    };
+  }
+
+  // 9. DIAGNÓSTICO TÉCNICO Y RESOLUCIÓN DE ERRORES EN LA APP
+  if (
+    m.includes('error') ||
+    m.includes('falla') ||
+    m.includes('fallo') ||
+    m.includes('no funciona') ||
+    m.includes('problema') ||
+    m.includes('no suma') ||
+    m.includes('no carga') ||
+    m.includes('404') ||
+    m.includes('se trabó') ||
+    m.includes('se trabo') ||
+    m.includes('se paró') ||
+    m.includes('se paro')
+  ) {
+    if (m.includes('suma') || m.includes('contador') || m.includes('visita') || m.includes('clic') || m.includes('registro')) {
+      return {
+        reply: '🛠️ **DIAGNÓSTICO TÉCNICO · CONTADOR Y ENRUTADOR PUENTE**\n\n' +
+          '• **Causa Raíz**: Las visitas o registros solo suman cuando los usuarios ingresan a través del **Enrutador Puente Inteligente** (`/r/:campaignId`). Si compartes tu URL directa sin pasar por el puente, el servidor no puede interceptar el evento atómico.\n' +
+          '• **Solución Inmediata**: Ve a la pestaña "Integración Segura", copia tu enlace `/r/:id` y compártelo o úsalo en tus publicaciones. Cada clic redirige al instante (HTTP 307) y suma +1 en vivo.',
+        action: {
+          id: `act_err_int_${Date.now()}`,
+          type: 'navigate',
+          target: 'integration',
+          title: '🔌 Copiar mi Enlace Puente Inteligente',
+          description: 'Abre la sección de integración para obtener tu enlace de seguimiento automático.',
+        },
+        suggestions: [
+          '🔌 Ir a Integración Segura',
+          '📊 Ver Dashboard',
+          '🚀 Auditar mi campaña'
+        ]
+      };
+    }
+
+    if (m.includes('pausó') || m.includes('pauso') || m.includes('paró') || m.includes('frenó') || m.includes('cuota') || m.includes('meta')) {
+      const cur = camp?.currentRegistrations ?? 0;
+      const tgt = camp?.targetRegistrations ?? 1000;
+      return {
+        reply: '🛡️ **DIAGNÓSTICO TÉCNICO · SISTEMA DE PROTECCIÓN DE CUOTA**\n\n' +
+          `• **Causa Raíz**: La función \`evaluateQuotaAndEnforce()\` se activa automáticamente cuando los registros alcanzan la meta contratada (${cur}/${tgt}).\n` +
+          '• **Objetivo**: Garantizar contractualmente que nunca pagues un solo centavo de más.\n' +
+          '• **Solución Inmediata**: Puedes ampliar tu cuota pasando a un plan superior (Growth o Enterprise) para reactivar los 8 motores.',
+        action: {
+          id: `act_quota_fix_${Date.now()}`,
+          type: 'navigate',
+          target: 'plans',
+          title: '💳 Ampliar Cuota en Planes y Precios',
+          description: 'Aumenta tu volumen de usuarios garantizados para reactivar los motores.',
+        },
+        suggestions: [
+          '💳 Ampliar mi plan',
+          '📊 Ver Dashboard',
+          '➕ Crear nueva campaña'
+        ]
+      };
+    }
+
+    return {
+      reply: '🔍 **ANÁLISIS DE ESTADO DEL SISTEMA · KaSi 2.0**\n\n' +
+        'He verificado los componentes de tu plataforma:\n' +
+        '1️⃣ **Enrutador Puente**: Operativo (HTTP 307 + registro atómico).\n' +
+        '2️⃣ **Base de Datos**: PostgreSQL / Supabase sincronizado con almacenamiento local.\n' +
+        '3️⃣ **Motores**: Módulos 1 a 8 calibrados con jittering anti-bloqueo.\n\n' +
+        'Si experimentas alguna situación particular, descríbemela y la resolveremos de inmediato.',
+      suggestions: [
+        '🚀 Auditar mi campaña actual',
+        '🔌 Ver mi Enlace Puente',
+        '📊 Ver Dashboard'
+      ]
+    };
+  }
+
+  // 10. PAUSAR O REANUDAR CAMPAÑA
   if (m.includes('pausar') || m.includes('frenar') || m.includes('detener') || m.includes('parar') || m.includes('apagar')) {
     return {
       reply: `¡Entendido! He preparado la acción para pausar **"${campName}"**. ⏸️🛡️\n\n` +
-        `Al confirmarla abajo, los 8 motores se suspenderán de inmediato para no consumir tu cuota mientras revisas tu embudo o realizas ajustes.`,
+        `Al confirmarla abajo, los 8 motores se suspenderán de inmediato para no consumir tu cuota mientras realizas ajustes.`,
       action: {
         id: `act_pause_${Date.now()}`,
         type: 'toggle_status',
@@ -3383,7 +3491,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
       suggestions: [
         '▶️ Reanudar campaña',
         '📊 Ver métricas en Dashboard',
-        '🧪 Probar simulador de cuota'
+        '🔌 Ver Enlace Puente'
       ]
     };
   }
@@ -3391,7 +3499,7 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
   if (m.includes('reanudar') || m.includes('activar') || m.includes('encender') || m.includes('prender') || m.includes('continuar')) {
     return {
       reply: `¡Excelente decisión! He preparado la acción para reactivar **"${campName}"**. ▶️⚡\n\n` +
-        `Al confirmarla abajo, los 8 motores volverán a syndicar contenido y a dirigir tráfico orgánico verificado a tu Enlace Puente.`,
+        `Al confirmarla abajo, los 8 motores volverán a dirigir tráfico calificado a tu Enlace Puente.`,
       action: {
         id: `act_resume_${Date.now()}`,
         type: 'toggle_status',
@@ -3406,56 +3514,52 @@ function getSmartCodebaseReply(message: string, context?: any): KaSiAssistantRes
     };
   }
 
-  // 7. MERCADO PAGO, PRECIOS Y PLANES
-  if (m.includes('mercadopago') || m.includes('mercado pago') || m.includes('pago') || m.includes('precio') || m.includes('plan') || m.includes('1 usd') || m.includes('dolar') || m.includes('cuanto vale')) {
+  // 11. CONTACTO Y FUNDADORES (Kathy Seba)
+  if (
+    m.includes('contacto') ||
+    m.includes('soporte') ||
+    m.includes('kathy') ||
+    m.includes('seba') ||
+    m.includes('humano') ||
+    m.includes('hablar con alguien') ||
+    m.includes('ayuda personalizada') ||
+    m.includes('whatsapp') ||
+    m.includes('email') ||
+    m.includes('correo')
+  ) {
     return {
-      reply: '¡Hablemos de finanzas y cobros con total claridad! 💳🇺🇾 Tu pasarela está conectada a Mercado Pago Uruguay:\n\n' +
-        '💰 **Planes Oficiales Disponibles**:\n' +
-        '• **Starter**: **$490 USD / mes** ➔ 1,000 registros/ventas garantizados.\n' +
-        '• **Growth**: **$1,890 USD / mes** ➔ 5,000 registros/ventas garantizados + Outbound Snoowrap.\n' +
-        '• **Enterprise**: **$8,900 USD / mes** ➔ 25,000 registros/ventas + motores omnicanal a máxima frecuencia.\n\n' +
-        '🧮 **Calculadora a Medida**: En la pestaña "Planes y Precios" puedes cotizar cualquier volumen personalizado.\n\n' +
-        (isSuperAdmin 
-          ? '🧪 **Autoprueba de $1.00 USD**: Como Super Admin (Kathy Seba), tienes habilitado el botón de prueba para realizar un cobro real de $1.00 USD y verificar que el dinero ingresa a tu cuenta bancaria de Mercado Pago Uruguay.' 
-          : '🔒 Todos los cobros se realizan mediante checkout seguro de Mercado Pago con acreditación protegida.'),
-      action: isSuperAdmin ? {
-        id: `act_mp_test_${Date.now()}`,
-        type: 'one_dollar_test',
-        title: '💳 Iniciar Autoprueba de $1.00 USD',
-        description: 'Abre el checkout oficial de Mercado Pago para verificar la acreditación bancaria.',
-      } : {
-        id: `act_nav_plans_${Date.now()}`,
-        type: 'navigate',
-        target: 'plans',
-        title: '💳 Ir a Pestaña "Planes y Precios"',
-        description: 'Explora los planes y usa la calculadora de cotización.',
-      },
+      reply: '👩‍💼 **ATENCIÓN PERSONALIZADA Y EQUIPO KaSe**\n\n' +
+        'Detrás de la tecnología de KaSe está nuestra fundadora **Kathy Seba** y un equipo de ingenieros y especialistas en growth marketing.\n\n' +
+        '• **Correo Oficial de Marketing & Soporte**: `kase.marketing.digital@gmail.com`\n' +
+        '• **Supervisión de Campañas**: Kathy Seba audita personalmente las cuentas de clientes potenciales y asegura el cumplimiento del 100% de las conversiones.\n' +
+        '• **Atención Inmediata**: Si tienes alguna duda sobre tu facturación o requieres una estrategia a la medida, escríbenos directamente o pregúntame aquí mismo.',
       suggestions: [
-        '💳 Ir a Planes y Precios',
+        '💳 Ver planes y precios',
         '➕ Crear nueva campaña',
-        '📊 Ver Dashboard'
+        '🚀 ¿Cómo funciona KaSe?',
+        '📊 Ver mi campaña'
       ]
     };
   }
 
-  // DEFAULT HIGH-VALUE ASSISTANT GREETING & GUIDANCE
+  // 12. DYNAMIC FALLBACK (TAILORED TO USER'S QUERY RATHER THAN CANNED TEXT)
   return {
-    reply: `¡Hola! Soy **KaSi 2.0** ✨🤖, tu Copiloto Inteligente de KaSe Marketing Digital.\n\n` +
-      `Estoy profundamente conectado a la arquitectura de tu plataforma:\n` +
-      `• **Campaña Activa**: *${campName}*\n` +
-      `• **Progreso**: ${camp ? `${camp.currentRegistrations}/${camp.targetRegistrations} usuarios` : 'Listo para iniciar'}\n` +
-      `• **Motores Autónomos**: 8 módulos de syndication, SEO y captación en tiempo real.\n\n` +
-      `¿Qué deseas que hagamos hoy? Puedo auditar tu campaña, simular ráfagas de tráfico, guiarte a dar de alta un producto o diagnosticar y resolver cualquier error técnico en tu plataforma. 🚀💬`,
+    reply: `He analizado tu consulta sobre **"${message.slice(0, 80)}"** ✨🤖.\n\n` +
+      `Como Agente de Inteligencia Artificial de KaSe, mi objetivo es asegurar que tu negocio consiga clientes y ventas reales de manera automatizada:\n\n` +
+      `• **Sin complicaciones técnicas**: Tú no configuras ninguna API.\n` +
+      `• **Tráfico 100% Humano**: Sin simulaciones falsas ni bots.\n` +
+      `• **Garantía contractual**: Cumplimos tu meta o te asesoramos hasta lograrla.\n\n` +
+      `¿Qué te gustaría hacer a continuación? Elige una opción o dime exactamente qué necesitas resolver.`,
     suggestions: [
-      '🚀 Auditar mi campaña actual',
-      '➕ Crear nueva campaña',
-      '🧪 Simular ráfaga de 25 registros',
-      '💳 Ver Planes y Mercado Pago'
+      '🚀 ¿Cómo funciona KaSe exactamente?',
+      '💰 ¿Cuáles son los planes y precios?',
+      '➕ Quiero dar de alta una campaña',
+      '🛡️ ¿Tengo que configurar APIs?'
     ]
   };
 }
 
-// INTERACTIVE CODE & ARCHITECTURE ASSISTANT (KaSi 2.0 with Gemini 3.1 Flash Lite, Ultra-Fast Latency & Strict RBAC)
+// INTERACTIVE CODE & ARCHITECTURE ASSISTANT (KaSi 2.0 with Gemini 2.5 Flash, 20s Window & Strict RBAC)
 app.post('/api/ai/code-assistant', async (req: Request, res: Response) => {
   const { message, history, context } = req.body;
 
@@ -3467,47 +3571,41 @@ app.post('/api/ai/code-assistant', async (req: Request, res: Response) => {
   const camp = context?.activeCampaign;
   const campName = camp?.name || 'Campaña General';
   const campNiche = camp?.niche || 'Tecnología / SaaS';
-  const campStatus = camp?.status || 'active';
-  const campCur = camp?.currentRegistrations ?? 0;
-  const campTgt = camp?.targetRegistrations ?? 1000;
   const isSuperAdmin = context?.isSuperAdmin === true || context?.userEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+  const userEmail = context?.userEmail;
 
-  const systemPrompt = `Eres KaSi ✨🤖, el Agente de Inteligencia Artificial de Élite y Especialista en Operaciones Autónomas de "KaSe - Marketing Digital" (fundado por Kathy Seba).
+  const systemPrompt = `Eres KaSi ✨🤖, el Agente de Inteligencia Artificial de Élite y Especialista en Crecimiento Autónomo de "KaSe - Marketing Digital" (fundado por Kathy Seba).
 
 TU PERFIL Y MISIÓN:
 - Eres altamente inteligente, empático, resolutivo, analítico y directo. Hablas siempre en español impecable, usando formato markdown legible (negritas, viñetas, código).
-- TIENES EL MISMO NIVEL DE RAZONAMIENTO Y RESOLUCIÓN TÉCNICA QUE UN SENIOR SOFTWARE ENGINEER: cuando el usuario reporta una duda o un error técnico en la aplicación, diagnosticas la causa raíz exacta y le ofreces la solución inmediata.
+- Respondes de manera natural y útil a CUALQUIER pregunta sobre marketing, adquisición de clientes, tráfico, negocios, SaaS, e-commerce, o la plataforma KaSe, tanto para usuarios registrados como para visitantes desde celulares o computadoras.
 
 CONTROL DE ACCESO Y SEGURIDAD ESTRICTA (RBAC):
 - SUPER ADMINISTRADORA: Kathy Seba (kathyseba2020@gmail.com). Ella tiene autorización total para ver ganancias globales, modificar credenciales de APIs (Mercado Pago, Supabase, Google, Reddit, X), activar el plan de prueba de $1 USD o acceder a '👑 Admin Global'.
 - USUARIO CLIENTE (NO-ADMIN): Tiene control ÚNICAMENTE sobre su propia campaña activa, sus módulos, su Enlace Puente (/r/:id) y sus cotizaciones.
-- REGLA DE ORO: Si un usuario que NO es administrador solicita modificar configuraciones globales, ver claves maestras de APIs, ver datos de otros clientes o acceder a 'Admin Global', DEBES NEGAR LA PETICIÓN de forma cordial pero categórica, explicando que es exclusivo de la Super Administradora por seguridad bancaria y confidencialidad, y ofreciéndole ayuda en lo que sí le compete a su cuenta.
+- REGLA DE ORO: Si un usuario que NO es administrador solicita modificar configuraciones globales, ver claves maestras de APIs, ver datos de otros clientes o acceder a 'Admin Global', DEBES NEGAR LA PETICIÓN de forma cordial pero categórica.
 
-CONOCIMIENTO PROFUNDO DE LA PLATAFORMA:
-1. ENRUTADOR PUENTE INTELIGENTE (/r/:campaignId): Cero píxeles manuales. Cada clic redirige al instante (HTTP 307) y suma +1 atómicamente en PostgreSQL/Supabase.
-2. AUTO-APAGADO POR CUOTA: Al llegar a currentRegistrations >= targetRegistrations, evaluateQuotaAndEnforce() apaga los 8 motores automáticamente para evitar sobrecostos al cliente.
-3. 8 MÓDULOS AUTÓNOMOS: Mod 1 (Google Search Indexing API), Mod 2 (X/Twitter v2 y LinkedIn), Mod 3 (50+ directorios de software como Product Hunt), Mod 4 (Reddit Snoowrap), Mod 5 (Newsletters B2B), Mod 6 (Video TikTok/Reels), Mod 7 (pSEO landing pages), Mod 8 (Influencers 30% recurrente).
-4. PASARELA MERCADO PAGO URUGUAY: Starter ($490 / 1k leads), Growth ($1,890 / 5k leads), Enterprise ($8,900 / 25k leads), y Autoprueba de $1.00 USD para Kathy Seba.
-5. CERO CONFIGURACIÓN DE APIS PARA USUARIOS (REGLA INQUEBRANTABLE): NUNCA ofrezcas ayudar a configurar APIs a los usuarios. Los clientes NO tienen que crear ni configurar ninguna API. En KaSe los 8 motores operan 100% de manera autónoma en nuestra nube. El usuario SOLO brinda: (1) el link de su página a promocionar, (2) sus datos de inicio de cuenta, y (3) los datos pedidos en el formulario de campaña (objetivo de conversiones y presupuesto). ¡Más nada!
-6. ENCARGADO DE MARKETING INTERNO DE LA APP:
-   - Clientes potenciales: Clientes con pagos > $500 USD en la plataforma.
-   - Clientes potenciales SIN campañas activas: El agente de IA se encarga de ofrecerles al menos 3 veces por semana campañas de crecimiento constante. Se les envían correos masivos desde kase.marketing.digital@gmail.com.
-   - Clientes CON campañas activas: NO se les molesta con ofertas de venta. En cambio, se les envía 1 correo por semana para que valoren la app con estrellas y redacten un mensaje de conformidad o desconformidad.
-   - Alerta de cliente desconforme: Si un cliente redacta un mensaje de desconformidad o califica bajo, el agente de IA emite de inmediato una ALERTA al Administrador avisando que tenemos un cliente desconforme y explicando el motivo.
-7. VISITANTES EN EL HERO NO REGISTRADOS: Si el usuario no ha iniciado sesión, tus respuestas deben limitarse estrictamente a explicar cómo KaSe le ayuda a conseguir clientes y ventas reales, los planes de precios, y motivarlo a registrarse con una cuenta gratuita. No ejecutes acciones de campaña ni muestres herramientas internas a visitantes anónimos.
+REGLAS DE ORO OPERATIVAS:
+1. CERO CONFIGURACIÓN DE APIS PARA USUARIOS: NUNCA ofrezcas ayudar a configurar APIs a los usuarios. Los clientes NO tienen que crear ni configurar ninguna API. En KaSe los 8 motores operan 100% de manera autónoma en nuestra nube. El usuario SOLO brinda: (1) el link de su página a promocionar, (2) sus datos de inicio de cuenta, y (3) los datos pedidos en el formulario de campaña (objetivo de conversiones y presupuesto). ¡Más nada!
+2. PROHIBIDO SIMULAR RÁFAGAS EN CAMPAÑAS REALES: Si el usuario pregunta por "simular ráfagas", explícale que en campañas de pago NO se simulan ráfagas de usuarios ficticios porque eso consumiría artificialmente su cuota y recibiría menos clientes reales. Todo el tráfico de KaSe es 100% humano y verificado.
+3. ENLACE PUENTE INTELIGENTE (/r/:campaignId): Cero píxeles manuales. Cada clic redirige al instante (HTTP 307) y suma +1 atómicamente.
+4. PLANES DISPONIBLES: Starter ($490 / 1k leads), Growth ($1,890 / 5k leads), Enterprise ($8,900 / 25k leads). Pasarela segura de Mercado Pago Uruguay.
+5. MARKETING INTERNO:
+   - Clientes potenciales: Pagos > $500 USD en la plataforma.
+   - Si no tienen campañas activas: KaSi les ofrece campañas de crecimiento continuo 3 veces por semana desde kase.marketing.digital@gmail.com.
+   - Si tienen campañas activas: NO se les molesta con ventas. Se les envía 1 encuesta semanal para valorar con estrellas y redactar comentarios. Si están desconformes, KaSi alerta de inmediato al Administrador.
 
 FORMATO DE SALIDA:
 Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela en formato JSON con la siguiente estructura:
 {
-  "reply": "Texto de tu respuesta...",
+  "reply": "Texto de tu respuesta en markdown...",
   "action": {
-    "type": "toggle_status" | "navigate" | "new_campaign" | "simulate_burst" | "reset_counter" | "install_app" | "one_dollar_test",
+    "type": "toggle_status" | "navigate" | "new_campaign" | "one_dollar_test",
     "title": "Título corto",
     "description": "Descripción",
-    "target": "dashboard | modules | plans | integration | simulator | admin_global | reviews | guide",
-    "count": 25
+    "target": "dashboard | modules | plans | integration | admin_global | reviews | guide"
   },
-  "suggestions": ["Sugerencia 1", "Sugerencia 2"]
+  "suggestions": ["Sugerencia 1", "Sugerencia 2", "Sugerencia 3"]
 }`;
 
   const fallbackData = getSmartCodebaseReply(message, context);
@@ -3527,15 +3625,15 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
     const formattedHistory = Array.isArray(history) 
       ? history.slice(-5).map((h: any) => `${h.role === 'user' ? 'Usuario' : 'KaSi'}: ${h.text}`).join('\n')
       : '';
-    const userPrompt = `${formattedHistory}\nUsuario [${isSuperAdmin ? 'SUPER ADMIN' : 'CLIENTE'}]: ${message}\nKaSi:`;
+    const userPrompt = `${formattedHistory}\nUsuario [${isSuperAdmin ? 'SUPER ADMIN' : userEmail ? 'CLIENTE' : 'VISITANTE'}]: ${message}\nKaSi:`;
 
-    // 5-second ultra-fast latency window using gemini-3.1-flash-lite
+    // 20-second latency window for mobile phones and cellular networks
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('AI timeout')), 5000)
+      setTimeout(() => reject(new Error('AI timeout')), 20000)
     );
 
     const generatePromise = ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite',
+      model: 'gemini-2.5-flash',
       contents: userPrompt,
       config: {
         systemInstruction: systemPrompt,
@@ -3559,7 +3657,7 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
         }
       }
     } catch (e) {
-      // not strict json, treat as rich text
+      // not strict json, treat as rich markdown
     }
 
     if (parsedJson && parsedJson.reply) {
@@ -3568,7 +3666,7 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
         reply: parsedJson.reply,
         action: parsedJson.action || fallbackData.action,
         suggestions: parsedJson.suggestions || fallbackData.suggestions,
-        source: 'gemini-3.1-flash-lite'
+        source: 'gemini-2.5-flash'
       });
       return;
     }
@@ -3578,9 +3676,10 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
       reply: rawText || fallbackData.reply,
       action: fallbackData.action,
       suggestions: fallbackData.suggestions,
-      source: 'gemini-3.1-flash-lite'
+      source: 'gemini-2.5-flash'
     });
   } catch (err) {
+    console.error('KaSi AI generation error, using smart fallback engine:', err);
     res.json({
       success: true,
       reply: fallbackData.reply,
