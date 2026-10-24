@@ -1,6 +1,14 @@
 {
-  "framework": "vite",
+  "version": 2,
   "rewrites": [
+    {
+      "source": "/r/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
