@@ -47,7 +47,9 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.name)) {
-          if (isUserSuperAdmin(parsed)) {
+          if (parsed.email && parsed.email.toLowerCase() === 'kase.marketing.digital@gmail.com') {
+            parsed.role = 'client';
+          } else if (isUserSuperAdmin(parsed)) {
             parsed.role = 'super_admin';
           }
           return parsed;
@@ -95,16 +97,15 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Direct admin bypass via URL parameter (?admin=kathy or ?admin=kase or ?kathy=true)
+  // Direct admin bypass via URL parameter (?admin=kathy or ?kathy=true)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('admin') === 'kathy' || params.get('admin') === 'kase' || params.get('kathy') === 'true') {
-        const adminEmail = params.get('admin') === 'kase' ? 'kase.marketing.digital@gmail.com' : 'kathyseba2020@gmail.com';
+      if (params.get('admin') === 'kathy' || params.get('kathy') === 'true') {
         const kathyUser: User = {
           id: 'kase_super_admin',
-          name: adminEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba',
-          email: adminEmail,
+          name: 'Kathy Seba (Super Admin)',
+          email: 'kathyseba2020@gmail.com',
           role: 'super_admin',
           createdAt: new Date().toISOString(),
           acquisitionSource: 'direct_organic',

@@ -66,18 +66,20 @@ export interface User {
   password?: string;
 }
 
-export const ADMIN_EMAILS = ['kase.marketing.digital@gmail.com', 'kathyseba2020@gmail.com'];
+export const ADMIN_EMAILS = ['kathyseba2020@gmail.com'];
 export const ADMIN_PASSWORD = 'Felipe.1';
 
 export function isUserSuperAdmin(user?: User | { email?: string; role?: string } | null): boolean {
   if (!user) return false;
   const email = (user.email || '').trim().toLowerCase();
-  return ADMIN_EMAILS.includes(email) || user.role === 'super_admin';
+  if (email === 'kase.marketing.digital@gmail.com') return false;
+  return ADMIN_EMAILS.includes(email) || (user.role === 'super_admin' && email === 'kathyseba2020@gmail.com');
 }
 
 export function isValidAdminCredentials(email?: string, password?: string): boolean {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
+  if (cleanEmail === 'kase.marketing.digital@gmail.com') return false;
   if (!ADMIN_EMAILS.includes(cleanEmail)) return false;
   return cleanPass === ADMIN_PASSWORD || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!';
 }

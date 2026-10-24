@@ -97,9 +97,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             throw new Error('Contraseña Incorrecta');
           }
           authUser = {
-            id: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'kase_admin_super' : 'kathy_super_admin',
-            name: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba',
-            email: cleanEmail,
+            id: 'kathy_super_admin',
+            name: 'Kathy Seba (Super Admin)',
+            email: 'kathyseba2020@gmail.com',
             role: 'super_admin',
             createdAt: new Date().toISOString(),
           };

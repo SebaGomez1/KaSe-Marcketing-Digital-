@@ -499,7 +499,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
         <Lock className="w-12 h-12 text-rose-500 mx-auto" />
         <h2 className="text-xl font-bold text-white">Acceso Restringido</h2>
         <p className="text-xs text-neutral-400 max-w-md mx-auto">
-          Este panel de administración global está protegido criptográficamente y es exclusivo para la cuenta administradora de la plataforma (<strong className="text-white">kase.marketing.digital@gmail.com / kathyseba2020@gmail.com</strong>).
+          Este panel de administración global está protegido criptográficamente y es exclusivo para la cuenta administradora de la plataforma (<strong className="text-white">kathyseba2020@gmail.com</strong>).
         </p>
       </div>
     );
@@ -518,7 +518,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-black uppercase font-mono tracking-wider">
                 Super Administrador KaSe
               </span>
-              <span className="text-xs text-neutral-400 font-mono">{currentUser?.email || 'kase.marketing.digital@gmail.com'}</span>
+              <span className="text-xs text-neutral-400 font-mono">{currentUser?.email || 'kathyseba2020@gmail.com'}</span>
             </div>
             <h1 className="text-lg font-bold text-white mt-1">
               Panel de Administración y Control Global

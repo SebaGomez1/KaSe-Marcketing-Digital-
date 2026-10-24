@@ -1,0 +1,46 @@
+[
+  {
+    "id": "usr_wgo7zkm",
+    "name": "Cliente Prueba",
+    "email": "cliente.nuevo@gmail.com",
+    "role": "client",
+    "createdAt": "2026-10-24T07:27:06.578Z",
+    "acquisitionSource": "direct_organic",
+    "password": "mypassword"
+  },
+  {
+    "id": "usr_client_kase",
+    "name": "KaSe Cliente",
+    "email": "kase.marketing.digital@gmail.com",
+    "role": "client",
+    "createdAt": "2026-10-24T07:16:30.454Z",
+    "acquisitionSource": "direct_organic",
+    "password": "anypassword123"
+  },
+  {
+    "id": "usr_superadmin_kase",
+    "name": "Kathy Seba (Super Admin)",
+    "email": "kathyseba2020@gmail.com",
+    "role": "super_admin",
+    "createdAt": "2026-09-24T07:16:24.570Z",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    "acquisitionSource": "direct_organic",
+    "password": "Felipe.1"
+  },
+  {
+    "id": "usr_client_novametrics",
+    "name": "Mariano Silva",
+    "email": "mariano@novametrics.io",
+    "role": "client",
+    "createdAt": "2026-10-09T07:16:24.570Z",
+    "acquisitionSource": "kase_internal_campaign"
+  },
+  {
+    "id": "usr_client_finpulse",
+    "name": "Camila Rodriguez",
+    "email": "crodriguez@finpulse.uy",
+    "role": "client",
+    "createdAt": "2026-10-19T07:16:24.570Z",
+    "acquisitionSource": "kase_internal_campaign"
+  }
+]

@@ -646,8 +646,8 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
     }
 
     const isOneDollarPlan = req.body.isOneDollarTestPlan === true || plan === 'test_one_dollar' || Number(req.body.price) === 1;
-    const isCleanAdminEmail = creatorEmail && (creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com' || creatorEmail.toLowerCase() === 'kase.marketing.digital@gmail.com');
-    const isKathy = (isCleanAdminEmail || isSuperAdmin) && !isOneDollarPlan;
+    const isCleanAdminEmail = creatorEmail && creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com';
+    const isKathy = (isCleanAdminEmail || (isSuperAdmin && creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com')) && !isOneDollarPlan;
     const initialStatus = isOneDollarPlan ? 'configuring' : isKathy ? 'active' : (status === 'configuring' ? 'configuring' : 'active');
 
     const newCampaign: Campaign = {
@@ -1037,7 +1037,7 @@ let users: UserRecord[] = [
     createdAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     acquisitionSource: 'direct_organic',
-    password: 'kase2026Secure!',
+    password: 'Felipe.1',
   },
   {
     id: 'usr_client_novametrics',
@@ -1062,7 +1062,16 @@ if (fs.existsSync(USERS_FILE)) {
     const raw = fs.readFileSync(USERS_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      users = parsed;
+      users = parsed.map((u: any) => {
+        const clean = (u.email || '').toLowerCase().trim();
+        if (clean === 'kase.marketing.digital@gmail.com') {
+          return { ...u, role: 'client' as const };
+        }
+        if (clean === 'kathyseba2020@gmail.com') {
+          return { ...u, role: 'super_admin' as const, password: 'Felipe.1' };
+        }
+        return u;
+      });
     }
   } catch (e) {
     console.error('Error loading users from disk:', e);
@@ -1122,10 +1131,29 @@ async function getUsersAsync(): Promise<UserRecord[]> {
     }
   }
 
+  users = users.map((u) => {
+    const clean = (u.email || '').toLowerCase().trim();
+    if (clean === 'kase.marketing.digital@gmail.com') {
+      return { ...u, role: 'client' as const };
+    }
+    if (clean === 'kathyseba2020@gmail.com') {
+      return { ...u, role: 'super_admin' as const, password: 'Felipe.1' };
+    }
+    return u;
+  });
+
   return users;
 }
 
 async function saveUserAsync(user: UserRecord): Promise<void> {
+  const cleanEmail = (user.email || '').toLowerCase().trim();
+  if (cleanEmail === 'kase.marketing.digital@gmail.com') {
+    user.role = 'client';
+  } else if (cleanEmail === 'kathyseba2020@gmail.com') {
+    user.role = 'super_admin';
+    user.password = 'Felipe.1';
+  }
+
   const exIdx = users.findIndex((u) => u.email.toLowerCase() === user.email.toLowerCase());
   if (exIdx >= 0) {
     users[exIdx] = user;
@@ -1416,7 +1444,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
 
   const cleanEmail = email.trim().toLowerCase();
   const cleanPass = (password || '').trim();
-  const isSuperAdmin = cleanEmail === 'kase.marketing.digital@gmail.com' || cleanEmail === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
   const role: 'super_admin' | 'client' = isSuperAdmin ? 'super_admin' : 'client';
 
   // Admin password enforcement: 'Felipe.1' is the official password (also accept 'kase2026Secure!' as transition fallback)
@@ -1460,7 +1488,7 @@ app.post('/api/auth/register', async (req: Request, res: Response): Promise<void
 
   const newUser: UserRecord = {
     id: isSuperAdmin ? 'usr_superadmin_kase' : `usr_${Math.random().toString(36).substring(2, 9)}`,
-    name: (name || (isSuperAdmin ? (cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba') : cleanEmail.split('@')[0])).trim(),
+    name: (name || (isSuperAdmin ? 'Kathy Seba (Super Admin)' : cleanEmail.split('@')[0])).trim(),
     email: cleanEmail,
     role,
     createdAt: new Date().toISOString(),
@@ -1509,7 +1537,7 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
 
   const cleanEmail = email.trim().toLowerCase();
   const cleanPass = (password || '').trim();
-  const isSuperAdmin = cleanEmail === 'kase.marketing.digital@gmail.com' || cleanEmail === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
 
   if (isSuperAdmin) {
     const isValidAdminPass = cleanPass === 'Felipe.1' || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!';
@@ -1524,7 +1552,7 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     if (!user) {
       user = {
         id: 'usr_superadmin_kase',
-        name: cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba (Super Admin)',
+        name: 'Kathy Seba (Super Admin)',
         email: cleanEmail,
         role: 'super_admin',
         createdAt: new Date().toISOString(),
@@ -1534,9 +1562,7 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     } else {
       user.role = 'super_admin';
       user.password = 'Felipe.1';
-      if (!user.name || user.name === 'kase.marketing.digital') {
-        user.name = cleanEmail === 'kase.marketing.digital@gmail.com' ? 'KaSe Admin' : 'Kathy Seba (Super Admin)';
-      }
+      user.name = 'Kathy Seba (Super Admin)';
     }
     await saveUserAsync(user);
     res.json({ success: true, user });
