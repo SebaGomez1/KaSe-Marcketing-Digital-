@@ -365,7 +365,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                     </span>
                   </button>
                   <p className="text-[10px] text-neutral-500 text-center font-mono">
-                    💡 Activación garantizada de tráfico real y enrutamiento con apagado exacto por píxel.
+                    💡 Activación garantizada de tráfico real y enrutamiento con apagado exacto por Enlace Puente.
                   </p>
                 </>
               )}

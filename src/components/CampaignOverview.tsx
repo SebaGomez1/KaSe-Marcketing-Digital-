@@ -109,7 +109,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
             <div className="text-xs font-bold text-white flex items-center gap-2">
               <span>¿Cómo funciona el flujo de tu campaña?</span>
               <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800">
-                1. Configuras meta &rarr; 2. Pegas píxel &rarr; 3. KaSe atrae usuarios &rarr; 4. Auto-Pausa
+                1. Configuras meta &rarr; 2. Enlace Puente &rarr; 3. KaSe atrae usuarios &rarr; 4. Auto-Pausa
               </span>
             </div>
             <p className="text-[11px] text-neutral-400 mt-0.5">
@@ -194,7 +194,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
             </h2>
             <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
               <p className="max-w-xl leading-relaxed">
-                Monitoreo continuo en tiempo real mediante el Píxel de Seguimiento y Webhook seguro. El sistema se desactiva de forma estricta al llegar a la cuota.
+                Monitoreo continuo en tiempo real mediante tu Enlace Puente Inteligente. El sistema se desactiva de forma estricta al llegar a la cuota.
               </p>
               {campaign.minPlanPrice !== undefined && campaign.maxPlanPrice !== undefined && (
                 <div className="px-2.5 py-1 rounded-md bg-emerald-950/30 border border-emerald-500/20 text-emerald-300 text-[11px] font-mono">
@@ -309,15 +309,15 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
             <ShieldCheck className="w-4 h-4 text-teal-400" />
           </div>
           <div className="text-lg font-semibold text-white">
-            Píxel & Webhook
+            Enlace Puente Inteligente
           </div>
           <div className="text-xs text-neutral-400 flex items-center justify-between">
-            <span>Zero-Access seguro</span>
+            <span>Zero-Code sin scripts invasivos</span>
             <button
               onClick={onOpenIntegration}
-              className="text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+              className="text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
             >
-              Copiar scripts →
+              Ver Enlace →
             </button>
           </div>
         </div>
@@ -333,7 +333,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
                 Flujo de Conversiones en Tiempo Real
               </h3>
               <p className="text-xs text-neutral-400">
-                Registros validados externamente mediante Píxel en Thank You Page o Webhook
+                Usuarios interceptados y contabilizados en tiempo real mediante tu Enlace Puente (/r/:id)
               </p>
             </div>
             <span className="text-xs font-mono text-neutral-400 tabular-nums">

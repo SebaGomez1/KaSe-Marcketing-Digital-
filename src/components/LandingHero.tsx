@@ -262,9 +262,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               <div className="flex items-start gap-3 p-3 rounded-xl bg-neutral-900/60 border border-neutral-800">
                 <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-xs font-bold text-white">Apagado Exacto por Píxel</h2>
+                  <h2 className="text-xs font-bold text-white">Apagado Exacto por Enlace Puente</h2>
                   <p className="text-[11px] text-neutral-400">
-                    El Píxel KaSe cuenta cada venta o registro seguro en tu Thank You Page. Cumplida la meta, los motores se frenan de inmediato.
+                    El Enlace Puente KaSe contabiliza cada usuario derivado a tu web. Cumplida la meta contratada, los motores se frenan de inmediato.
                   </p>
                 </div>
               </div>
@@ -595,9 +595,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-mono font-bold text-sm">
               3
             </div>
-            <h3 className="font-bold text-white text-sm">Pegas el Píxel (Contador)</h3>
+            <h3 className="font-bold text-white text-sm">Enlace Puente Inteligente</h3>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              El Píxel es como un guardia invisible: cada vez que alguien real se registra o compra en tu web, el píxel le avisa a KaSe para sumarlo a tu cuenta.
+              Cero instalaciones de código o scripts. El Enlace Puente enruta el tráfico de los 8 motores y contabiliza automáticamente cada usuario real derivado a tu web.
             </p>
           </div>
 

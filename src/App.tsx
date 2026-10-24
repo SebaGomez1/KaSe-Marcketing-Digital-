@@ -448,6 +448,13 @@ export default function App() {
             }}
             currentUser={currentUser}
           />
+        ) : activeTab === 'modules' ? (
+          <ModulesGrid
+            campaign={activeCampaign}
+            onSelectModule={(mod) => setSelectedModule(mod)}
+            onOpenNewCampaign={handleOpenNewCampaign}
+            onOpenPlans={() => setActiveTab('plans')}
+          />
         ) : activeCampaign ? (
           <>
             {activeTab === 'dashboard' && (
@@ -459,13 +466,6 @@ export default function App() {
                 onOpenGuide={() => setActiveTab('guide')}
                 onOpenPlans={() => setActiveTab('plans')}
                 isSimulating={isActionLoading}
-              />
-            )}
-
-            {activeTab === 'modules' && (
-              <ModulesGrid
-                campaign={activeCampaign}
-                onSelectModule={(mod) => setSelectedModule(mod)}
               />
             )}
 
@@ -512,7 +512,7 @@ export default function App() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <button
-                onClick={handleOpenNewCampaign}
+                onClick={() => handleOpenNewCampaign()}
                 className="w-full sm:w-auto px-6 py-3 bg-emerald-400 hover:bg-emerald-300 text-black font-extrabold rounded-xl text-xs transition-all glow-emerald cursor-pointer shadow-lg shadow-emerald-500/20"
               >
                 + Configurar y Validar Nueva Campaña
@@ -543,7 +543,7 @@ export default function App() {
       </div>
 
       {/* Module Inspector & AI Generation Modal */}
-      {selectedModule && activeCampaign && (
+      {selectedModule && (
         <ModuleDetailModal
           moduleDef={selectedModule}
           campaign={activeCampaign}

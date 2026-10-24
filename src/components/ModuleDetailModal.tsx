@@ -14,7 +14,7 @@ import { Campaign, ModuleDefinition } from '../types/growth';
 
 interface ModuleDetailModalProps {
   moduleDef: ModuleDefinition;
-  campaign: Campaign;
+  campaign?: Campaign | null;
   onClose: () => void;
 }
 
@@ -28,7 +28,11 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const modState = campaign.modules[moduleDef.id];
+  const modState = campaign?.modules?.[moduleDef.id] || {
+    active: true,
+    itemsProcessed: 0,
+    lastExecution: 'Listo para ejecución autónoma',
+  };
 
   const handleGenerateAsset = async () => {
     setLoadingAi(true);
@@ -39,10 +43,10 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           moduleType: moduleDef.id,
-          appName: campaign.name,
-          niche: campaign.niche,
-          targetUrl: campaign.targetUrl,
-          description: campaign.description,
+          appName: campaign?.name || 'KaSe Marketing Digital',
+          niche: campaign?.niche || 'Marketing Autónomo & Captación SaaS',
+          targetUrl: campaign?.targetUrl || 'https://kase.marketing',
+          description: campaign?.description || 'Ecosistema de 8 motores para captación masiva de usuarios reales y ventas',
         }),
       });
 
@@ -173,7 +177,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                   <span>Demostración en Vivo con IA (Activo Generado para tu App)</span>
                 </h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Ejemplo real adaptado a "{campaign.name}" listo para ser inyectado en la red de difusión.
+                  Ejemplo adaptado {campaign ? `a "${campaign.name}"` : 'demostrativo para tu nicho'} listo para ser inyectado en la red de difusión.
                 </p>
               </div>
 

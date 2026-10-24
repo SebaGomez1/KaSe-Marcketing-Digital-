@@ -159,7 +159,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         'Indexación acelerada en Google en menos de 48 horas (Módulo 1)',
         'Sindicación automática semanal en X/Twitter, LinkedIn y Facebook (Módulo 2)',
         'Inscripción de tu app en 52 directorios mundiales como Product Hunt (Módulo 3)',
-        'Píxel JavaScript y Enlace Puente de conversión sin límite',
+        'Enlace Puente Inteligente con enrutamiento y conteo automático sin scripts ni código',
         'Pausa automática obligatoria al registrar al usuario #2,000',
       ],
       modules: [
@@ -191,7 +191,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
         'Todo lo incluido en el Plan Starter (Módulos 1, 2 y 3)',
         'Bot de escucha activa en Reddit (r/SaaS, r/startups) y X recomendando tu app (Módulo 4)',
         'Pitching personalizado a editores de newsletters tecnológicas de alta audiencia (Módulo 5)',
-        'Píxel y Enlace Puente con monitoreo continuo en segundo plano',
+        'Enlace Puente Inteligente con monitoreo continuo en segundo plano y auto-pausa',
         'Pausa automática estricta al llegar a 10,000 usuarios registrados',
       ],
       modules: [
@@ -251,7 +251,7 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
             </span>
           </h2>
           <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-            Precios 100% transparentes basados en resultados. Solo pagas por usuarios registrados reales contabilizados por tu Enlace Puente, Píxel o Webhook. Al llegar a la cuota contratada, los motores se pausan de inmediato.
+            Precios 100% transparentes basados en resultados. Solo pagas por usuarios registrados reales contabilizados automáticamente por tu Enlace Puente Inteligente. Al llegar a la cuota contratada, los motores se pausan de inmediato.
           </p>
         </div>
 

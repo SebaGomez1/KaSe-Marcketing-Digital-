@@ -119,7 +119,7 @@ export interface Campaign {
   currency?: string;
   targetRegistrations: number;
   currentRegistrations: number;
-  plan: 'starter' | 'growth' | 'enterprise';
+  plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;
   interactionPreferences?: string;
