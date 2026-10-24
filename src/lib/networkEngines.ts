@@ -280,13 +280,13 @@ export interface TokenDetectionResult {
 
 export function detectMercadoPagoToken(): TokenDetectionResult {
   const envCandidates: [string, string | undefined][] = [
+    ['process.env.MERCADO_PAGO_ACCESS_TOKEN', process.env.MERCADO_PAGO_ACCESS_TOKEN],
+    ['process.env.MP_ACCESS_TOKEN', process.env.MP_ACCESS_TOKEN],
+    ['process.env.MERCADOPAGO_ACCESS_TOKEN', process.env.MERCADOPAGO_ACCESS_TOKEN],
     ['process.env.access_tokens', process.env.access_tokens],
     ['process.env.ACCESS_TOKENS', process.env.ACCESS_TOKENS],
     ['process.env.access_token', process.env.access_token],
     ['process.env.ACCESS_TOKEN', process.env.ACCESS_TOKEN],
-    ['process.env.MERCADO_PAGO_ACCESS_TOKEN', process.env.MERCADO_PAGO_ACCESS_TOKEN],
-    ['process.env.MP_ACCESS_TOKEN', process.env.MP_ACCESS_TOKEN],
-    ['process.env.MERCADOPAGO_ACCESS_TOKEN', process.env.MERCADOPAGO_ACCESS_TOKEN],
     ['process.env.MERCADO_PAGO_TOKEN', process.env.MERCADO_PAGO_TOKEN],
     ['process.env.MP_TOKEN', process.env.MP_TOKEN],
   ];
@@ -625,13 +625,13 @@ export function getAllEnginesHealth(): DetailedEngineCheck[] {
       name: 'Pasarela de Cobros Mercado Pago Uruguay',
       category: 'infrastructure',
       platform: 'Mercado Pago Subscriptions & Checkout API',
-      requiredEnvVars: ['access_tokens', 'MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
+      requiredEnvVars: ['MERCADO_PAGO_ACCESS_TOKEN', 'MP_ACCESS_TOKEN'],
       configuredInVercel: hasMercadoPago,
       latencyMs: hasMercadoPago ? 85 : undefined,
       lastChecked: now,
       statusText: hasMercadoPago
         ? `Credenciales de Mercado Pago detectadas y activas (Origen: ${mpDetection.source}, Token: ${mpDetection.maskedToken}). Listo para cobros en vivo.`
-        : 'Credenciales de Mercado Pago ausentes. Soporta nombres en Vercel: "access_tokens" o "MERCADO_PAGO_ACCESS_TOKEN".',
+        : 'Credenciales de Mercado Pago ausentes. Variable esperada en Vercel: "MERCADO_PAGO_ACCESS_TOKEN".',
       documentationUrl: 'https://www.mercadopago.com.uy/developers',
     },
     {
