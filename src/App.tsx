@@ -384,7 +384,7 @@ export default function App() {
             currentUser={currentUser}
             onOpenAuthModal={() => setIsAuthModalOpen(true)}
             onNavigateTab={(tab) => {
-              if (!currentUser && tab !== 'plans' && tab !== 'guide' && tab !== 'reviews' && tab !== 'landing') {
+              if (!currentUser && tab !== 'plans' && tab !== 'guide' && tab !== 'reviews' && tab !== 'landing' && tab !== 'modules') {
                 setIsAuthModalOpen(true);
               } else {
                 setActiveTab(tab);
@@ -408,6 +408,13 @@ export default function App() {
               }
             }}
           />
+        ) : activeTab === 'modules' ? (
+          <ModulesGrid
+            campaign={activeCampaign}
+            onSelectModule={(mod) => setSelectedModule(mod)}
+            onOpenNewCampaign={handleOpenNewCampaign}
+            onOpenPlans={() => setActiveTab('plans')}
+          />
         ) : !currentUser ? (
           <LandingHero
             currentUser={currentUser}
@@ -423,6 +430,7 @@ export default function App() {
             onOpenNewCampaign={handleOpenNewCampaign}
             onGoToReviews={() => setActiveTab('reviews')}
             onGoToGuide={() => setActiveTab('guide')}
+            onGoToModules={() => setActiveTab('modules')}
             onOpenInstallModal={() => setIsInstallModalOpen(true)}
             onRequestOneDollarCheckout={handleOpenOneDollarCheckout}
           />
@@ -447,13 +455,6 @@ export default function App() {
               setActiveTab('dashboard');
             }}
             currentUser={currentUser}
-          />
-        ) : activeTab === 'modules' ? (
-          <ModulesGrid
-            campaign={activeCampaign}
-            onSelectModule={(mod) => setSelectedModule(mod)}
-            onOpenNewCampaign={handleOpenNewCampaign}
-            onOpenPlans={() => setActiveTab('plans')}
           />
         ) : activeCampaign ? (
           <>
