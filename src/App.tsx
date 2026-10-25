@@ -594,7 +594,7 @@ export default function App() {
         />
       )}
 
-      {/* New Campaign Creation Modal (With Conditional Logic & Pixel Verifier) */}
+      {/* New Campaign Creation Modal (With Zero-Install Smart Bridge Router & Dynamic Geo Targeting) */}
       <NewCampaignModal
         isOpen={isNewCampaignOpen}
         onClose={() => setIsNewCampaignOpen(false)}

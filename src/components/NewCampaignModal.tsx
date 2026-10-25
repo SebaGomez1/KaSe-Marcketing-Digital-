@@ -66,23 +66,17 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [interactionPreferences, setInteractionPreferences] = useState('Comentarios positivos y preguntas frecuentes orientadas al nicho');
   const [communicationTone, setCommunicationTone] = useState('');
 
-  // Pixel Verification State (For user_registrations & plan_sales)
-  const [pixelVerified, setPixelVerified] = useState(false);
-  const [isVerifyingPixel, setIsVerifyingPixel] = useState(false);
-  const [pixelVerifyMessage, setPixelVerifyMessage] = useState<string | null>(null);
-  const [copiedPixel, setCopiedPixel] = useState(false);
-
   // Geographic Smart Segmentation
-  const [selectedCountryCode, setSelectedCountryCode] = useState('UY');
-  const [selectedRegionName, setSelectedRegionName] = useState('Montevideo');
-  const [selectedCityName, setSelectedCityName] = useState('Montevideo Capital');
-  const [cityInputText, setCityInputText] = useState('Montevideo Capital');
+  const [selectedCountryCode, setSelectedCountryCode] = useState('GLOBAL');
+  const [selectedRegionName, setSelectedRegionName] = useState('Mundial');
+  const [selectedCityName, setSelectedCityName] = useState('Tráfico Global Cualificado por Idioma e Intención');
+  const [cityInputText, setCityInputText] = useState('Tráfico Global Cualificado por Idioma e Intención');
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
   const [autoExpandProximity, setAutoExpandProximity] = useState(true);
 
-  // Pricing Range Questions (Strategic Intent Qualification - Only for user_registrations & plan_sales)
-  const [minPlanPrice, setMinPlanPrice] = useState<number>(29);
-  const [maxPlanPrice, setMaxPlanPrice] = useState<number>(199);
+  // Pricing Range Calibration (Strategic Intent Qualification - Only for user_registrations & plan_sales)
+  const [minPlanPrice, setMinPlanPrice] = useState<string>('29');
+  const [maxPlanPrice, setMaxPlanPrice] = useState<string>('199');
   const [currency, setCurrency] = useState<'USD' | 'UYU'>('USD');
   
   // Target Conversion Goal
@@ -230,7 +224,6 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
   // Determine which fields to display conditionally
   const requiresPricingCalibration = selectedType === 'user_registrations' || selectedType === 'plan_sales';
-  const requiresPixelVerification = selectedType === 'user_registrations' || selectedType === 'plan_sales';
   const isSocialEngagement = selectedType === 'likes_engagement';
   const isCommentsReviews = selectedType === 'comments_reviews';
   const isYouTube = selectedType === 'youtube_growth';
@@ -362,8 +355,6 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
   const handleTypeSelect = (type: CampaignType) => {
     setSelectedType(type);
-    setPixelVerified(false);
-    setPixelVerifyMessage(null);
     const meta = CAMPAIGN_TYPES_CATALOG.find((t) => t.id === type);
     if (meta) {
       setTargetQuantity(meta.defaultTarget);
@@ -387,7 +378,10 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     setLoading(true);
     setError(null);
 
-    if (requiresPricingCalibration && (minPlanPrice < 0 || maxPlanPrice < minPlanPrice)) {
+    const numMin = parseFloat(String(minPlanPrice)) || 0;
+    const numMax = parseFloat(String(maxPlanPrice)) || 0;
+
+    if (requiresPricingCalibration && (numMin < 0 || (numMax > 0 && numMax < numMin))) {
       setError('El precio del plan más caro debe ser igual o mayor al plan más barato.');
       setLoading(false);
       return;
@@ -423,12 +417,12 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           description,
           campaignType: selectedType,
           targetUnitLabel: currentTypeMeta.unitLabelPlural,
-          minPlanPrice: requiresPricingCalibration ? minPlanPrice : undefined,
-          maxPlanPrice: requiresPricingCalibration ? maxPlanPrice : undefined,
+          minPlanPrice: requiresPricingCalibration ? numMin : undefined,
+          maxPlanPrice: requiresPricingCalibration ? numMax : undefined,
           currency: requiresPricingCalibration ? currency : undefined,
           targetRegistrations: targetQuantity,
           plan: pricing.plan,
-          pixelVerified,
+          bridgeVerified: true,
           interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
           geoTargeting: geoData,
           status: isKathy && !isTestOneDollarMode ? 'active' : 'configuring',
@@ -724,9 +718,49 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   )}
                 </div>
 
-                {/* Country Matching List */}
-                <div className="max-h-36 overflow-y-auto rounded-lg border border-neutral-800 bg-black/70 p-1.5 grid grid-cols-2 sm:grid-cols-3 gap-1">
-                  {filteredCountries.slice(0, 18).map((c) => (
+                {/* Quick Country Shortcuts */}
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-[10px] text-neutral-400 font-mono">Países populares:</span>
+                  {[
+                    { code: 'GLOBAL', label: '🌐 Global', flag: '🌐' },
+                    { code: 'UY', label: 'Uruguay', flag: '🇺🇾' },
+                    { code: 'AR', label: 'Argentina', flag: '🇦🇷' },
+                    { code: 'ES', label: 'España', flag: '🇪🇸' },
+                    { code: 'MX', label: 'México', flag: '🇲🇽' },
+                    { code: 'US', label: 'EE.UU.', flag: '🇺🇸' },
+                    { code: 'CL', label: 'Chile', flag: '🇨🇱' },
+                    { code: 'CO', label: 'Colombia', flag: '🇨🇴' },
+                    { code: 'PE', label: 'Perú', flag: '🇵🇪' },
+                    { code: 'BR', label: 'Brasil', flag: '🇧🇷' },
+                  ].map((qp) => (
+                    <button
+                      key={qp.code}
+                      type="button"
+                      onClick={() => {
+                        handleCountryChange(qp.code);
+                        setCountrySearchQuery('');
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer flex items-center gap-1 ${
+                        selectedCountryCode === qp.code
+                          ? 'bg-emerald-400 text-black font-bold shadow'
+                          : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800'
+                      }`}
+                    >
+                      <span>{qp.flag}</span>
+                      <span>{qp.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Country Matching List (TODOS LOS PAÍSES DISPONIBLES) */}
+                <div className="text-[10px] text-neutral-400 font-mono flex items-center justify-between">
+                  <span>Listado completo de países ({filteredCountries.length} disponibles):</span>
+                  {selectedCountryCode && (
+                    <span className="text-emerald-400">Activo: {countryObj.flag} {countryObj.name}</span>
+                  )}
+                </div>
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-neutral-800 bg-black/70 p-1.5 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                  {filteredCountries.map((c) => (
                     <button
                       key={c.code}
                       type="button"
@@ -739,6 +773,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold shadow-sm'
                           : 'text-neutral-300 hover:bg-neutral-800/80 hover:text-white'
                       }`}
+                      title={`${c.name} (${c.code})`}
                     >
                       <span className="text-sm shrink-0">{c.flag}</span>
                       <span className="truncate">{c.name}</span>
@@ -876,6 +911,36 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 </select>
               </div>
 
+              {/* Quick Pricing Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-neutral-400 font-mono">Selección rápida de rangos comunes:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { label: '$9 a $49', min: '9', max: '49' },
+                    { label: '$29 a $199', min: '29', max: '199' },
+                    { label: '$49 a $299', min: '49', max: '299' },
+                    { label: '$99 a $499', min: '99', max: '499' },
+                    { label: '$500 a $2,500', min: '500', max: '2500' },
+                  ].map((pr) => (
+                    <button
+                      key={pr.label}
+                      type="button"
+                      onClick={() => {
+                        setMinPlanPrice(pr.min);
+                        setMaxPlanPrice(pr.max);
+                      }}
+                      className={`px-2.5 py-1 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                        String(minPlanPrice) === pr.min && String(maxPlanPrice) === pr.max
+                          ? 'bg-emerald-400 text-black font-bold'
+                          : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800'
+                      }`}
+                    >
+                      {pr.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-neutral-300 font-medium mb-1">
@@ -884,12 +949,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-neutral-400 font-mono">$</span>
                     <input
-                      type="number"
-                      min={0}
-                      step={1}
+                      type="text"
+                      inputMode="numeric"
                       required
                       value={minPlanPrice}
-                      onChange={(e) => setMinPlanPrice(Number(e.target.value))}
+                      onChange={(e) => setMinPlanPrice(e.target.value.replace(/[^0-9]/g, ''))}
                       className="w-full bg-black border border-neutral-700 rounded-lg pl-7 pr-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500"
                       placeholder="29"
                     />
@@ -904,12 +968,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-neutral-400 font-mono">$</span>
                     <input
-                      type="number"
-                      min={0}
-                      step={1}
+                      type="text"
+                      inputMode="numeric"
                       required
                       value={maxPlanPrice}
-                      onChange={(e) => setMaxPlanPrice(Number(e.target.value))}
+                      onChange={(e) => setMaxPlanPrice(e.target.value.replace(/[^0-9]/g, ''))}
                       className="w-full bg-black border border-neutral-700 rounded-lg pl-7 pr-3 py-2 text-white font-mono focus:outline-none focus:border-emerald-500"
                       placeholder="199"
                     />

@@ -370,7 +370,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
                       className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         conv.method === 'webhook'
                           ? 'bg-sky-400'
-                          : conv.method === 'organic_click' || conv.method === 'bridge_router' || (conv.method as any) === 'pixel'
+                          : conv.method === 'organic_click' || conv.method === 'bridge_router'
                           ? 'bg-emerald-400'
                           : 'bg-indigo-400'
                       }`}

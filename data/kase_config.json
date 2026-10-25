@@ -1,0 +1,18 @@
+{
+  "globalPixelCode": "<!-- Enrutador Puente Global KaSe v3.4 (/r/:id) -->",
+  "internalCampaignName": "Auto-Promoción y Escalamiento de KaSe Marketing",
+  "internalCampaignGoal": 5000,
+  "internalCampaignCurrent": 0,
+  "autoPauseInternalEngines": true,
+  "status": "active",
+  "lastUpdated": "2026-10-25T10:00:00.000Z",
+  "mercadoPagoAccessToken": "",
+  "mercadoPagoPublicKey": "",
+  "testPlanEnabled": true,
+  "testPlanUsed": false,
+  "installedLocalCampaignId": "",
+  "vercelTrustBoosterMode": true,
+  "first10SalesTarget": 10,
+  "first10SalesCurrent": 0,
+  "first10SalesStrategy": "Algoritmo de Sobre-Esfuerzo B2B para Link Vercel: Se duplican los touchpoints en Outbound B2B y Newsletters, se destaca la protección al comprador de Mercado Pago Uruguay y se ofrece demostración interactiva sin tarjeta para derribar objeciones de confianza inicial."
+}

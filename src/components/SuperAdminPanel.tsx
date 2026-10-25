@@ -33,8 +33,13 @@ import {
   Star,
   MessageSquare,
   SendHorizontal,
-  AlertCircle
+  AlertCircle,
+  Route,
+  Globe,
+  Filter,
+  Link2
 } from 'lucide-react';
+import { WORLD_COUNTRIES_CATALOG } from '../data/geoLocations';
 import { 
   GlobalKaSeConfig, 
   RateLimitStatus, 
@@ -186,8 +191,20 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   allCampaigns,
   onRefreshCampaigns,
 }) => {
-  const [adminTab, setAdminTab] = useState<'optimal_performance' | 'marketing_alerts' | 'overview' | 'campaigns' | 'mercadopago' | 'global_pixel' | 'rate_limits' | 'sql_migration'>('optimal_performance');
+  const [adminTab, setAdminTab] = useState<'optimal_performance' | 'marketing_alerts' | 'overview' | 'campaigns' | 'mercadopago' | 'bridge_router' | 'rate_limits' | 'sql_migration'>('optimal_performance');
   
+  // Country & Geo Filter State
+  const [countryFilter, setCountryFilter] = useState<string>('ALL');
+  
+  // Smart Bridge Router Live Tester State
+  const [testBridgeCampaignId, setTestBridgeCampaignId] = useState<string>('');
+  const [isTestingBridge, setIsTestingBridge] = useState<boolean>(false);
+  const [testBridgeResult, setTestBridgeResult] = useState<{
+    status: 'idle' | 'success' | 'error';
+    targetUrl?: string;
+    message?: string;
+  }>({ status: 'idle' });
+
   // Marketing Interno & Dissatisfaction Alerts State
   const [potentialClients, setPotentialClients] = useState<PotentialClient[]>([]);
   const [marketingStats, setMarketingStats] = useState<any>(null);
@@ -265,10 +282,10 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     }
   };
 
-  // Local KaSe App Self-Promotion Campaign Binding (Bridge Router)
+  // Local KaSe App Self-Promotion Campaign Binding (Smart Bridge Router)
   const [localCampaignId, setLocalCampaignId] = useState('');
-  const [isSavingLocalPixel, setIsSavingLocalPixel] = useState(false);
-  const [localPixelSuccess, setLocalPixelSuccess] = useState(false);
+  const [isSavingBridgeConfig, setIsSavingBridgeConfig] = useState(false);
+  const [bridgeSaveSuccess, setBridgeSaveSuccess] = useState(false);
 
   // Security guard: Only render for authorized super administrators
   const isSuperAdmin = isUserSuperAdmin(currentUser);
@@ -639,10 +656,50 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     }
   };
 
-  const handleSaveLocalPixel = async (e: React.FormEvent) => {
+  const handleTestBridge = async (campaignIdToTest?: string) => {
+    const id = campaignIdToTest || testBridgeCampaignId || localCampaignId || (allCampaigns[0]?.id ?? '');
+    if (!id) {
+      setTestBridgeResult({ status: 'error', message: 'Selecciona o escribe un ID de campaña para probar la redirección.' });
+      return;
+    }
+    setIsTestingBridge(true);
+    setTestBridgeResult({ status: 'idle' });
+    try {
+      const camp = allCampaigns.find(c => c.id === id);
+      const target = camp?.targetUrl || window.location.origin;
+      const res = await fetch('/api/bridge/verify-target-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl: target }),
+      });
+      const data = await res.json();
+      if (data.reachable || data.success) {
+        setTestBridgeResult({
+          status: 'success',
+          targetUrl: target,
+          message: `Enrutador Puente verificado con éxito: HTTP 307 activo hacia ${target}. Cero cookies invasivas, cero scripts requeridos.`,
+        });
+      } else {
+        setTestBridgeResult({
+          status: 'error',
+          targetUrl: target,
+          message: data.message || 'La URL de destino no respondió código 200/3xx.',
+        });
+      }
+    } catch (err: any) {
+      setTestBridgeResult({
+        status: 'error',
+        message: err.message || 'Error de red al comprobar el Enrutador Puente.',
+      });
+    } finally {
+      setIsTestingBridge(false);
+    }
+  };
+
+  const handleSaveBridgeConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingLocalPixel(true);
-    setLocalPixelSuccess(false);
+    setIsSavingBridgeConfig(true);
+    setBridgeSaveSuccess(false);
     try {
       const res = await fetch('/api/admin/set-internal-campaign', {
         method: 'POST',
@@ -653,13 +710,13 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        setLocalPixelSuccess(true);
-        setTimeout(() => setLocalPixelSuccess(false), 3000);
+        setBridgeSaveSuccess(true);
+        setTimeout(() => setBridgeSaveSuccess(false), 3000);
       }
     } catch (err) {
-      console.error('Error saving local pixel:', err);
+      console.error('Error al vincular campaña al Enrutador Puente:', err);
     } finally {
-      setIsSavingLocalPixel(false);
+      setIsSavingBridgeConfig(false);
     }
   };
 
@@ -750,7 +807,7 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
           { id: 'overview', label: 'Métricas Globales', icon: Activity },
           { id: 'campaigns', label: `Campañas de Clientes (${allCampaigns.length})`, icon: Layers },
           { id: 'mercadopago', label: `Control de Cobros MP (${transactions.length})`, icon: CreditCard },
-          { id: 'global_pixel', label: 'Configuración Píxel Global KaSe', icon: Code2 },
+          { id: 'bridge_router', label: 'Enrutador Puente Inteligente (/r/:id)', icon: Route },
           { id: 'rate_limits', label: 'Monitor de Rate Limits & Proxies', icon: Server },
           { id: 'sql_migration', label: 'Migración SQL (PostgreSQL/Supabase)', icon: Database },
         ].map((tab) => {
@@ -1879,12 +1936,12 @@ DATABASE_URL=...`}</pre>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-5 bg-black/60 border border-neutral-800 rounded-xl space-y-3">
               <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Code2 className="w-4 h-4 text-emerald-400" />
-                <span>Estado de Píxel Global KaSe (Auto-Promoción)</span>
+                <Route className="w-4 h-4 text-emerald-400" />
+                <span>Estado del Enrutador Puente KaSe (/r/:id - Auto-Promoción)</span>
               </h3>
               <p className="text-xs text-neutral-300 leading-relaxed">
-                Nuestra campaña interna de promoción opera actualmente con meta de{' '}
-                <strong className="text-white">{internalGoal.toLocaleString()} registros</strong>.
+                Nuestra campaña interna de promoción opera actualmente vía Enrutador Puente con meta de{' '}
+                <strong className="text-white">{internalGoal.toLocaleString()} registros</strong> (Cero scripts, 100% server-side).
               </p>
               <div className="p-3 bg-neutral-900 rounded-lg flex items-center justify-between text-xs">
                 <span>Progreso Interno:</span>
@@ -1917,80 +1974,274 @@ DATABASE_URL=...`}</pre>
               </div>
             </div>
           </div>
+
+          {/* Desglose de Presencia Geográfica Multirregión */}
+          <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Despliegue y Presencia Geográfica de Campañas</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                      70+ Países Disponibles
+                    </span>
+                  </h4>
+                  <p className="text-xs text-neutral-400">
+                    Distribución activa de campañas segmentadas por país y cobertura con expansión concéntrica.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdminTab('campaigns')}
+                className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+              >
+                <span>Filtrar campañas por país</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {[
+                { code: 'UY', name: 'Uruguay', flag: '🇺🇾', desc: 'Mercado Doméstico MP' },
+                { code: 'AR', name: 'Argentina', flag: '🇦🇷', desc: 'Mercosur B2B' },
+                { code: 'ES', name: 'España', flag: '🇪🇸', desc: 'Europa Hispanohablante' },
+                { code: 'MX', name: 'México', flag: '🇲🇽', desc: 'Alta Demanda SaaS' },
+                { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', desc: 'High-Ticket USD' },
+                { code: 'CL', name: 'Chile', flag: '🇨🇱', desc: 'Hub Emprendedor' },
+                { code: 'CO', name: 'Colombia', flag: '🇨🇴', desc: 'Crecimiento Rápido' },
+                { code: 'PE', name: 'Perú', flag: '🇵🇪', desc: 'Mercado Emergente' },
+                { code: 'BR', name: 'Brasil', flag: '🇧🇷', desc: 'Cono Sur Tech' },
+                { code: 'GLOBAL', name: 'Global', flag: '🌐', desc: 'Audiencia Mundial' },
+              ].map((co) => {
+                const count = allCampaigns.filter((camp) => {
+                  const g = camp.geoTargeting;
+                  if (!g) return co.code === 'GLOBAL';
+                  if (co.code === 'GLOBAL') return !g.country || g.country.toLowerCase().includes('global');
+                  return (
+                    (g.country && g.country.toLowerCase().includes(co.name.toLowerCase())) ||
+                    (g as any).countryCode === co.code
+                  );
+                }).length;
+
+                return (
+                  <div
+                    key={co.code}
+                    onClick={() => {
+                      setCountryFilter(co.code);
+                      setAdminTab('campaigns');
+                    }}
+                    className="p-3 bg-black/60 hover:bg-neutral-800 border border-neutral-800 hover:border-cyan-500/40 rounded-xl transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xl">{co.flag}</span>
+                      <span className={`text-xs font-mono font-bold px-1.5 py-0.2 rounded ${
+                        count > 0 ? 'bg-emerald-500/20 text-emerald-300' : 'text-neutral-500'
+                      }`}>
+                        {count} {count === 1 ? 'campaña' : 'campañas'}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-white mt-1 group-hover:text-cyan-300 transition-colors">
+                      {co.name}
+                    </div>
+                    <div className="text-[10px] text-neutral-500 truncate">{co.desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
       {/* TAB 2: CAMPAÑAS DE CLIENTES */}
       {adminTab === 'campaigns' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-neutral-400">
-              Listado completo de campañas gestionadas en la plataforma:
-            </span>
-            <span className="font-mono text-emerald-400 font-bold">{allCampaigns.length} campañas activas/históricas</span>
+          <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Layers className="w-4 h-4 text-emerald-400" />
+                <span>Gestión de Campañas y Enrutadores Puente</span>
+              </h3>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                {allCampaigns.length} campañas activas e históricas con segmentación geográfica y redirección HTTP 307 activa.
+              </p>
+            </div>
+
+            {/* Country Filter Select & Quick Reset */}
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-neutral-400 shrink-0" />
+              <select
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                className="bg-black border border-neutral-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500 font-mono"
+              >
+                <option value="ALL">🌐 Todos los Países ({allCampaigns.length})</option>
+                <option value="GLOBAL">🌐 Global / Sin Restricción</option>
+                <option value="UY">🇺🇾 Uruguay</option>
+                <option value="AR">🇦🇷 Argentina</option>
+                <option value="ES">🇪🇸 España</option>
+                <option value="MX">🇲🇽 México</option>
+                <option value="US">🇺🇸 Estados Unidos</option>
+                <option value="CL">🇨🇱 Chile</option>
+                <option value="CO">🇨🇴 Colombia</option>
+                <option value="PE">🇵🇪 Perú</option>
+                <option value="BR">🇧🇷 Brasil</option>
+                {WORLD_COUNTRIES_CATALOG.filter(c => !['GLOBAL', 'UY', 'AR', 'ES', 'MX', 'US', 'CL', 'CO', 'PE', 'BR'].includes(c.code)).map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name}
+                  </option>
+                ))}
+              </select>
+              {countryFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setCountryFilter('ALL')}
+                  className="text-[11px] px-2 py-1 rounded bg-neutral-800 text-neutral-300 hover:text-white font-mono cursor-pointer"
+                >
+                  Restablecer
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Country Filter Badges */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <span className="text-neutral-500 text-[11px] shrink-0 font-mono">Filtro rápido:</span>
+            {[
+              { code: 'ALL', label: 'Todos', flag: '🌐' },
+              { code: 'UY', label: 'Uruguay', flag: '🇺🇾' },
+              { code: 'AR', label: 'Argentina', flag: '🇦🇷' },
+              { code: 'ES', label: 'España', flag: '🇪🇸' },
+              { code: 'MX', label: 'México', flag: '🇲🇽' },
+              { code: 'US', label: 'EE.UU.', flag: '🇺🇸' },
+              { code: 'CL', label: 'Chile', flag: '🇨🇱' },
+              { code: 'CO', label: 'Colombia', flag: '🇨🇴' },
+              { code: 'GLOBAL', label: 'Global', flag: '🌍' },
+            ].map(item => {
+              const isActive = countryFilter === item.code;
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => setCountryFilter(item.code)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                    isActive
+                      ? 'bg-emerald-500 text-black font-bold'
+                      : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800'
+                  }`}
+                >
+                  <span>{item.flag}</span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="overflow-x-auto border border-neutral-800 rounded-xl bg-neutral-900/60">
             <table className="w-full text-left text-xs">
               <thead className="bg-black/60 border-b border-neutral-800 text-neutral-400 font-mono text-[11px]">
                 <tr>
-                  <th className="p-3">Campaña / Cliente</th>
+                  <th className="p-3">Campaña / Enrutador Puente</th>
                   <th className="p-3">Tipo de Objetivo</th>
                   <th className="p-3">Avance / Meta</th>
-                  <th className="p-3">Segmentación Geo</th>
+                  <th className="p-3">Segmentación Geo (País / Ciudad)</th>
                   <th className="p-3">Plan KaSe</th>
                   <th className="p-3">Estado Motores</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800 text-neutral-300">
-                {allCampaigns.map((camp) => {
-                  const pct = Math.min(100, Math.round((camp.currentRegistrations / camp.targetRegistrations) * 100));
-                  return (
-                    <tr key={camp.id} className="hover:bg-neutral-800/40">
-                      <td className="p-3">
-                        <div className="font-bold text-white">{camp.name}</div>
-                        <a
-                          href={camp.targetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] text-neutral-500 hover:text-emerald-400 font-mono"
-                        >
-                          {camp.targetUrl}
-                        </a>
-                      </td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">
-                          {camp.campaignType}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white">{camp.currentRegistrations.toLocaleString()}</span>
-                          <span className="text-neutral-500">/ {camp.targetRegistrations.toLocaleString()}</span>
-                        </div>
-                        <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-1 overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-400 transition-all duration-300"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="text-[11px] text-neutral-300">
-                          {camp.geoTargeting?.city || 'Global / Sin restricción'}
-                        </div>
-                        {camp.geoTargeting?.autoExpandProximity && (
-                          <span className="text-[10px] text-cyan-400 font-mono">Concéntrica activa</span>
-                        )}
-                      </td>
-                      <td className="p-3 uppercase font-mono font-bold text-emerald-400 text-[11px]">
-                        {camp.plan}
-                      </td>
-                      <td className="p-3">
-                        {camp.status === 'active' && (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px] font-bold">
-                            EN MARCHA (100%)
+                {allCampaigns
+                  .filter((camp) => {
+                    if (countryFilter === 'ALL') return true;
+                    const geo = camp.geoTargeting;
+                    if (!geo) return countryFilter === 'GLOBAL';
+                    if (countryFilter === 'GLOBAL') return !geo.country || geo.country.toLowerCase().includes('global');
+                    const match = WORLD_COUNTRIES_CATALOG.find(c => c.code === countryFilter);
+                    const countryName = match?.name?.toLowerCase() || '';
+                    return (
+                      (geo.country && geo.country.toLowerCase().includes(countryName)) ||
+                      (geo as any).countryCode === countryFilter ||
+                      geo.country === countryFilter
+                    );
+                  })
+                  .map((camp) => {
+                    const pct = Math.min(100, Math.round((camp.currentRegistrations / camp.targetRegistrations) * 100));
+                    const geo = camp.geoTargeting;
+                    const matchedCountry = WORLD_COUNTRIES_CATALOG.find(c => 
+                      (geo?.country && c.name.toLowerCase() === geo.country.toLowerCase()) ||
+                      (geo && (geo as any).countryCode === c.code) ||
+                      (geo?.country && geo.country.toLowerCase().includes(c.name.toLowerCase()))
+                    );
+                    const countryFlag = matchedCountry?.flag || (geo?.country?.toLowerCase().includes('uruguay') ? '🇺🇾' : geo?.country?.toLowerCase().includes('argentina') ? '🇦🇷' : geo?.country?.toLowerCase().includes('españa') ? '🇪🇸' : geo?.country?.toLowerCase().includes('méxico') ? '🇲🇽' : geo?.country?.toLowerCase().includes('estados unidos') ? '🇺🇸' : '🌐');
+                    const countryName = matchedCountry?.name || geo?.country || 'Global';
+
+                    return (
+                      <tr key={camp.id} className="hover:bg-neutral-800/40">
+                        <td className="p-3">
+                          <div className="font-bold text-white flex items-center gap-2">
+                            <span>{camp.name}</span>
+                            <a
+                              href={`/r/${camp.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Probar Enrutador Puente (/r/:id)"
+                              className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 inline-flex items-center gap-1"
+                            >
+                              <Route className="w-3 h-3" />
+                              <span>/r/{camp.id.substring(0, 10)}...</span>
+                            </a>
+                          </div>
+                          <a
+                            href={camp.targetUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-neutral-500 hover:text-emerald-400 font-mono block truncate max-w-xs mt-0.5"
+                          >
+                            Destino: {camp.targetUrl}
+                          </a>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono text-[10px]">
+                            {camp.campaignType}
                           </span>
+                        </td>
+                        <td className="p-3 font-mono">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">{camp.currentRegistrations.toLocaleString()}</span>
+                            <span className="text-neutral-500">/ {camp.targetRegistrations.toLocaleString()}</span>
+                          </div>
+                          <div className="w-24 h-1.5 bg-neutral-800 rounded-full mt-1 overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-400 transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1.5 font-medium text-white text-xs">
+                            <span className="text-base">{countryFlag}</span>
+                            <span>{countryName}</span>
+                          </div>
+                          <div className="text-[11px] text-neutral-400">
+                            {camp.geoTargeting?.city || 'Sin restricción de ciudad'}
+                          </div>
+                          {camp.geoTargeting?.autoExpandProximity && (
+                            <span className="text-[10px] text-cyan-400 font-mono block">
+                              Concéntrica: {camp.geoTargeting.radiusKm || 25} km
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 uppercase font-mono font-bold text-emerald-400 text-[11px]">
+                          {camp.plan}
+                        </td>
+                        <td className="p-3">
+                          {camp.status === 'active' && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px] font-bold">
+                              EN MARCHA (100%)
+                            </span>
                         )}
                         {camp.status === 'paused_quota_reached' && (
                           <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono text-[10px] font-bold">
@@ -2307,7 +2558,9 @@ DATABASE_URL=...`}</pre>
               </div>
               <div className="text-right">
                 <span className="text-xs text-neutral-400 font-mono block">Total Transaccionado:</span>
-                <span className="text-base font-bold text-emerald-400 font-mono">$10,790 USD</span>
+                <span className="text-base font-bold text-emerald-400 font-mono">
+                  ${(metrics?.totalRevenueUSD ?? transactions.reduce((acc, tx) => acc + (tx.status === 'approved' ? tx.amount : 0), 0)).toLocaleString()} USD
+                </span>
               </div>
             </div>
 
@@ -2354,155 +2607,99 @@ DATABASE_URL=...`}</pre>
         </div>
       )}
 
-      {/* TAB 4: CONFIGURACIÓN DE PÍXEL GLOBAL KASE (PARTE 3) */}
-      {adminTab === 'global_pixel' && (
+      {/* TAB 4: ENRUTADOR PUENTE INTELIGENTE (/r/:id) - CERO PÍXELES (ZERO-INSTALL ARCHITECTURE) */}
+      {adminTab === 'bridge_router' && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveGlobalConfig} className="space-y-5">
-          <div className="p-4 bg-neutral-900 border border-emerald-500/30 rounded-xl space-y-2">
-            <div className="flex items-center gap-2">
-              <Code2 className="w-5 h-5 text-emerald-400" />
-              <h3 className="font-bold text-white text-sm">
-                Configuración de Píxel Global KaSe (Auto-Promoción Interna)
-              </h3>
+          {/* Header Contract & Architectural Defense */}
+          <div className="p-5 bg-neutral-900 border border-emerald-500/40 rounded-2xl space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <Route className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500 text-black uppercase font-mono">
+                    Zero-Install Architecture
+                  </span>
+                  <span className="text-xs text-neutral-400 font-mono">HTTP 307 Server-Side</span>
+                </div>
+                <h3 className="font-bold text-white text-base mt-0.5">
+                  Enrutador Puente Inteligente KaSe (/r/:id)
+                </h3>
+              </div>
             </div>
             <p className="text-xs text-neutral-300 leading-relaxed">
-              Utilizamos nuestra propia plataforma KaSe para promocionarnos internamente y registrar nuestras conversiones en piloto automático. El sistema interno de la app lee de manera prioritaria este campo para trackear nuestros propios registros y pausar de inmediato los motores autónomos cuando nuestra campaña interna alcance el objetivo establecido.
+              En KaSe Marketing Digital <strong className="text-white">NO utilizamos píxeles ni scripts del lado del cliente</strong>. Todo el tráfico generado por los motores autónomos se canaliza mediante redirección de borde <code className="text-emerald-400 font-mono font-bold">/r/:id (HTTP 307)</code>. Esto garantiza que las conversiones sean imposibles de bloquear por adblockers (Brave, uBlock), protege a los clientes contra caídas de scripts y evita penalizaciones en plataformas de distribución.
             </p>
-          </div>
 
-          {saveSuccess && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Configuración guardada con éxito. El Píxel Global está activo y vinculado a los motores internos.</span>
-            </div>
-          )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-3 bg-black/60 border border-neutral-800 rounded-xl space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                  <Check className="w-4 h-4" />
+                  <span>Cero Scripts en Tu Web</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  Tu cliente no necesita instalar ningún código ni fragmento JS en su página o tienda.
+                </p>
+              </div>
 
-          {/* Clean Textarea for Master Pixel */}
-          <div>
-            <label className="block text-neutral-200 font-bold mb-1 text-xs">
-              Fragmento de Código JS / ID de Conversión de Pasarela (Configuración de Píxel Global) *
-            </label>
-            <p className="text-[11px] text-neutral-400 mb-2">
-              Escribe o pega aquí el fragmento de código JavaScript o ID de conversión de tu pasarela de cobros:
-            </p>
-            <textarea
-              rows={8}
-              required
-              value={pixelCode}
-              onChange={(e) => setPixelCode(e.target.value)}
-              className="w-full bg-black border border-neutral-700 rounded-xl p-3.5 text-emerald-400 font-mono text-xs focus:outline-none focus:border-emerald-400 resize-y"
-              placeholder="<script>... fragmento de píxel de conversión KaSe ...</script>"
-            />
-          </div>
+              <div className="p-3 bg-black/60 border border-neutral-800 rounded-xl space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
+                  <Zap className="w-4 h-4" />
+                  <span>Redirección Ultra-Rápida</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  HTTP 307 instantáneo en menos de 15ms. El usuario final llega a destino sin demoras.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-neutral-300 font-semibold mb-1 text-xs">
-                Nombre de Campaña Interna KaSe
-              </label>
-              <input
-                type="text"
-                value={internalName}
-                onChange={(e) => setInternalName(e.target.value)}
-                className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-medium focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-neutral-300 font-semibold mb-1 text-xs">
-                Meta de Registros Propios (Objetivo Interno)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={internalGoal}
-                onChange={(e) => setInternalGoal(parseInt(e.target.value || '1', 10))}
-                className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
-              />
+              <div className="p-3 bg-black/60 border border-neutral-800 rounded-xl space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Inmune a Ad-Blockers</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  Al ejecutarse a nivel de servidor HTTP, ningún bloqueador de anuncios o navegador privado lo puede frenar.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-neutral-300 font-semibold mb-1 text-xs">
-                Registros Actuales Captados Internamente
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={internalCurrent}
-                onChange={(e) => setInternalCurrent(parseInt(e.target.value || '0', 10))}
-                className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-emerald-500"
-              />
+          {/* Card: Probador en Vivo del Enrutador Puente */}
+          <div className="p-5 bg-neutral-900 border border-cyan-500/30 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm">
+                    Probador de Enlaces del Enrutador Puente en Vivo
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Genera y verifica el enlace inteligente de cualquier campaña registrada en la plataforma.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center pt-5">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-200">
-                <input
-                  type="checkbox"
-                  checked={autoPause}
-                  onChange={(e) => setAutoPause(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-400 rounded cursor-pointer"
-                />
-                <span className="font-semibold">
-                  Pausar motores internos de inmediato al alcanzar la meta ({internalGoal.toLocaleString()})
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              type="submit"
-              disabled={isSavingConfig}
-              className="px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-black font-bold rounded-lg text-xs transition-all glow-emerald flex items-center gap-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSavingConfig ? 'Guardando...' : 'Guardar y Aplicar Píxel Global'}</span>
-            </button>
-          </div>
-        </form>
-
-        {/* Card: Local Pixel Injection for Self-Promoting KaSe */}
-        <div className="p-5 bg-neutral-900 border border-cyan-500/30 rounded-2xl space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-white text-sm">
-                Auto-Promoción de KaSe: Inyectar Píxel en esta misma Plataforma
-              </h3>
-              <p className="text-xs text-neutral-300 mt-0.5">
-                ¿Quieres promocionar esta misma app KaSe con sus propios motores? Pega aquí el Píxel o selecciona la campaña que creaste para esta app.
-              </p>
-            </div>
-          </div>
-
-          {localPixelSuccess && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>
-                ¡Píxel guardado e inyectado con éxito en esta app! Cada registro gratuito o compra de plan en esta web sumará automáticamente a tu campaña y parará los motores al llegar a la meta.
-              </span>
-            </div>
-          )}
-
-          <form onSubmit={handleSaveLocalPixel} className="space-y-4 pt-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-neutral-300 font-semibold mb-1 text-xs">
-                  Seleccionar Campaña Interna de KaSe:
+                  Seleccionar Campaña para Probar Enrutador:
                 </label>
                 <select
-                  value={localCampaignId}
-                  onChange={(e) => setLocalCampaignId(e.target.value)}
+                  value={testBridgeCampaignId}
+                  onChange={(e) => {
+                    setTestBridgeCampaignId(e.target.value);
+                    setTestBridgeResult({ status: 'idle' });
+                  }}
                   className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-cyan-500"
                 >
-                  <option value="">-- Elige una campaña activa --</option>
+                  <option value="">-- Elige una campaña --</option>
                   {allCampaigns.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.currentRegistrations}/{c.targetRegistrations} {c.targetUnitLabel})
+                      {c.name} ({c.id.substring(0, 14)}...) → {c.targetUrl}
                     </option>
                   ))}
                 </select>
@@ -2510,40 +2707,206 @@ DATABASE_URL=...`}</pre>
 
               <div>
                 <label className="block text-neutral-300 font-semibold mb-1 text-xs">
-                  O escribe manualmente el ID de Campaña:
+                  O escribe un ID de Campaña personalizado:
                 </label>
                 <input
                   type="text"
-                  value={localCampaignId}
-                  onChange={(e) => setLocalCampaignId(e.target.value)}
+                  value={testBridgeCampaignId}
+                  onChange={(e) => {
+                    setTestBridgeCampaignId(e.target.value);
+                    setTestBridgeResult({ status: 'idle' });
+                  }}
                   placeholder="kase_camp_xxxxxxxx"
                   className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-cyan-400 font-mono text-xs focus:outline-none focus:border-cyan-500"
                 />
               </div>
             </div>
 
-            <div className="p-3 bg-cyan-950/30 border border-cyan-800/40 rounded-xl text-xs text-neutral-300 space-y-1">
-              <span className="font-bold text-cyan-300 flex items-center gap-1.5">
-                <Check className="w-4 h-4 text-cyan-400" />
-                Atribución 100% Autónoma (Zero-Install)
-              </span>
-              <p className="text-[11px] text-neutral-400 leading-relaxed">
-                Al vincular tu campaña, todo el tráfico entrante a esta app se canaliza automáticamente a través del Enrutador Puente (<code className="text-cyan-300">/r/:id</code>). No requiere pegar ningún script manual de píxel.
-              </p>
+            {testBridgeCampaignId && (
+              <div className="p-3 bg-black/80 border border-neutral-800 rounded-xl space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs font-mono text-neutral-400">
+                    <span className="text-neutral-500">URL del Enrutador Puente:</span>{' '}
+                    <span className="text-emerald-400 font-bold select-all">
+                      {typeof window !== 'undefined' ? window.location.origin : ''}/r/{testBridgeCampaignId}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(`${window.location.origin}/r/${testBridgeCampaignId}`, 'bridge_url')}
+                      className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-mono flex items-center gap-1 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedVar === 'bridge_url' ? '¡Copiado!' : 'Copiar Enlace'}</span>
+                    </button>
+                    <a
+                      href={`/r/${testBridgeCampaignId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold font-mono flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Abrir en Nueva Pestaña</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                disabled={isTestingBridge}
+                onClick={() => handleTestBridge()}
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 cursor-pointer border border-neutral-700"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isTestingBridge ? 'animate-spin' : ''}`} />
+                <span>{isTestingBridge ? 'Comprobando HTTP 307...' : 'Probar Verificación de Destino en Vivo'}</span>
+              </button>
+
+              {testBridgeResult.status === 'success' && (
+                <div className="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{testBridgeResult.message}</span>
+                </div>
+              )}
+              {testBridgeResult.status === 'error' && (
+                <div className="text-xs text-rose-400 font-mono flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{testBridgeResult.message}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card: Auto-Promoción Interna KaSe (Vincular Campaña de la Propia Plataforma) */}
+          <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">
+                  Auto-Promoción de KaSe: Enrutador Puente para esta misma Plataforma
+                </h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Utiliza los 8 motores autónomos para promocionar tu propia app y conseguir tus primeros clientes y suscriptores de pago.
+                </p>
+              </div>
             </div>
 
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={isSavingLocalPixel || !localCampaignId}
-                className="px-5 py-2.5 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-40 disabled:hover:bg-cyan-400 text-black font-bold text-xs rounded-lg transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2 cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSavingLocalPixel ? 'Guardando...' : 'Vincular Campaña de Auto-Promoción'}</span>
-              </button>
-            </div>
-          </form>
-        </div>
+            {bridgeSaveSuccess && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>
+                  ¡Campaña vinculada con éxito al Enrutador Puente! Cada usuario derivado hacia esta plataforma sumará automáticamente y pausará los motores al alcanzar la meta.
+                </span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBridgeConfig} className="space-y-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-300 font-semibold mb-1 text-xs">
+                    Seleccionar Campaña Interna de KaSe:
+                  </label>
+                  <select
+                    value={localCampaignId}
+                    onChange={(e) => setLocalCampaignId(e.target.value)}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">-- Elige una campaña activa --</option>
+                    {allCampaigns.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.currentRegistrations}/{c.targetRegistrations} {c.targetUnitLabel})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-neutral-300 font-semibold mb-1 text-xs">
+                    O escribe manualmente el ID de Campaña:
+                  </label>
+                  <input
+                    type="text"
+                    value={localCampaignId}
+                    onChange={(e) => setLocalCampaignId(e.target.value)}
+                    placeholder="kase_camp_xxxxxxxx"
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-purple-400 font-mono text-xs focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-300 font-semibold mb-1 text-xs">
+                    Nombre de Campaña Interna KaSe
+                  </label>
+                  <input
+                    type="text"
+                    value={internalName}
+                    onChange={(e) => setInternalName(e.target.value)}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-medium focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-300 font-semibold mb-1 text-xs">
+                    Meta de Registros Propios (Objetivo Interno)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={internalGoal}
+                    onChange={(e) => setInternalGoal(parseInt(e.target.value || '1', 10))}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-mono font-bold focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-300 font-semibold mb-1 text-xs">
+                    Registros Actuales Captados Internamente
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={internalCurrent}
+                    onChange={(e) => setInternalCurrent(parseInt(e.target.value || '0', 10))}
+                    className="w-full bg-black border border-neutral-700 rounded-lg px-3 py-2 text-white text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-200">
+                    <input
+                      type="checkbox"
+                      checked={autoPause}
+                      onChange={(e) => setAutoPause(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-400 rounded cursor-pointer"
+                    />
+                    <span className="font-semibold">
+                      Pausar motores internos de inmediato al alcanzar la meta ({internalGoal.toLocaleString()})
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={isSavingBridgeConfig || !localCampaignId}
+                  className="px-5 py-2.5 bg-purple-500 hover:bg-purple-400 disabled:opacity-40 disabled:hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingBridgeConfig ? 'Guardando...' : 'Guardar y Vincular al Enrutador Puente'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
 
         {/* Card: Modo Sobre-Esfuerzo Primeras 10 Ventas con Link Vercel */}
         <div className="p-5 bg-gradient-to-r from-amber-950/30 via-neutral-900 to-black border border-amber-500/40 rounded-2xl space-y-4">
@@ -3061,9 +3424,9 @@ DATABASE_URL=...`}</pre>
                   <span className="font-bold text-amber-400">5. conversions & audit_logs</span>
                   <span className="text-[10px] text-neutral-500">Auditoría Inmutable</span>
                 </div>
-                <div className="text-xs text-white font-semibold">Conteo por Píxel y Webhook</div>
+                <div className="text-xs text-white font-semibold">Conteo por Enrutador Puente y Webhook</div>
                 <p className="text-[11px] text-neutral-400 leading-relaxed">
-                  Registro detallado con método ('webhook', 'pixel', 'simulator'), IP enmascarada para privacidad e índices cronológicos indexados.
+                  Registro detallado con método ('bridge_router', 'webhook', 'organic_click', 'simulator'), IP enmascarada para privacidad e índices cronológicos indexados.
                 </p>
               </div>
 
