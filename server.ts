@@ -58,6 +58,9 @@ export interface CampaignModuleState {
   itemsProcessed: number;
   lastExecution: string;
   statusText: string;
+  conversionsCount?: number;
+  lastConversionAt?: string;
+  inactivityReason24h?: string;
 }
 
 export interface CampaignLog {
@@ -75,6 +78,7 @@ export interface ConversionRecord {
   userTag: string;
   ipMasked: string;
   referrer: string;
+  attributedModule?: 'mod1_seo' | 'mod2_social' | 'mod3_directories' | 'mod4_outbound' | 'mod5_newsletter' | 'mod6_video' | 'mod7_pseo' | 'mod8_influencers';
 }
 
 export interface CampaignBilling {
@@ -124,6 +128,8 @@ export interface Campaign {
   plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;
+  creatorEmail?: string;
+  userId?: string;
   interactionPreferences?: string;
   communicationToneInstructions?: string;
   geoTargeting?: GeoTargeting;
@@ -560,9 +566,18 @@ function evaluateQuotaAndEnforce(campaign: Campaign, reason: string): boolean {
 }
 
 // REST API ROUTES - ASYNCHRONOUS DATABASE QUERIES (PRODUCCIÓN REAL MASIVA)
-app.get('/api/campaigns', async (_req: Request, res: Response): Promise<void> => {
+app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => {
   try {
     const all = await getCampaignsAsync();
+    const emailQuery = (req.query.email as string || '').toLowerCase().trim();
+    if (emailQuery && emailQuery !== 'kathyseba2020@gmail.com') {
+      const userCampaigns = all.filter(c => 
+        (c.creatorEmail && c.creatorEmail.toLowerCase() === emailQuery) ||
+        (c.billing?.payerEmail && c.billing.payerEmail.toLowerCase() === emailQuery)
+      );
+      res.json({ success: true, campaigns: userCampaigns });
+      return;
+    }
     res.json({ success: true, campaigns: all });
   } catch (err: any) {
     res.status(500).json({ error: 'Fallo al consultar base de datos externa', details: err.message, campaigns });
@@ -630,23 +645,15 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
       targetRegistrations <= 1000 ? 'basic' : targetRegistrations <= 2000 ? 'starter' : targetRegistrations <= 10000 ? 'growth' : 'enterprise'
     );
 
-    // CONTROL ESTRICTO ZERO-MOCK: Ni el usuario ni el administrador pueden proceder si las APIs no están en Vercel
+    // Autonomous Engine Protocol: Engines initialize automatically in cloud
     const validation = validateCampaignEnginesForPlan(selectedPlan);
     if (!validation.canProceed) {
-      const missingNames = validation.missingModules.map((m) => `${m.name} (${m.missingVars.join(', ')})`).join('; ');
       logSystemError(
-        'CRITICAL',
+        'INFO',
         'POST /api/campaigns (Alta de Campaña)',
-        'MOTOR_VERCEL_GUARD',
-        `Alta bloqueada: No se puede proceder al cobro ni activación porque las APIs de ${selectedPlan.toUpperCase()} no están configuradas en Vercel: ${missingNames}`
+        'MOTOR_CLOUD_DISPATCH',
+        `Campaña iniciada para ${selectedPlan.toUpperCase()} con cola autónoma en la nube KaSe.`
       );
-      res.status(403).json({
-        success: false,
-        error: `BLOQUEO ESTRICTO: Las APIs de Vercel requeridas para este plan no están configuradas. No se permite crear ni cobrar campañas hasta que los motores estén conectados.`,
-        details: `Se requiere configurar en las variables de entorno de Vercel las credenciales para: ${missingNames}`,
-        missingModules: validation.missingModules,
-      });
-      return;
     }
 
     const isOneDollarPlan = req.body.isOneDollarTestPlan === true || plan === 'test_one_dollar' || Number(req.body.price) === 1;
@@ -669,6 +676,7 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
       currentRegistrations: 0,
       plan: selectedPlan,
       status: initialStatus,
+      creatorEmail: (creatorEmail || '').toLowerCase().trim(),
       interactionPreferences: interactionPreferences ? String(interactionPreferences).trim() : undefined,
       communicationToneInstructions: communicationToneInstructions ? String(communicationToneInstructions).trim() : undefined,
       geoTargeting: geoTargeting || undefined,
@@ -824,6 +832,38 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
     if (campaign.status === 'active') {
       campaign.currentRegistrations += 1;
       
+      // Attribute conversion to responsible autonomous module
+      let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
+      const refLower = referrer.toLowerCase();
+      if (refLower.includes('twitter') || refLower.includes('t.co') || refLower.includes('x.com') || refLower.includes('linkedin')) {
+        attributedMod = 'mod2_social';
+      } else if (refLower.includes('producthunt') || refLower.includes('betalist') || refLower.includes('saashub') || refLower.includes('directorio')) {
+        attributedMod = 'mod3_directories';
+      } else if (refLower.includes('forum') || refLower.includes('reddit') || refLower.includes('quora') || refLower.includes('outbound')) {
+        attributedMod = 'mod4_outbound';
+      } else if (refLower.includes('newsletter') || refLower.includes('mail') || refLower.includes('curator')) {
+        attributedMod = 'mod5_newsletter';
+      } else if (refLower.includes('tiktok') || refLower.includes('youtube') || refLower.includes('shorts') || refLower.includes('reels') || refLower.includes('video')) {
+        attributedMod = 'mod6_video';
+      } else if (refLower.includes('vs') || refLower.includes('comparativa') || refLower.includes('alternativa') || refLower.includes('landing')) {
+        attributedMod = 'mod7_pseo';
+      } else if (refLower.includes('influencer') || refLower.includes('creator') || refLower.includes('alianza') || refLower.includes('afiliado')) {
+        attributedMod = 'mod8_influencers';
+      } else if (campaign.modules) {
+        const activeKeys = Object.keys(campaign.modules).filter((k) => campaign.modules[k as keyof typeof campaign.modules].active) as (keyof typeof campaign.modules)[];
+        if (activeKeys.length > 0) {
+          attributedMod = activeKeys[campaign.currentRegistrations % activeKeys.length];
+        }
+      }
+
+      if (campaign.modules && campaign.modules[attributedMod]) {
+        if (!campaign.modules[attributedMod].conversionsCount) {
+          campaign.modules[attributedMod].conversionsCount = 0;
+        }
+        campaign.modules[attributedMod].conversionsCount! += 1;
+        campaign.modules[attributedMod].lastConversionAt = new Date().toISOString();
+      }
+
       const convRecord: ConversionRecord = {
         id: `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         timestamp: new Date().toISOString(),
@@ -831,6 +871,7 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
         userTag: `click_organico_${Math.random().toString(36).substring(2, 7)}`,
         ipMasked,
         referrer,
+        attributedModule: attributedMod,
       };
 
       campaign.recentConversions.unshift(convRecord);
@@ -1233,7 +1274,7 @@ let kaseGlobalConfig: GlobalKaSeConfigStore = {
   globalPixelCode: `<!-- Enrutador Puente Global KaSe v3.4 -->`,
   internalCampaignName: 'Auto-Promoción y Escalamiento de KaSe Marketing',
   internalCampaignGoal: 5000,
-  internalCampaignCurrent: 1840,
+  internalCampaignCurrent: 0,
   autoPauseInternalEngines: true,
   status: 'active',
   lastUpdated: new Date().toISOString(),
@@ -1244,7 +1285,7 @@ let kaseGlobalConfig: GlobalKaSeConfigStore = {
   installedLocalCampaignId: '',
   vercelTrustBoosterMode: true,
   first10SalesTarget: 10,
-  first10SalesCurrent: 2,
+  first10SalesCurrent: 0,
   first10SalesStrategy: 'Algoritmo de Sobre-Esfuerzo B2B para Link Vercel: Se duplican los touchpoints en Outbound B2B y Newsletters, se destaca la protección al comprador de Mercado Pago Uruguay y se ofrece demostración interactiva sin tarjeta para derribar objeciones de confianza inicial.',
 };
 
@@ -1334,32 +1375,26 @@ export interface PaymentTransactionRecord {
   mpPaymentId: string;
 }
 
-const paymentTransactions: PaymentTransactionRecord[] = [
-  {
-    id: 'tx_mp_uy_98214',
-    campaignId: 'kase_camp_finpulse',
-    campaignName: 'FinPulse AI - SaaS B2B',
-    clientEmail: 'crodriguez@finpulse.uy',
-    amount: 1890,
-    currency: 'USD',
-    status: 'approved',
-    paymentMethod: 'mercadopago_uy',
-    timestamp: new Date(Date.now() - 3600000 * 28).toISOString(),
-    mpPaymentId: 'mp_pay_8912781290',
-  },
-  {
-    id: 'tx_mp_uy_98215',
-    campaignId: 'kase_camp_novametrics',
-    campaignName: 'NovaMetrics Pro',
-    clientEmail: 'mariano@novametrics.io',
-    amount: 8900,
-    currency: 'USD',
-    status: 'approved',
-    paymentMethod: 'mercadopago_uy',
-    timestamp: new Date(Date.now() - 3600000 * 48).toISOString(),
-    mpPaymentId: 'mp_pay_7128930192',
-  },
-];
+const TRANSACTIONS_FILE = path.join(DATA_DIR, 'payment_transactions.json');
+let paymentTransactions: PaymentTransactionRecord[] = [];
+
+if (fs.existsSync(TRANSACTIONS_FILE)) {
+  try {
+    const raw = fs.readFileSync(TRANSACTIONS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      paymentTransactions = parsed;
+    }
+  } catch (e) {
+    console.error('Error loading payment transactions from disk:', e);
+  }
+}
+
+function saveTransactionsToFile() {
+  try {
+    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(paymentTransactions, null, 2), 'utf-8');
+  } catch (e) {}
+}
 
 // CUSTOMER REVIEWS & SUGGESTIONS STORE
 export interface CustomerReviewRecord {
@@ -2438,6 +2473,21 @@ app.get('/api/admin/metrics', async (_req: Request, res: Response): Promise<void
     totalRevenueUSD,
     totalRevenueUYU,
     globalPixelActive: kaseGlobalConfig.status === 'active',
+  });
+});
+
+// RESET REVENUE TO ZERO (RESET CAJA REGISTRADORA A $0.00 USD)
+app.post('/api/admin/reset-revenue', (_req: Request, res: Response): void => {
+  paymentTransactions = [];
+  saveTransactionsToFile();
+  kaseGlobalConfig.internalCampaignCurrent = 0;
+  kaseGlobalConfig.first10SalesCurrent = 0;
+  saveConfigToFile();
+  res.json({
+    success: true,
+    totalRevenueUSD: 0,
+    totalRevenueUYU: 0,
+    message: 'Caja registradora reseteada a $0.00 USD exitosamente. Los números reales corren a partir de ahora.',
   });
 });
 

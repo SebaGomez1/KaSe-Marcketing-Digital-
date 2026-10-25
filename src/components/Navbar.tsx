@@ -55,17 +55,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     : authenticatedClientNavItems;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0B0B0B]/95 backdrop-blur-md border-b border-neutral-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 sm:gap-6">
+    <header className="sticky top-0 z-40 bg-[#0B0B0B]/95 backdrop-blur-md border-b border-neutral-800 w-full max-w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-6 w-full">
         {/* Zone 1: Single element Brand Zone */}
         <div 
           onClick={() => setActiveTab(currentUser ? 'dashboard' : 'landing')} 
-          className="flex items-center gap-3 shrink-0 cursor-pointer"
+          className="flex items-center gap-2 sm:gap-3 shrink-0 cursor-pointer"
         >
           <div className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-700 flex items-center justify-center text-emerald-400">
             <Zap className="w-4 h-4 fill-emerald-400" />
           </div>
-          <span className="text-base font-bold tracking-tight text-white whitespace-nowrap">
+          <span className="text-sm sm:text-base font-bold tracking-tight text-white whitespace-nowrap">
             KaSe <span className="text-neutral-400 font-normal">Marketing</span>
           </span>
         </div>
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Zone 3: Actions (PWA install + Nueva Campaña + Auth status) */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Dedicated PWA Install Button */}
           {onOpenInstallModal && (
             <button
@@ -198,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Mobile nav bar for smaller screens */}
-      <div className="lg:hidden flex items-center gap-1 px-4 py-2 border-t border-neutral-800/80 overflow-x-auto bg-black/60">
+      <div className="lg:hidden flex items-center gap-1 px-3 py-2 border-t border-neutral-800/80 overflow-x-auto bg-black/60 max-w-full w-full no-scrollbar">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const isAdmin = item.id === 'admin_global';

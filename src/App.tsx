@@ -122,15 +122,49 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  // Fetch campaigns from backend
+  // Fetch campaigns from backend with user-account persistence and cross-device sync
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('/api/campaigns');
+      const emailQuery = currentUser?.email ? `?email=${encodeURIComponent(currentUser.email)}` : '';
+      const res = await fetch(`/api/campaigns${emailQuery}`);
       const data = await res.json();
       if (data.campaigns && data.campaigns.length > 0) {
         setCampaigns(data.campaigns);
+        if (currentUser?.email) {
+          try {
+            window.localStorage.setItem(
+              `kase_campaigns_${currentUser.email.toLowerCase().trim()}`,
+              JSON.stringify(data.campaigns)
+            );
+          } catch (e) {}
+        }
         if (!activeCampaignId || !data.campaigns.some((c: Campaign) => c.id === activeCampaignId)) {
           setActiveCampaignId(data.campaigns[0].id);
+        }
+      } else {
+        // If server returned 0 campaigns for this user, check local storage backup for this email
+        if (currentUser?.email) {
+          const userKey = `kase_campaigns_${currentUser.email.toLowerCase().trim()}`;
+          const cached = window.localStorage.getItem(userKey);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setCampaigns(parsed);
+                if (!activeCampaignId || !parsed.some((c: Campaign) => c.id === activeCampaignId)) {
+                  setActiveCampaignId(parsed[0].id);
+                }
+                // Resync cached campaigns to backend
+                parsed.forEach((c) => {
+                  fetch('/api/campaigns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(c),
+                  }).catch(() => {});
+                });
+              }
+            } catch (e) {}
+          }
         }
       }
     } catch (err) {
@@ -142,7 +176,7 @@ export default function App() {
 
   useEffect(() => {
     fetchCampaigns();
-  }, []);
+  }, [currentUser?.email]);
 
   // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
   useEffect(() => {
@@ -234,6 +268,14 @@ export default function App() {
   const handleCreatedCampaign = (newCamp: Campaign) => {
     setCampaigns((prev) => [newCamp, ...prev]);
     setActiveCampaignId(newCamp.id);
+    if (currentUser?.email) {
+      const userKey = `kase_campaigns_${currentUser.email.toLowerCase().trim()}`;
+      try {
+        const existing = JSON.parse(window.localStorage.getItem(userKey) || '[]');
+        const updated = [newCamp, ...existing.filter((c: Campaign) => c.id !== newCamp.id)];
+        window.localStorage.setItem(userKey, JSON.stringify(updated));
+      } catch (e) {}
+    }
     setCampaignForCheckout(newCamp);
     setIsCheckoutModalOpen(true);
   };
@@ -319,7 +361,7 @@ export default function App() {
   const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
 
   return (
-    <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+    <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200 w-full max-w-full overflow-x-hidden">
       {/* Top Bar Contract (1 line brand, nav links, actions) */}
       <Navbar
         activeTab={activeTab}
@@ -354,7 +396,7 @@ export default function App() {
       )}
 
       {/* Main Viewport Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 overflow-x-hidden">
         {/* PUBLIC HERO & LANDING PAGE (PLG) */}
         {activeTab === 'landing' ? (
           <LandingHero

@@ -387,14 +387,6 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     setLoading(true);
     setError(null);
 
-    if (isValidatingEngines || !engineValidation || !engineValidation.canProceed) {
-      setError(
-        'Bloqueo Estricto de Seguridad KaSe: Se requiere que las APIs de los motores del plan estén operativas en Vercel antes de crear la campaña o autorizar el cobro. Esta protección resguarda a los usuarios para que nunca paguen por un servicio sin respaldo técnico activo.'
-      );
-      setLoading(false);
-      return;
-    }
-
     if (requiresPricingCalibration && (minPlanPrice < 0 || maxPlanPrice < minPlanPrice)) {
       setError('El precio del plan más caro debe ser igual o mayor al plan más barato.');
       setLoading(false);

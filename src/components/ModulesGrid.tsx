@@ -21,6 +21,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Campaign, ModuleDefinition, GROWTH_MODULES_CATALOG } from '../types/growth';
+import { ModuleConversionBreakdown } from './ModuleConversionBreakdown';
 
 interface ModulesGridProps {
   campaign?: Campaign | null;
@@ -312,6 +313,11 @@ export const ModulesGrid: React.FC<ModulesGridProps> = ({
           );
         })}
       </div>
+
+      {/* 2.5 REAL-TIME MODULE CONVERSION BREAKDOWN & 24H INACTIVITY DIAGNOSTICS */}
+      {campaign && (
+        <ModuleConversionBreakdown campaign={campaign} />
+      )}
 
       {/* 3. Explanatory Educational Section: How the 8 Modules Work Together */}
       <div className="p-6 rounded-2xl bg-neutral-900/70 border border-neutral-800 space-y-5">

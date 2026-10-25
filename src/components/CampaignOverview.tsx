@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Campaign } from '../types/growth';
+import { ModuleConversionBreakdown } from './ModuleConversionBreakdown';
 
 interface CampaignOverviewProps {
   campaign: Campaign;
@@ -322,6 +323,13 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
           </div>
         </div>
       </div>
+ 
+      {/* 3.5 SECCIÓN DE DESGLOSE POR MÓDULO & DIAGNÓSTICO INTELIGENTE 24H */}
+      <ModuleConversionBreakdown
+        campaign={campaign}
+        onNavigateToModules={onOpenModules}
+        onNavigateToIntegration={onOpenIntegration}
+      />
 
       {/* 4. REAL-TIME ACTIVITY & LIVE CONVERSIONS FEED */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

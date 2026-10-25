@@ -1,9 +1,23 @@
 @import "tailwindcss";
 
-/* Google Translate Widget Styling */
+/* Mobile Viewport Fix: Prevent sideways shifting / overflow-x */
+html,
 body {
   top: 0px !important;
   position: static !important;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+#root {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  min-height: 100vh;
 }
 
 .goog-te-banner-frame.skiptranslate,

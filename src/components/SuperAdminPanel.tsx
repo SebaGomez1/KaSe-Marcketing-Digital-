@@ -239,8 +239,12 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [pixelCode, setPixelCode] = useState('');
   const [internalName, setInternalName] = useState('');
   const [internalGoal, setInternalGoal] = useState<number>(5000);
-  const [internalCurrent, setInternalCurrent] = useState<number>(1840);
+  const [internalCurrent, setInternalCurrent] = useState<number>(0);
   const [autoPause, setAutoPause] = useState(true);
+
+  // Cash Register Reset State
+  const [isResettingRevenue, setIsResettingRevenue] = useState(false);
+  const [revenueResetSuccess, setRevenueResetSuccess] = useState(false);
 
   // Mercado Pago Production Credentials State
   const [mpAccessToken, setMpAccessToken] = useState('');
@@ -365,6 +369,26 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
       console.error('Error fetching admin data:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResetRevenue = async () => {
+    if (!window.confirm('¿Confirmas reiniciar la caja registradora a $0.00 USD? Todas las métricas de prueba se pondrán en cero para iniciar el registro de transacciones reales.')) {
+      return;
+    }
+    setIsResettingRevenue(true);
+    try {
+      const res = await fetch('/api/admin/reset-revenue', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setRevenueResetSuccess(true);
+        await fetchAdminData();
+        setTimeout(() => setRevenueResetSuccess(false), 4000);
+      }
+    } catch (e) {
+      console.error('Error al resetear la caja registradora:', e);
+    } finally {
+      setIsResettingRevenue(false);
     }
   };
 
@@ -1696,7 +1720,7 @@ DATABASE_URL=...`}</pre>
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-white">
-                {metrics?.totalConversionsDelivered?.toLocaleString() || '1,863'}
+                {metrics?.totalConversionsDelivered !== undefined ? metrics.totalConversionsDelivered.toLocaleString() : '0'}
               </div>
               <div className="text-[11px] text-emerald-400 font-mono">100% auditadas</div>
             </div>
@@ -1707,9 +1731,19 @@ DATABASE_URL=...`}</pre>
                 <CreditCard className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-2xl font-bold font-mono text-emerald-400">
-                ${metrics?.totalRevenueUSD?.toLocaleString() || '10,790'} USD
+                ${metrics?.totalRevenueUSD !== undefined ? metrics.totalRevenueUSD.toLocaleString() : '0'} USD
               </div>
-              <div className="text-[11px] text-neutral-400 font-mono">Recurrentes mensuales</div>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-neutral-400 font-mono">Recurrentes en vivo</span>
+                <button
+                  onClick={handleResetRevenue}
+                  disabled={isResettingRevenue}
+                  className="text-[10px] px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 font-mono transition-colors cursor-pointer"
+                  title="Poner caja registradora en $0.00 USD para iniciar en limpio"
+                >
+                  {isResettingRevenue ? 'Reseteando...' : revenueResetSuccess ? '✓ En Cero' : 'Poner Caja a Cero ($0)'}
+                </button>
+              </div>
             </div>
           </div>
 

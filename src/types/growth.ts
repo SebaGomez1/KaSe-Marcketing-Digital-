@@ -5,6 +5,9 @@ export interface CampaignModuleState {
   itemsProcessed: number;
   lastExecution: string;
   statusText: string;
+  conversionsCount?: number;
+  lastConversionAt?: string;
+  inactivityReason24h?: string;
 }
 
 export interface CampaignLog {
@@ -22,6 +25,7 @@ export interface ConversionRecord {
   userTag: string;
   ipMasked: string;
   referrer: string;
+  attributedModule?: ModuleKey;
 }
 
 export type CampaignType =
@@ -191,6 +195,8 @@ export interface Campaign {
   communicationToneInstructions?: string; // Para Comentarios & Reseñas
   geoTargeting?: GeoTargeting; // Segmentación Geográfica Inteligente
   createdAt: string;
+  creatorEmail?: string;
+  userId?: string;
   pausedAt?: string;
   billing?: CampaignBilling;
   modules: {
