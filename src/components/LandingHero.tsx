@@ -246,7 +246,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             </h1>
 
             <p className="text-base sm:text-lg text-neutral-300 leading-relaxed">
-              KaSe es la suite digital que conecta tu producto, web o redes con <strong className="text-white">empresarios, profesionales y compradores con alto poder adquisitivo</strong>. Sin perder tiempo buscando prospectos: los motores trabajan por ti 24/7 y se <strong className="text-emerald-400">apagan exactamente</strong> cuando alcanzan la meta que contrataste.
+              KaSe es la suite de marketing digital que conecta tu producto, web o negocio directamente con <strong className="text-white">empresarios, profesionales y compradores con alto poder adquisitivo</strong>. Sin perder tiempo buscando prospectos manualmente: nuestros motores autónomos trabajan por ti 24/7 y se <strong className="text-emerald-400">apagan de forma automática</strong> en el instante exacto en que alcanzan la meta que contrataste.
             </p>
 
             {/* Value Highlights */}
@@ -254,9 +254,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               <div className="flex items-start gap-3 p-3 rounded-xl bg-neutral-900/60 border border-neutral-800">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-xs font-bold text-white">Cero Curiosos sin Dinero</h2>
+                  <h2 className="text-xs font-bold text-white">Prospectos de Alto Poder Adquisitivo</h2>
                   <p className="text-[11px] text-neutral-400">
-                    Filtramos el tráfico para alcanzar ejecutivos y dueños de negocio con capacidad de pagar planes altos.
+                    Filtramos rigurosamente el tráfico para atraer exclusivamente a decisores, ejecutivos y compradores con capacidad real de pago.
                   </p>
                 </div>
               </div>
@@ -599,9 +599,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono font-bold text-sm">
               2
             </div>
-            <h3 className="font-bold text-white text-sm">Filtro de Clientes con Dinero</h3>
+            <h3 className="font-bold text-white text-sm">Filtro Psicográfico de Compradores</h3>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              Le indicas a la app cuánto vale tu plan más barato y más caro. Así la app sabe que debe descartar a curiosos y traer gente con capacidad económica.
+              Le indicas a la plataforma el rango de precios de tus planes o servicios. Los motores de KaSe descartan visitantes no cualificados y dirigen la captación exclusivamente hacia usuarios con alto poder adquisitivo y capacidad de compra comprobada.
             </p>
           </div>
 

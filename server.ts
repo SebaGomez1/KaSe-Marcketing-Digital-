@@ -603,6 +603,7 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
       status,
       creatorEmail,
       isSuperAdmin,
+      price,
     } = req.body;
 
     if (!name || !targetUrl || !targetRegistrations) {
@@ -625,8 +626,8 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
         : 'usuarios registrados'
     );
 
-    const selectedPlan: 'starter' | 'growth' | 'enterprise' = plan || (
-      targetRegistrations <= 2000 ? 'starter' : targetRegistrations <= 10000 ? 'growth' : 'enterprise'
+    const selectedPlan: 'basic' | 'starter' | 'growth' | 'enterprise' = plan || (
+      targetRegistrations <= 1000 ? 'basic' : targetRegistrations <= 2000 ? 'starter' : targetRegistrations <= 10000 ? 'growth' : 'enterprise'
     );
 
     // CONTROL ESTRICTO ZERO-MOCK: Ni el usuario ni el administrador pueden proceder si las APIs no están en Vercel
@@ -693,7 +694,16 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
         nextBillingDate: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
         payerEmail: 'kathyseba2020@gmail.com',
         subscriptionId: 'kathy_superadmin_free_lifetime',
-      } : undefined,
+      } : {
+        subscriptionStatus: 'pending',
+        paymentGateway: 'mercadopago_uy',
+        frequency: 'monthly',
+        monthlyAmount: Number(price) > 0 ? Number(price) : (selectedPlan === 'basic' ? 250 : selectedPlan === 'starter' ? 490 : selectedPlan === 'growth' ? 1890 : 8900),
+        currency: currency || 'USD',
+        nextBillingDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+        payerEmail: creatorEmail || '',
+        subscriptionId: `sub_${Date.now()}`,
+      },
       logs: [
         {
           id: `log_init_${Date.now()}`,

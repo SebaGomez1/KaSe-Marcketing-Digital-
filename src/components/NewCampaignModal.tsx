@@ -266,6 +266,100 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     return 'Cantidad de Registros de Usuarios que deseas contratar *';
   };
 
+  const getDynamicPricing = (type: CampaignType, qty: number) => {
+    if (type === 'user_registrations') {
+      if (qty <= 1000) {
+        const unitPrice = 0.25;
+        const price = Math.round(qty * unitPrice);
+        return {
+          totalPrice: Math.max(250, price),
+          unitPrice: '0.250',
+          plan: 'basic' as const,
+          planName: 'Básico Económico ($250 USD - Módulos 1 a 3)',
+        };
+      } else if (qty <= 2000) {
+        const unitPrice = 0.245;
+        const price = Math.round(qty * unitPrice);
+        return {
+          totalPrice: price,
+          unitPrice: '0.245',
+          plan: 'starter' as const,
+          planName: 'Starter ($490 USD - Módulos 1 a 3)',
+        };
+      } else if (qty <= 10000) {
+        const unitPrice = 0.189;
+        const price = Math.round(qty * unitPrice);
+        return {
+          totalPrice: price,
+          unitPrice: '0.189',
+          plan: 'growth' as const,
+          planName: 'Growth ($1,890 USD - Módulos 1 a 5)',
+        };
+      } else {
+        const unitPrice = 0.089;
+        const price = Math.round(qty * unitPrice);
+        return {
+          totalPrice: price,
+          unitPrice: '0.089',
+          plan: 'enterprise' as const,
+          planName: 'Enterprise VIP ($8,900 USD - Los 8 Módulos)',
+        };
+      }
+    }
+
+    if (type === 'plan_sales') {
+      const unitPrice = 12.5;
+      const price = Math.round(qty * unitPrice);
+      let assignedPlan: 'basic' | 'starter' | 'growth' | 'enterprise' = 'starter';
+      let planName = 'Starter (Módulos 1 a 3)';
+      if (qty <= 20) {
+        assignedPlan = 'basic';
+        planName = 'Básico Económico (Módulos 1 a 3)';
+      } else if (qty <= 40) {
+        assignedPlan = 'starter';
+        planName = 'Starter (Módulos 1 a 3)';
+      } else if (qty <= 100) {
+        assignedPlan = 'growth';
+        planName = 'Growth (Módulos 1 a 5)';
+      } else {
+        assignedPlan = 'enterprise';
+        planName = 'Enterprise VIP (Los 8 Módulos)';
+      }
+      return {
+        totalPrice: Math.max(150, price),
+        unitPrice: '12.50',
+        plan: assignedPlan,
+        planName,
+      };
+    }
+
+    const meta = CAMPAIGN_TYPES_CATALOG.find((t) => t.id === type) || CAMPAIGN_TYPES_CATALOG[0];
+    const unitPrice = meta.pricePerUnitEstimateUSD;
+    const price = Math.round(qty * unitPrice);
+    let assignedPlan: 'basic' | 'starter' | 'growth' | 'enterprise' = 'starter';
+    let planName = 'Starter (Módulos 1 a 3)';
+    if (price <= 300) {
+      assignedPlan = 'basic';
+      planName = 'Básico Económico (Módulos 1 a 3)';
+    } else if (price <= 700) {
+      assignedPlan = 'starter';
+      planName = 'Starter (Módulos 1 a 3)';
+    } else if (price <= 2500) {
+      assignedPlan = 'growth';
+      planName = 'Growth (Módulos 1 a 5)';
+    } else {
+      assignedPlan = 'enterprise';
+      planName = 'Enterprise VIP (Los 8 Módulos)';
+    }
+
+    return {
+      totalPrice: Math.max(50, price),
+      unitPrice: unitPrice.toFixed(3),
+      plan: assignedPlan,
+      planName,
+    };
+  };
+
   const handleTypeSelect = (type: CampaignType) => {
     setSelectedType(type);
     setPixelVerified(false);
@@ -273,39 +367,19 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     const meta = CAMPAIGN_TYPES_CATALOG.find((t) => t.id === type);
     if (meta) {
       setTargetQuantity(meta.defaultTarget);
-      if (meta.defaultTarget <= 2000) {
-        setPlan('starter');
-      } else if (meta.defaultTarget <= 10000) {
-        setPlan('growth');
-      } else {
-        setPlan('enterprise');
-      }
+      const pricing = getDynamicPricing(type, meta.defaultTarget);
+      setPlan(pricing.plan);
     }
   };
 
   const handleTargetChange = (val: number) => {
     setTargetQuantity(val);
-    if (selectedType === 'plan_sales') {
-      if (val <= 15) setPlan('basic');
-      else if (val <= 30) setPlan('starter');
-      else if (val <= 100) setPlan('growth');
-      else setPlan('enterprise');
-    } else {
-      if (val <= 1000) setPlan('basic');
-      else if (val <= 2000) setPlan('starter');
-      else if (val <= 10000) setPlan('growth');
-      else setPlan('enterprise');
-    }
+    const pricing = getDynamicPricing(selectedType, val);
+    setPlan(pricing.plan);
   };
 
   const calculateEstimate = (qty: number) => {
-    if (selectedType === 'user_registrations') {
-      if (qty <= 1000) return 250;
-      if (qty <= 2000) return 490;
-      if (qty <= 10000) return 1890;
-      return 8900;
-    }
-    return Math.round(qty * currentTypeMeta.pricePerUnitEstimateUSD);
+    return getDynamicPricing(selectedType, qty).totalPrice;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -344,6 +418,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       isFeasible30Days: feasibility.isFeasible30Days,
     };
 
+    const pricing = getDynamicPricing(selectedType, targetQuantity);
+
     try {
       const res = await fetch('/api/campaigns', {
         method: 'POST',
@@ -359,7 +435,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           maxPlanPrice: requiresPricingCalibration ? maxPlanPrice : undefined,
           currency: requiresPricingCalibration ? currency : undefined,
           targetRegistrations: targetQuantity,
-          plan,
+          plan: pricing.plan,
           pixelVerified,
           interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
           geoTargeting: geoData,
@@ -367,7 +443,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           creatorEmail: currentUser?.email,
           isSuperAdmin: isKathy && !isTestOneDollarMode,
           isOneDollarTestPlan: isTestOneDollarMode,
-          price: isTestOneDollarMode ? 1 : undefined,
+          price: isTestOneDollarMode ? 1 : pricing.totalPrice,
         }),
       });
 
@@ -931,23 +1007,31 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             />
 
             {/* Tier & Price breakdown card */}
-            <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-neutral-300">
-                  Volumen contratado: <strong className="text-white font-mono">{targetQuantity.toLocaleString()} {currentTypeMeta.unitLabelPlural}</strong>
-                </span>
-                <span className="text-emerald-400 font-bold text-sm font-mono">
-                  ~${calculateEstimate(targetQuantity).toLocaleString()} USD / mes
-                </span>
-              </div>
+            {(() => {
+              const pricing = getDynamicPricing(selectedType, targetQuantity);
+              return (
+                <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-neutral-300">
+                      Volumen contratado: <strong className="text-white font-mono">{targetQuantity.toLocaleString()} {currentTypeMeta.unitLabelPlural}</strong>
+                    </span>
+                    <span className="text-emerald-400 font-bold text-sm font-mono">
+                      ${pricing.totalPrice.toLocaleString()} USD / mes
+                    </span>
+                  </div>
 
-              <div className="text-[11px] text-neutral-400 pt-1 border-t border-neutral-800 flex items-center justify-between">
-                <span>Nivel de Suite asignado:</span>
-                <span className="font-bold text-white uppercase font-mono px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700">
-                  Plan {plan} ({plan === 'basic' ? 'Básico Económico ($250 USD - Módulos 1 a 3)' : plan === 'starter' ? 'Starter ($490 USD - Módulos 1 a 3)' : plan === 'growth' ? 'Growth ($1,890 USD - Módulos 1 a 5)' : 'Enterprise VIP ($8,900 USD - Los 8 Módulos)'})
-                </span>
-              </div>
-            </div>
+                  <div className="text-[11px] text-neutral-400 pt-1 border-t border-neutral-800 flex items-center justify-between">
+                    <span>Nivel de Suite asignado:</span>
+                    <span className="font-bold text-white uppercase font-mono px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700">
+                      Plan {pricing.plan} ({pricing.planName})
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-neutral-500 font-mono text-right">
+                    ~${pricing.unitPrice} USD por {currentTypeMeta.unitLabel}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Super Admin Benefit Notice & Test Option */}
             {isKathy && (
