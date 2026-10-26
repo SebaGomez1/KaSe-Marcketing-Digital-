@@ -258,16 +258,28 @@ export interface InternalSystemError {
 
 let systemErrors: InternalSystemError[] = [];
 
-if (fs.existsSync(ERRORS_FILE)) {
-  try {
-    const raw = fs.readFileSync(ERRORS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      systemErrors = parsed;
-    }
-  } catch (e) {
-    console.error('Error loading system errors:', e);
-  }
+// Load initial system errors from Supabase system_audit_logs if available
+if (supabase) {
+  supabase
+    .from('system_audit_logs')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .limit(50)
+    .then(({ data, error }) => {
+      if (!error && Array.isArray(data)) {
+        systemErrors = data.map((d: any) => ({
+          id: d.id,
+          timestamp: d.timestamp,
+          level: (d.level as 'CRITICAL' | 'WARNING' | 'INFO') || 'INFO',
+          location: d.module?.split(' - ')?.[1] || 'Core Engine',
+          module: d.module?.split(' - ')?.[0] || d.module || 'SYSTEM',
+          message: d.message,
+          callStack: d.metadata?.callStack,
+          resolved: d.metadata?.resolved ?? false,
+        }));
+      }
+    })
+    .catch(() => {});
 }
 
 function logSystemError(
@@ -289,9 +301,21 @@ function logSystemError(
   };
   systemErrors.unshift(errItem);
   if (systemErrors.length > 100) systemErrors.pop();
-  try {
-    fs.writeFileSync(ERRORS_FILE, JSON.stringify(systemErrors, null, 2), 'utf-8');
-  } catch (e) {}
+
+  // Pure Cloud Database Persistence: Supabase system_audit_logs (Zero fs writes)
+  if (supabase) {
+    supabase
+      .from('system_audit_logs')
+      .insert({
+        id: errItem.id,
+        timestamp: errItem.timestamp,
+        level: errItem.level,
+        module: `${errItem.module} - ${errItem.location}`,
+        message: errItem.message,
+      })
+      .then(() => {})
+      .catch(() => {});
+  }
   return errItem;
 }
 
@@ -1252,33 +1276,29 @@ let users: UserRecord[] = [
   },
 ];
 
-if (fs.existsSync(USERS_FILE)) {
-  try {
-    const raw = fs.readFileSync(USERS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      users = parsed.map((u: any) => {
-        const clean = (u.email || '').toLowerCase().trim();
-        if (clean === 'kase.marketing.digital@gmail.com') {
-          return { ...u, role: 'client' as const };
-        }
-        if (clean === 'kathyseba2020@gmail.com') {
-          return { ...u, role: 'super_admin' as const, password: 'Felipe.1' };
-        }
-        return u;
-      });
-    }
-  } catch (e) {
-    console.error('Error loading users from disk:', e);
-  }
+// Auto-fetch users from Supabase on startup
+if (supabase) {
+  supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .then(({ data, error }) => {
+      if (!error && Array.isArray(data) && data.length > 0) {
+        users = data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          createdAt: u.created_at,
+          acquisitionSource: u.acquisition_source,
+        }));
+      }
+    })
+    .catch(() => {});
 }
 
 function saveUsersToFile() {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
-  } catch (e) {
-    // In serverless environments (Vercel), local FS is read-only or ephemeral
-  }
+  // Pure database persistence: fs writes eliminated for Vercel serverless containers
 }
 
 async function getUsersAsync(): Promise<UserRecord[]> {
@@ -1430,23 +1450,55 @@ let kaseGlobalConfig: GlobalKaSeConfigStore = {
   first10SalesStrategy: 'Algoritmo de Sobre-Esfuerzo B2B para Link Vercel: Se duplican los touchpoints en Outbound B2B y Newsletters, se destaca la protección al comprador de Mercado Pago Uruguay y se ofrece demostración interactiva sin tarjeta para derribar objeciones de confianza inicial.',
 };
 
-if (fs.existsSync(CONFIG_FILE)) {
-  try {
-    const raw = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') {
-      kaseGlobalConfig = { ...kaseGlobalConfig, ...parsed };
-    }
-  } catch (e) {
-    console.error('Error loading config from disk:', e);
-  }
+// Auto-fetch config from Supabase global_config on startup
+if (supabase) {
+  supabase
+    .from('global_config')
+    .select('*')
+    .limit(1)
+    .single()
+    .then(({ data, error }) => {
+      if (!error && data) {
+        if (data.config && typeof data.config === 'object') {
+          kaseGlobalConfig = { ...kaseGlobalConfig, ...data.config };
+        } else if (data.internal_campaign_name) {
+          kaseGlobalConfig = {
+            ...kaseGlobalConfig,
+            internalCampaignName: data.internal_campaign_name || kaseGlobalConfig.internalCampaignName,
+            internalCampaignGoal: data.internal_campaign_goal || kaseGlobalConfig.internalCampaignGoal,
+            internalCampaignCurrent: data.internal_campaign_current || kaseGlobalConfig.internalCampaignCurrent,
+            mercadoPagoAccessToken: data.mercado_pago_access_token || kaseGlobalConfig.mercadoPagoAccessToken,
+            mercadoPagoPublicKey: data.mercado_pago_public_key || kaseGlobalConfig.mercadoPagoPublicKey,
+            installedLocalCampaignId: data.installed_local_campaign_id || kaseGlobalConfig.installedLocalCampaignId,
+            status: data.status || kaseGlobalConfig.status,
+          };
+        }
+      }
+    })
+    .catch(() => {});
 }
 
 function saveConfigToFile() {
-  try {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(kaseGlobalConfig, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Error saving config to file:', e);
+  // Pure database persistence: persist to Supabase global_config table (Zero fs writes)
+  if (supabase) {
+    supabase
+      .from('global_config')
+      .upsert({
+        id: 1,
+        internal_campaign_name: kaseGlobalConfig.internalCampaignName,
+        internal_campaign_goal: kaseGlobalConfig.internalCampaignGoal,
+        internal_campaign_current: kaseGlobalConfig.internalCampaignCurrent,
+        auto_pause_internal_engines: kaseGlobalConfig.autoPauseInternalEngines,
+        status: kaseGlobalConfig.status,
+        last_updated: kaseGlobalConfig.lastUpdated,
+        mercado_pago_access_token: kaseGlobalConfig.mercadoPagoAccessToken,
+        mercado_pago_public_key: kaseGlobalConfig.mercadoPagoPublicKey,
+        test_plan_enabled: kaseGlobalConfig.testPlanEnabled,
+        test_plan_used: kaseGlobalConfig.testPlanUsed,
+        installed_local_campaign_id: kaseGlobalConfig.installedLocalCampaignId,
+      })
+      .then(() => {})
+      .catch((e) => console.warn('[Supabase saveConfigToFile Error]:', e));
   }
 }
 
@@ -1519,22 +1571,52 @@ export interface PaymentTransactionRecord {
 const TRANSACTIONS_FILE = path.join(DATA_DIR, 'payment_transactions.json');
 let paymentTransactions: PaymentTransactionRecord[] = [];
 
-if (fs.existsSync(TRANSACTIONS_FILE)) {
-  try {
-    const raw = fs.readFileSync(TRANSACTIONS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      paymentTransactions = parsed;
-    }
-  } catch (e) {
-    console.error('Error loading payment transactions from disk:', e);
-  }
+// Auto-fetch payment transactions from Supabase on startup
+if (supabase) {
+  supabase
+    .from('payment_transactions')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .limit(100)
+    .then(({ data, error }) => {
+      if (!error && Array.isArray(data) && data.length > 0) {
+        paymentTransactions = data.map((t: any) => ({
+          id: t.id,
+          campaignId: t.campaign_id || t.campaignId,
+          campaignName: t.campaign_name || t.campaignName || 'Campaña KaSe',
+          clientEmail: t.client_email || t.clientEmail || 'cliente@kase.io',
+          amount: Number(t.amount || 0),
+          currency: (t.currency || 'USD') as 'USD' | 'UYU',
+          status: t.status || 'approved',
+          paymentMethod: 'mercadopago_uy',
+          timestamp: t.timestamp || t.created_at || new Date().toISOString(),
+          mpPaymentId: t.mp_payment_id || t.mpPaymentId || '',
+        }));
+      }
+    })
+    .catch(() => {});
 }
 
-function saveTransactionsToFile() {
-  try {
-    fs.writeFileSync(TRANSACTIONS_FILE, JSON.stringify(paymentTransactions, null, 2), 'utf-8');
-  } catch (e) {}
+function saveTransactionsToFile(tx?: PaymentTransactionRecord) {
+  // Pure database persistence: persist to Supabase payment_transactions table (Zero fs writes)
+  if (supabase && tx) {
+    supabase
+      .from('payment_transactions')
+      .upsert({
+        id: tx.id,
+        campaign_id: tx.campaignId,
+        campaign_name: tx.campaignName,
+        client_email: tx.clientEmail,
+        amount: tx.amount,
+        currency: tx.currency,
+        status: tx.status,
+        payment_method: tx.paymentMethod,
+        timestamp: tx.timestamp,
+        mp_payment_id: tx.mpPaymentId,
+      })
+      .then(() => {})
+      .catch((e) => console.warn('[Supabase saveTransaction Error]:', e));
+  }
 }
 
 // CUSTOMER REVIEWS & SUGGESTIONS STORE
@@ -1910,7 +1992,7 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
             payerEmail: payerEmail || 'kathyseba2020@gmail.com',
             subscriptionId: mpData.id,
           };
-          saveCampaignsToFile();
+          await saveCampaignAsync(campaign);
         }
 
         res.json({
@@ -1944,7 +2026,7 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
       payerEmail: payerEmail || 'cliente@empresa.com',
       subscriptionId: prefId,
     };
-    saveCampaignsToFile();
+    await saveCampaignAsync(campaign);
   }
 
   res.json({
@@ -2007,9 +2089,8 @@ app.post('/api/payments/mercadopago/simulate-approval', (req: Request, res: Resp
     level: 'SUCCESS',
     module: 'MERCADO_PAGO_IPN',
     message: `Pago de ${newTx.currency} $${newTx.amount} CONFIRMADO vía pasarela de Mercado Pago (ID: ${mpPayId}). Motores autónomos encendidos al 100%.`,
-  });
-
-  saveCampaignsToFile();
+  await saveCampaignAsync(campaign);
+  saveTransactionsToFile(newTx);
 
   ejecutarCicloAutonomoParaCampana(campaign).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
 
@@ -2370,29 +2451,10 @@ let marketingEmails: MarketingEmailRecord[] = [
   }
 ];
 
-if (fs.existsSync(MARKETING_EMAILS_FILE)) {
-  try {
-    const raw = fs.readFileSync(MARKETING_EMAILS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) marketingEmails = parsed;
-  } catch (e) {}
-}
-
 let dissatisfactionAlerts: DissatisfactionAlertRecord[] = [];
 
-if (fs.existsSync(DISSATISFACTION_ALERTS_FILE)) {
-  try {
-    const raw = fs.readFileSync(DISSATISFACTION_ALERTS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) dissatisfactionAlerts = parsed;
-  } catch (e) {}
-}
-
 function saveMarketingDataToFile() {
-  try {
-    fs.writeFileSync(MARKETING_EMAILS_FILE, JSON.stringify(marketingEmails, null, 2), 'utf-8');
-    fs.writeFileSync(DISSATISFACTION_ALERTS_FILE, JSON.stringify(dissatisfactionAlerts, null, 2), 'utf-8');
-  } catch (e) {}
+  // Pure database / memory persistence: fs writes eliminated for Vercel serverless containers
 }
 
 function getPotentialClientsList(): PotentialClientRecord[] {
@@ -2975,7 +3037,7 @@ app.post('/api/admin/create-test-plan-campaign', async (req: Request, res: Respo
   };
 
   campaigns.unshift(testCampaign);
-  saveCampaignsToFile();
+  await saveCampaignAsync(testCampaign);
 
   // Create checkout preference with real token if present
   const mpTestDetected = detectMercadoPagoToken();
@@ -3022,7 +3084,7 @@ app.post('/api/admin/create-test-plan-campaign', async (req: Request, res: Respo
         checkoutUrl = mpData.init_point || mpData.sandbox_init_point || checkoutUrl;
         isLive = true;
         if (testCampaign.billing) testCampaign.billing.subscriptionId = prefId;
-        saveCampaignsToFile();
+        await saveCampaignAsync(testCampaign);
       }
     } catch (e) {
       console.error('Error creating MP test preference:', e);
@@ -3265,11 +3327,13 @@ app.post('/api/system/test-engine', async (req: Request, res: Response): Promise
   }
 });
 
-app.post('/api/system/clear-errors', (_req: Request, res: Response): void => {
+app.post('/api/system/clear-errors', async (_req: Request, res: Response): Promise<void> => {
   systemErrors = [];
-  try {
-    fs.writeFileSync(ERRORS_FILE, JSON.stringify([], null, 2), 'utf-8');
-  } catch (e) {}
+  if (supabase) {
+    try {
+      await supabase.from('system_audit_logs').delete().neq('id', 'keep_structure');
+    } catch (e) {}
+  }
   res.json({ success: true, message: 'Registro de errores internos reseteado exitosamente' });
 });
 
