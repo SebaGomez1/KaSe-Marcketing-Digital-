@@ -28,10 +28,11 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const modState = campaign?.modules?.[moduleDef.id] || {
+  const modState: Partial<CampaignModuleState> & { active?: boolean; itemsProcessed?: number; lastExecution?: string; last_published_links?: string[] } = campaign?.modules?.[moduleDef.id] || {
     active: true,
     itemsProcessed: 0,
     lastExecution: 'Listo para ejecución autónoma',
+    last_published_links: [],
   };
 
   const handleGenerateAsset = async () => {
@@ -181,7 +182,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
                 </span>
               </div>
               <div className="space-y-1.5">
-                {modState.last_published_links.map((link, idx) => (
+                {modState.last_published_links.map((link: string, idx: number) => (
                   <a
                     key={idx}
                     href={link}

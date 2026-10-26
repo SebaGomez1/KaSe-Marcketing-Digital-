@@ -2053,7 +2053,7 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
 });
 
 // MERCADO PAGO SIMULATED APPROVAL / REAL CHECKOUT HOOK
-app.post('/api/payments/mercadopago/simulate-approval', (req: Request, res: Response) => {
+app.post('/api/payments/mercadopago/simulate-approval', async (req: Request, res: Response) => {
   const { campaignId, amount, currency = 'USD', payerEmail } = req.body;
   const campaign = campaigns.find((c) => c.id === campaignId);
 
