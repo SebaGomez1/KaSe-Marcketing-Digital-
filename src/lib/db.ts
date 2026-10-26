@@ -46,7 +46,16 @@ export const isSupabaseConfigured = Boolean(
 export const isPostgresConfigured = Boolean(
   rawDbUrl && 
   (rawDbUrl.startsWith('postgres://') || rawDbUrl.startsWith('postgresql://')) &&
-  !rawDbUrl.includes('MY_')
+  !rawDbUrl.includes('MY_') &&
+  !rawDbUrl.includes('MY_DATABASE_URL') &&
+  (() => {
+    try {
+      new URL(rawDbUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  })()
 );
 
 // Initialize Supabase Client if configured
@@ -57,14 +66,21 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   : null;
 
 // Initialize PostgreSQL Pool if connection string is configured
-export const pgPool: pg.Pool | null = isPostgresConfigured
-  ? new Pool({
+let initializedPool: pg.Pool | null = null;
+if (isPostgresConfigured) {
+  try {
+    initializedPool = new Pool({
       connectionString: rawDbUrl,
       ssl: rawDbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
       connectionTimeoutMillis: 5000,
       max: 10,
-    })
-  : null;
+    });
+  } catch (err) {
+    console.warn('[DB Error Postgres Pool init]:', err);
+    initializedPool = null;
+  }
+}
+export const pgPool: pg.Pool | null = initializedPool;
 
 export interface DbStatusInfo {
   isConfigured: boolean;

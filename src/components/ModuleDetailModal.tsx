@@ -10,7 +10,7 @@ import {
   Terminal,
   ExternalLink
 } from 'lucide-react';
-import { Campaign, ModuleDefinition } from '../types/growth';
+import { Campaign, ModuleDefinition, CampaignModuleState } from '../types/growth';
 
 interface ModuleDetailModalProps {
   moduleDef: ModuleDefinition;
