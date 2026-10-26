@@ -8,7 +8,7 @@
  */
 
 import { Campaign } from '../types/growth';
-import { isFakeCampaign } from './initialCampaigns';
+import { FAKE_MOCK_CAMPAIGN_IDS, isFakeCampaign } from './initialCampaigns';
 
 const VAULT_MASTER_KEY = 'kase_vault_campaigns_master';
 const VAULT_CACHE_KEY = 'kase_cached_campaigns';
@@ -18,8 +18,10 @@ function isBrowser(): boolean {
 }
 
 /**
- * Purga proactivamente cualquier campaña de mentira/falsa almacenada previamente en localStorage
- * preservando intactos todos los datos de producción reales (currentRegistrations, clicksCount y recentConversions).
+ * Purga de forma estricta del localStorage únicamente aquellas campañas cuyo ID
+ * coincida de forma exacta con la lista FAKE_MOCK_CAMPAIGN_IDS.
+ * Elimina cualquier lógica de mapeo destructiva y asegura la inmutabilidad de los datos
+ * de producción reales: currentRegistrations, clicksCount y recentConversions.
  */
 export function purgeFakeCampaignsFromStorage(): void {
   if (!isBrowser()) return;
@@ -46,7 +48,7 @@ export function purgeFakeCampaignsFromStorage(): void {
         if (!val) continue;
 
         if (key === 'kase_active_campaign_id') {
-          if (isFakeCampaign(val)) {
+          if (FAKE_MOCK_CAMPAIGN_IDS.includes(val)) {
             window.localStorage.removeItem(key);
           }
           continue;
@@ -54,17 +56,22 @@ export function purgeFakeCampaignsFromStorage(): void {
 
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) {
-          // Filtrar campañas de prueba/falsas pero PRESERVAR los datos reales y contadores intactos
-          const cleaned = parsed.filter((c: any) => !isFakeCampaign(c));
+          // Filtrar de forma estricta solo aquellas campañas cuyo ID coincida con FAKE_MOCK_CAMPAIGN_IDS
+          const cleaned = parsed.filter((c: any) => {
+            const id = typeof c === 'string' ? c : c?.id;
+            return !id || !FAKE_MOCK_CAMPAIGN_IDS.includes(id);
+          });
+          // Se preserva intacto el array limpio sin alterar contadores de producción
           window.localStorage.setItem(key, JSON.stringify(cleaned));
         } else if (parsed && typeof parsed === 'object') {
-          if (isFakeCampaign(parsed.id || parsed)) {
+          const id = parsed.id || '';
+          if (FAKE_MOCK_CAMPAIGN_IDS.includes(id)) {
             window.localStorage.removeItem(key);
           }
-          // Si es una campaña real, se preserva íntegramente con sus contadores y conversiones
+          // Las campañas reales se mantienen inmutables con sus contadores y conversiones
         }
       } catch {
-        // clave no es json, omitir
+        // Clave no es JSON, omitir
       }
     }
   } catch (e) {

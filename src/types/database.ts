@@ -1,71 +1,78 @@
 /**
  * Supabase Relational Database Types for KaSe Marketing Digital
- * Tablas: campanas, usuarios_registrados, metricas_clicks
+ * Unified English Tables: campaigns, conversions, campaign_modules
  */
 
-export interface EstadoMotores {
-  mod1_seo?: boolean;
-  mod2_social?: boolean;
-  mod3_directories?: boolean;
-  mod4_outbound?: boolean;
-  mod5_newsletter?: boolean;
-  [key: string]: boolean | undefined;
-}
-
-export interface CampanaRow {
-  id: string; // UUID
-  user_id: string; // UUID rel auth.users
-  nombre: string;
-  nicho: string | null;
-  url_destino: string;
-  meta_usuarios: number;
-  estado_motores: EstadoMotores;
+export interface CampaignRow {
+  id: string;
+  user_id: string | null;
+  creator_email?: string | null;
+  name: string;
+  target_url: string;
+  niche: string;
+  description?: string;
+  campaign_type?: string;
+  target_unit_label?: string;
+  min_plan_price?: number;
+  max_plan_price?: number;
+  currency?: string;
+  target_registrations: number;
+  current_registrations: number;
+  clicks_count?: number;
+  plan: string;
+  status: string;
+  webhook_secret: string;
+  pixel_token?: string;
+  pixel_verified?: boolean;
+  interaction_preferences?: string;
+  communication_tone_instructions?: string;
+  geo_targeting?: any;
   created_at?: string;
   updated_at?: string;
+  paused_at?: string;
+  billing?: any;
 }
 
-export interface UsuarioRegistradoRow {
-  id: string; // UUID
-  campana_id: string; // UUID rel campanas
-  email: string;
-  fecha_registro: string;
-  ip: string | null;
+export interface ConversionRow {
+  id: string;
+  campaign_id: string;
+  user_id?: string | null;
+  timestamp: string;
+  method?: string;
+  user_tag?: string;
+  ip_masked?: string;
+  referrer?: string;
 }
 
-export interface MetricaClickRow {
-  id: number; // BIGINT
-  campana_id: string; // UUID rel campanas
-  clics_contador: number;
-  fecha_actualizacion: string;
+export interface CampaignModuleRow {
+  id: number;
+  campaign_id: string;
+  module_key: string;
+  active: boolean;
+  name: string;
+  category: string;
+  items_processed: number;
+  last_execution?: string;
+  status_text?: string;
 }
 
 export interface Database {
   public: {
     Tables: {
-      campanas: {
-        Row: CampanaRow;
-        Insert: Omit<CampanaRow, 'id' | 'created_at' | 'updated_at'> & {
-          id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<CampanaRow>;
+      campaigns: {
+        Row: CampaignRow;
+        Insert: Partial<CampaignRow> & { id: string; name: string; target_url: string };
+        Update: Partial<CampaignRow>;
       };
-      usuarios_registrados: {
-        Row: UsuarioRegistradoRow;
-        Insert: Omit<UsuarioRegistradoRow, 'id' | 'fecha_registro'> & {
-          id?: string;
-          fecha_registro?: string;
-        };
-        Update: Partial<UsuarioRegistradoRow>;
+      conversions: {
+        Row: ConversionRow;
+        Insert: ConversionRow;
+        Update: Partial<ConversionRow>;
       };
-      metricas_clicks: {
-        Row: MetricaClickRow;
-        Insert: Omit<MetricaClickRow, 'id' | 'fecha_actualizacion'> & {
-          id?: number;
-          fecha_actualizacion?: string;
-        };
-        Update: Partial<MetricaClickRow>;
+      campaign_modules: {
+        Row: CampaignModuleRow;
+        Insert: Omit<CampaignModuleRow, 'id'> & { id?: number };
+        Update: Partial<CampaignModuleRow>;
       };
     };
   };
