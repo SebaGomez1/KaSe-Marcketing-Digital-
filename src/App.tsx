@@ -202,10 +202,8 @@ export default function App() {
       const authenticatedUserId = currentUser?.id || currentUser?.email || '';
       const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email?.toLowerCase().trim() === 'kathyseba2020@gmail.com';
 
-      // Strict user_id parameter passed to query: Global Admin gets all, client gets partitioned
-      const queryParam = isSuperAdmin
-        ? ''
-        : authenticatedUserId
+      // Strict user_id parameter passed to query: Always provide identification so backend authenticates
+      const queryParam = authenticatedUserId
         ? `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`
         : '?user_id=anonymous_unauthenticated';
 
@@ -238,6 +236,18 @@ export default function App() {
           return isolatedCampaigns[0].id;
         });
       } else {
+        // If query returns 0 rows during serverless cold-start or blip, preserve cached campaigns
+        try {
+          const cached = window.localStorage.getItem('kase_cached_campaigns');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setCampaigns(parsed);
+              return;
+            }
+          }
+        } catch {}
+
         // Only clear cache if explicitly logged out
         if (!currentUser) {
           setCampaigns([]);

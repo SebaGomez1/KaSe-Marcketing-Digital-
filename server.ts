@@ -349,7 +349,10 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
         }
 
         const campIds = campRows.map((c) => c.id);
-        if (campIds.length === 0) return [];
+        if (campIds.length === 0) {
+          if (campaigns.length > 0) return campaigns;
+          return [];
+        }
 
         const [modulesRes, convsRes, logsRes] = await Promise.all([
           supabase.from('campaign_modules').select('*').in('campaign_id', campIds),
@@ -618,7 +621,11 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
     const emailQuery = (req.query.email as string || '').toLowerCase().trim();
     const authenticatedUser = rawUserId || emailQuery;
 
-    const isSuperAdmin = authenticatedUser.toLowerCase() === 'kathyseba2020@gmail.com' || authenticatedUser === 'kathy_super_admin';
+    const isSuperAdmin = 
+      authenticatedUser.toLowerCase() === 'kathyseba2020@gmail.com' || 
+      authenticatedUser === 'kathy_super_admin' || 
+      authenticatedUser === 'kase_super_admin' || 
+      emailQuery === 'kathyseba2020@gmail.com';
 
     // Aislamiento estricto de datos: usuarios comunes NUNCA reciben campañas de administrador ni ajenas
     if (!isSuperAdmin) {
