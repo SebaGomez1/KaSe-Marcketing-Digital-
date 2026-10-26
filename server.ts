@@ -10,7 +10,6 @@ import {
   pgPool,
   isPostgresConfigured,
   testDbConnection,
-  mapRowToCampaign,
 } from './src/lib/db.ts';
 import { INITIAL_PRODUCTION_CAMPAIGNS } from './src/lib/initialCampaigns.ts';
 import {
@@ -507,31 +506,132 @@ async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
 }
 
 export function mapCampaignToRow(campaign: any): any {
+  if (!campaign) return null;
   return {
     id: campaign.id,
-    user_id: campaign.userId || campaign.creatorEmail || null,
-    creator_email: campaign.creatorEmail || campaign.userId || null,
-    name: campaign.name,
-    target_url: campaign.targetUrl,
-    niche: campaign.niche,
+    user_id: campaign.userId || campaign.creatorEmail || campaign.user_id || null,
+    creator_email: campaign.creatorEmail || campaign.userId || campaign.creator_email || null,
+    name: campaign.name || 'Sin título',
+    target_url: campaign.targetUrl || campaign.target_url || '',
+    niche: campaign.niche || 'General',
     description: campaign.description || null,
-    campaign_type: campaign.campaignType || 'user_registrations',
-    target_unit_label: campaign.targetUnitLabel || 'registros',
-    min_plan_price: campaign.minPlanPrice !== undefined ? campaign.minPlanPrice : null,
-    max_plan_price: campaign.maxPlanPrice !== undefined ? campaign.maxPlanPrice : null,
+    campaign_type: campaign.campaignType || campaign.campaign_type || 'user_registrations',
+    target_unit_label: campaign.targetUnitLabel || campaign.target_unit_label || 'registros',
+    min_plan_price: campaign.minPlanPrice !== undefined && campaign.minPlanPrice !== null 
+      ? Number(campaign.minPlanPrice) 
+      : (campaign.min_plan_price !== undefined && campaign.min_plan_price !== null ? Number(campaign.min_plan_price) : null),
+    max_plan_price: campaign.maxPlanPrice !== undefined && campaign.maxPlanPrice !== null 
+      ? Number(campaign.maxPlanPrice) 
+      : (campaign.max_plan_price !== undefined && campaign.max_plan_price !== null ? Number(campaign.max_plan_price) : null),
     currency: campaign.currency || 'USD',
-    target_registrations: Number(campaign.targetRegistrations || 2000),
-    current_registrations: Number(campaign.currentRegistrations || 0),
-    clicks_count: Number(campaign.clicksCount || 0),
+    target_registrations: Number(campaign.targetRegistrations ?? campaign.target_registrations ?? 2000),
+    current_registrations: Number(campaign.currentRegistrations ?? campaign.current_registrations ?? 0),
+    clicks_count: Number(campaign.clicksCount ?? campaign.clicks_count ?? 0),
     plan: campaign.plan || 'starter',
     status: campaign.status || 'active',
-    webhook_secret: campaign.webhookSecret,
-    interaction_preferences: campaign.interactionPreferences || null,
-    communication_tone_instructions: campaign.communicationToneInstructions || null,
-    geo_targeting: campaign.geoTargeting ? JSON.stringify(campaign.geoTargeting) : null,
-    created_at: campaign.createdAt || new Date().toISOString(),
-    paused_at: campaign.pausedAt || null,
-    billing: campaign.billing ? JSON.stringify(campaign.billing) : null
+    webhook_secret: campaign.webhookSecret || campaign.webhook_secret || `whsec_${campaign.id}`,
+    interaction_preferences: campaign.interactionPreferences || campaign.interaction_preferences || null,
+    communication_tone_instructions: campaign.communicationToneInstructions || campaign.communication_tone_instructions || null,
+    geo_targeting: campaign.geoTargeting 
+      ? (typeof campaign.geoTargeting === 'string' ? campaign.geoTargeting : JSON.stringify(campaign.geoTargeting)) 
+      : (campaign.geo_targeting ? (typeof campaign.geo_targeting === 'string' ? campaign.geo_targeting : JSON.stringify(campaign.geo_targeting)) : null),
+    created_at: campaign.createdAt || campaign.created_at || new Date().toISOString(),
+    paused_at: campaign.pausedAt || campaign.paused_at || null,
+    billing: campaign.billing 
+      ? (typeof campaign.billing === 'string' ? campaign.billing : JSON.stringify(campaign.billing)) 
+      : null
+  };
+}
+
+export function mapRowToCampaign(
+  row: any, 
+  moduleRows: any[] = [], 
+  convRows: any[] = [], 
+  logRows: any[] = []
+): any {
+  if (!row) return null;
+
+  const defaultModules: any = {
+    mod1_seo: { active: true, name: 'SEO Técnico Avanzado', category: 'base', itemsProcessed: 48, lastExecution: 'Hace 14 min', statusText: 'API Google Indexing activa' },
+    mod2_social: { active: true, name: 'Social Media Syndication', category: 'base', itemsProcessed: 116, lastExecution: 'Hace 32 min', statusText: 'Sindicación en X y LinkedIn' },
+    mod3_directories: { active: true, name: 'Programmatic Launching', category: 'base', itemsProcessed: 39, lastExecution: 'Hace 1 h', statusText: 'Directorios verificados' },
+    mod4_outbound: { active: row.plan === 'growth' || row.plan === 'enterprise', name: 'Automated Outbound & Social Outreach', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'X / Twitter & Foros Q&A (Anti-Ban Guard)' },
+    mod5_newsletter: { active: row.plan === 'growth' || row.plan === 'enterprise', name: 'Newsletter Outreach', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Warming óptimo' },
+    mod6_video: { active: row.plan === 'enterprise', name: 'Video Growth Automation', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'TikTok/Reels' },
+    mod7_pseo: { active: row.plan === 'enterprise', name: 'Programmatic SEO', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Páginas comparativas' },
+    mod8_influencers: { active: row.plan === 'enterprise', name: 'Bot de Alianzas', category: 'advanced', itemsProcessed: 0, lastExecution: 'Activo', statusText: 'Micro-influencers' },
+  };
+
+  if (Array.isArray(moduleRows) && moduleRows.length > 0) {
+    moduleRows.forEach((m: any) => {
+      const key = m.module_key;
+      if (key && defaultModules[key]) {
+        defaultModules[key] = {
+          active: Boolean(m.active),
+          name: m.name || defaultModules[key].name,
+          category: m.category || defaultModules[key].category,
+          itemsProcessed: Number(m.items_processed ?? m.itemsProcessed ?? 0),
+          lastExecution: m.last_execution || 'Reciente',
+          statusText: m.status_text || 'Operando',
+        };
+      }
+    });
+  }
+
+  const recentConversions: any[] = (Array.isArray(convRows) ? convRows : []).map((c: any) => ({
+    id: c.id,
+    timestamp: c.timestamp || new Date().toISOString(),
+    method: c.method || 'webhook',
+    userTag: c.user_tag || c.userTag || 'web_lead',
+    ipMasked: c.ip_masked || c.ipMasked || '194.22.***.***',
+    referrer: c.referrer || 'Direct',
+    attributedModule: c.attributed_module || c.attributedModule || undefined,
+  }));
+
+  const logs: any[] = (Array.isArray(logRows) ? logRows : []).map((l: any) => ({
+    id: l.id,
+    timestamp: l.timestamp || new Date().toISOString(),
+    level: l.level || 'INFO',
+    module: l.module || 'CORE',
+    message: l.message || '',
+  }));
+
+  return {
+    id: row.id,
+    userId: row.user_id || row.creator_email || row.userId || undefined,
+    creatorEmail: row.creator_email || row.user_id || row.creatorEmail || undefined,
+    name: row.name || 'Campaña',
+    targetUrl: row.target_url || row.targetUrl || '',
+    niche: row.niche || 'General',
+    description: row.description || '',
+    campaignType: row.campaign_type || row.campaignType || 'user_registrations',
+    targetUnitLabel: row.target_unit_label || row.targetUnitLabel || 'usuarios registrados',
+    minPlanPrice: row.min_plan_price !== undefined && row.min_plan_price !== null 
+      ? Number(row.min_plan_price) 
+      : (row.minPlanPrice !== undefined && row.minPlanPrice !== null ? Number(row.minPlanPrice) : undefined),
+    maxPlanPrice: row.max_plan_price !== undefined && row.max_plan_price !== null 
+      ? Number(row.max_plan_price) 
+      : (row.maxPlanPrice !== undefined && row.maxPlanPrice !== null ? Number(row.maxPlanPrice) : undefined),
+    currency: row.currency || 'USD',
+    targetRegistrations: Number(row.target_registrations ?? row.targetRegistrations ?? 2000),
+    currentRegistrations: Number(row.current_registrations ?? row.currentRegistrations ?? 0),
+    clicksCount: Number(row.clicks_count ?? row.clicksCount ?? 0),
+    plan: row.plan || 'starter',
+    status: row.status || 'active',
+    webhookSecret: row.webhook_secret || row.webhookSecret || `whsec_${row.id}`,
+    interactionPreferences: row.interaction_preferences || row.interactionPreferences || undefined,
+    communicationToneInstructions: row.communication_tone_instructions || row.communicationToneInstructions || undefined,
+    geoTargeting: row.geo_targeting 
+      ? (typeof row.geo_targeting === 'string' ? (() => { try { return JSON.parse(row.geo_targeting); } catch { return undefined; } })() : row.geo_targeting) 
+      : (row.geoTargeting || undefined),
+    createdAt: row.created_at || row.createdAt || new Date().toISOString(),
+    pausedAt: row.paused_at || row.pausedAt || undefined,
+    billing: row.billing 
+      ? (typeof row.billing === 'string' ? (() => { try { return JSON.parse(row.billing); } catch { return undefined; } })() : row.billing) 
+      : (row.billing || undefined),
+    modules: defaultModules,
+    recentConversions,
+    logs,
   };
 }
 

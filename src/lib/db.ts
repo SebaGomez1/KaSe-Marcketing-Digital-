@@ -279,32 +279,41 @@ export function mapRowToCampaign(
 }
 
 // Map Campaign object to DB columns for insert/upsert
-export function mapCampaignToRow(campaign: Campaign): any {
+export function mapCampaignToRow(campaign: any): any {
+  if (!campaign) return null;
   return {
     id: campaign.id,
-    user_id: campaign.userId || campaign.creatorEmail || null,
-    creator_email: campaign.creatorEmail || campaign.userId || null,
-    name: campaign.name,
-    target_url: campaign.targetUrl,
-    niche: campaign.niche,
-    description: campaign.description,
-    campaign_type: campaign.campaignType,
-    target_unit_label: campaign.targetUnitLabel,
-    min_plan_price: campaign.minPlanPrice !== undefined ? campaign.minPlanPrice : null,
-    max_plan_price: campaign.maxPlanPrice !== undefined ? campaign.maxPlanPrice : null,
+    user_id: campaign.userId || campaign.creatorEmail || campaign.user_id || null,
+    creator_email: campaign.creatorEmail || campaign.userId || campaign.creator_email || null,
+    name: campaign.name || 'Sin título',
+    target_url: campaign.targetUrl || campaign.target_url || '',
+    niche: campaign.niche || 'General',
+    description: campaign.description || null,
+    campaign_type: campaign.campaignType || campaign.campaign_type || 'user_registrations',
+    target_unit_label: campaign.targetUnitLabel || campaign.target_unit_label || 'registros',
+    min_plan_price: campaign.minPlanPrice !== undefined && campaign.minPlanPrice !== null 
+      ? Number(campaign.minPlanPrice) 
+      : (campaign.min_plan_price !== undefined && campaign.min_plan_price !== null ? Number(campaign.min_plan_price) : null),
+    max_plan_price: campaign.maxPlanPrice !== undefined && campaign.maxPlanPrice !== null 
+      ? Number(campaign.maxPlanPrice) 
+      : (campaign.max_plan_price !== undefined && campaign.max_plan_price !== null ? Number(campaign.max_plan_price) : null),
     currency: campaign.currency || 'USD',
-    target_registrations: campaign.targetRegistrations,
-    current_registrations: campaign.currentRegistrations,
-    clicks_count: campaign.clicksCount || 0,
-    plan: campaign.plan,
-    status: campaign.status,
-    webhook_secret: campaign.webhookSecret,
-    interaction_preferences: campaign.interactionPreferences || null,
-    communication_tone_instructions: campaign.communicationToneInstructions || null,
-    geo_targeting: campaign.geoTargeting ? JSON.stringify(campaign.geoTargeting) : null,
-    created_at: campaign.createdAt || new Date().toISOString(),
-    paused_at: campaign.pausedAt || null,
-    billing: campaign.billing ? JSON.stringify(campaign.billing) : null,
+    target_registrations: Number(campaign.targetRegistrations ?? campaign.target_registrations ?? 2000),
+    current_registrations: Number(campaign.currentRegistrations ?? campaign.current_registrations ?? 0),
+    clicks_count: Number(campaign.clicksCount ?? campaign.clicks_count ?? 0),
+    plan: campaign.plan || 'starter',
+    status: campaign.status || 'active',
+    webhook_secret: campaign.webhookSecret || campaign.webhook_secret || `whsec_${campaign.id}`,
+    interaction_preferences: campaign.interactionPreferences || campaign.interaction_preferences || null,
+    communication_tone_instructions: campaign.communicationToneInstructions || campaign.communication_tone_instructions || null,
+    geo_targeting: campaign.geoTargeting 
+      ? (typeof campaign.geoTargeting === 'string' ? campaign.geoTargeting : JSON.stringify(campaign.geoTargeting)) 
+      : (campaign.geo_targeting ? (typeof campaign.geo_targeting === 'string' ? campaign.geo_targeting : JSON.stringify(campaign.geo_targeting)) : null),
+    created_at: campaign.createdAt || campaign.created_at || new Date().toISOString(),
+    paused_at: campaign.pausedAt || campaign.paused_at || null,
+    billing: campaign.billing 
+      ? (typeof campaign.billing === 'string' ? campaign.billing : JSON.stringify(campaign.billing)) 
+      : null,
   };
 }
 
