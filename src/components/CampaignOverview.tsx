@@ -14,10 +14,12 @@ import {
   MessageSquare,
   Send,
   X,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { Campaign } from '../types/growth';
 import { ModuleConversionBreakdown } from './ModuleConversionBreakdown';
+import { useLiveRelativeTime } from '../utils/timeFormat';
 
 interface CampaignOverviewProps {
   campaign: Campaign;
@@ -38,6 +40,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   isSimulating = false,
 }) => {
   const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
+  const liveCreationTime = useLiveRelativeTime(campaign.createdAt, 1000);
 
   // Weekly Satisfaction Survey Modal State
   const [isSurveyModalOpen, setIsSurveyModalOpen] = useState(false);
@@ -175,11 +178,16 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-neutral-800">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-neutral-400">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-neutral-400">
               <Target className="w-4 h-4 text-sky-400" />
               <span>Control Autónomo de Cuota Contratada</span>
               <span aria-hidden="true">·</span>
               <span className="font-mono text-emerald-400">Auto-Pausa Activa</span>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                <Clock className="w-3 h-3 text-emerald-400" />
+                <span>{liveCreationTime}</span>
+              </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               <span className="font-mono tabular-nums text-sky-400">

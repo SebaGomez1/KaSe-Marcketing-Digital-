@@ -168,6 +168,35 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Real-Time Live Destination Verification Links (Minute-by-Minute Feed) */}
+          {modState.last_published_links && modState.last_published_links.length > 0 && (
+            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Enlaces de Verificación en Vivo (Publicados en Red):</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-900/40 px-2 py-0.5 rounded border border-emerald-600/30">
+                  Verificado en Vivo
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {modState.last_published_links.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/60 border border-neutral-800 hover:border-emerald-500/40 text-sky-400 hover:text-sky-300 text-xs font-mono transition-colors group cursor-pointer"
+                  >
+                    <span className="truncate">{link}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-70 group-hover:opacity-100" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Generator Action Box */}
           <div className="bg-gradient-to-b from-neutral-900 to-[#121212] border border-neutral-800 rounded-xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

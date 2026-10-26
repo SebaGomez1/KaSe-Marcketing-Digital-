@@ -10,6 +10,7 @@ export interface CampaignModuleState {
   conversionsCount?: number;
   lastConversionAt?: string;
   inactivityReason24h?: string;
+  last_published_links?: string[];
 }
 
 export interface CampaignLog {
@@ -242,7 +243,7 @@ export const GROWTH_MODULES_CATALOG: ModuleDefinition[] = [
     subtitle: 'Google Search Indexing API & Casos de Estudio',
     description: 'Generación autónoma de contenido técnico y envío directo a la API de Google.',
     purpose: 'Posicionar tu app en los primeros resultados de Google de inmediato sin esperar meses.',
-    howItWorks: 'Investiga las búsquedas con mayor intención de compra en tu nicho, redacta artículos técnicos y casos de éxito mediante IA, y envía las URLs de inmediato a la API de Indexación de Google para forzar el rastreo en menos de 48 horas.',
+    howItWorks: 'Investiga las búsquedas con mayor intención de compra en tu nicho, redacta artículos técnicos y casos de éxito mediante IA, y envía las URLs de inmediato a la API de Indexación de Google para forzar el rastreo prioritario en tiempo real sincronizado con Supabase.',
     deliverable: 'Páginas y artículos optimizados indexados en Google atrayendo tráfico orgánico calificado a tu web.',
     category: 'base',
     requiredPlan: 'starter',

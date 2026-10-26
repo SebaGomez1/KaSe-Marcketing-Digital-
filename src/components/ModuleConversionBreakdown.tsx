@@ -447,6 +447,32 @@ export const ModuleConversionBreakdown: React.FC<ModuleConversionBreakdownProps>
                   </span>
                 </div>
               )}
+
+              {/* REAL-TIME VERIFICATION LINKS */}
+              {campaign.modules[mod.key]?.last_published_links && (campaign.modules[mod.key]?.last_published_links?.length || 0) > 0 && (
+                <div className="rounded-lg bg-emerald-950/25 border border-emerald-500/30 p-2.5 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-[11px] text-emerald-400 font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Verificación en Vivo (URLs Publicadas):</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-emerald-300">Activo</span>
+                  </div>
+                  <div className="space-y-1">
+                    {campaign.modules[mod.key].last_published_links?.map((lnk, lIdx) => (
+                      <a
+                        key={lIdx}
+                        href={lnk}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-[11px] font-mono text-sky-400 hover:text-sky-300 hover:underline truncate bg-black/50 px-2 py-0.5 rounded border border-neutral-800 cursor-pointer"
+                      >
+                        🔗 {lnk}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

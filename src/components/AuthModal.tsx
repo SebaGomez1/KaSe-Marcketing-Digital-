@@ -82,12 +82,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           }
         }
       } catch (apiErr: any) {
-        if (apiErr.message === 'Contraseña Incorrecta') {
-          throw apiErr;
-        }
+        throw apiErr;
       }
 
-      // Resilient fallback (for static hosting or Vercel client-side execution)
+      // Resilient fallback (only for offline or unreachability)
       if (!authUser) {
         const storedUsersRaw = localStorage.getItem('kase_registered_users');
         const registeredMap: Record<string, any> = storedUsersRaw ? JSON.parse(storedUsersRaw) : {};
@@ -107,28 +105,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
         } else if (mode === 'login') {
           const existing = registeredMap[cleanEmail];
-          if (existing) {
-            if (existing.password && existing.password !== cleanPass) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            authUser = {
-              id: existing.id,
-              name: existing.name,
-              email: existing.email,
-              role: existing.role || 'client',
-              createdAt: existing.createdAt,
-            };
-          } else {
-            authUser = {
-              id: `usr_${Math.random().toString(36).substring(2, 9)}`,
-              name: cleanEmail.split('@')[0],
-              email: cleanEmail,
-              role: 'client',
-              createdAt: new Date().toISOString(),
-            };
-            registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
-            localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
+          // STRICT SECURITY: Do NOT auto-register on login. Throw Contraseña Incorrecta
+          if (!existing) {
+            throw new Error('Contraseña Incorrecta');
           }
+          if (existing.password && existing.password !== cleanPass) {
+            throw new Error('Contraseña Incorrecta');
+          }
+          authUser = {
+            id: existing.id,
+            name: existing.name,
+            email: existing.email,
+            role: existing.role || 'client',
+            createdAt: existing.createdAt,
+          };
         } else {
           const existing = registeredMap[cleanEmail];
           if (existing && existing.password && existing.password !== cleanPass) {

@@ -40,6 +40,7 @@ interface NewCampaignModalProps {
   onRequestCheckout?: (camp: Campaign) => void;
   currentUser?: User | null;
   initialPlan?: 'basic' | 'starter' | 'growth' | 'enterprise';
+  campaign?: Campaign | null;
 }
 
 export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
@@ -49,12 +50,24 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   onRequestCheckout,
   currentUser,
   initialPlan,
+  campaign,
 }) => {
-  const [selectedType, setSelectedType] = useState<CampaignType>('user_registrations');
-  const [name, setName] = useState('');
-  const [targetUrl, setTargetUrl] = useState('https://');
-  const [niche, setNiche] = useState('Fintech & B2B SaaS');
-  const [description, setDescription] = useState('');
+  // Strict null-guards: Fallback to neutral default values if campaign or initialPlan is undefined
+  const resolvedPlan = initialPlan || campaign?.plan || 'starter';
+  const defaultInitialQty =
+    resolvedPlan === 'basic'
+      ? 1000
+      : resolvedPlan === 'growth'
+      ? 10000
+      : resolvedPlan === 'enterprise'
+      ? 100000
+      : 2000;
+
+  const [selectedType, setSelectedType] = useState<CampaignType>(campaign?.campaignType || 'user_registrations');
+  const [name, setName] = useState(campaign?.name || '');
+  const [targetUrl, setTargetUrl] = useState(campaign?.targetUrl || 'https://');
+  const [niche, setNiche] = useState(campaign?.niche || 'Fintech & B2B SaaS');
+  const [description, setDescription] = useState(campaign?.description || '');
   const [adminSuccessCamp, setAdminSuccessCamp] = useState<Campaign | null>(null);
   const [isTestOneDollarMode, setIsTestOneDollarMode] = useState<boolean>(false);
 
@@ -79,22 +92,27 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [maxPlanPrice, setMaxPlanPrice] = useState<string>('199');
   const [currency, setCurrency] = useState<'USD' | 'UYU'>('USD');
   
-  // Target Conversion Goal
-  const [targetQuantity, setTargetQuantity] = useState<number>(initialPlan === 'basic' ? 1000 : 2000);
-  const [plan, setPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>(initialPlan || 'starter');
+  // Target Conversion Goal - with strict null-guards
+  const [targetQuantity, setTargetQuantity] = useState<number>(campaign?.targetRegistrations || defaultInitialQty);
+  const [plan, setPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>(resolvedPlan);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync initialPlan when modal opens
+  // Sync initialPlan / campaign when modal opens with neutral fallback guards
   useEffect(() => {
-    if (initialPlan) {
-      setPlan(initialPlan);
-      if (initialPlan === 'basic') setTargetQuantity(1000);
-      else if (initialPlan === 'starter') setTargetQuantity(2000);
-      else if (initialPlan === 'growth') setTargetQuantity(10000);
-      else if (initialPlan === 'enterprise') setTargetQuantity(100000);
+    if (!isOpen) return;
+    const targetPlan = initialPlan || campaign?.plan || 'starter';
+    setPlan(targetPlan);
+    if (campaign?.targetRegistrations) {
+      setTargetQuantity(campaign.targetRegistrations);
+    } else {
+      if (targetPlan === 'basic') setTargetQuantity(1000);
+      else if (targetPlan === 'starter') setTargetQuantity(2000);
+      else if (targetPlan === 'growth') setTargetQuantity(10000);
+      else if (targetPlan === 'enterprise') setTargetQuantity(100000);
+      else setTargetQuantity(2000);
     }
-  }, [initialPlan, isOpen]);
+  }, [initialPlan, campaign, isOpen]);
 
   // Fetch real Vercel API status for the selected plan
   useEffect(() => {

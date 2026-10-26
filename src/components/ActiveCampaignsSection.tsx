@@ -22,6 +22,17 @@ import {
   Users
 } from 'lucide-react';
 import { Campaign, User, isUserSuperAdmin } from '../types/growth';
+import { useLiveRelativeTime } from '../utils/timeFormat';
+
+const CampaignLiveTime: React.FC<{ createdAt?: string }> = ({ createdAt }) => {
+  const liveTime = useLiveRelativeTime(createdAt, 1000);
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+      <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+      <span>{liveTime}</span>
+    </span>
+  );
+};
 
 interface ActiveCampaignsSectionProps {
   campaigns: Campaign[];
@@ -226,6 +237,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                       <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-300">
                         {camp.plan ? `Plan ${camp.plan.toUpperCase()}` : 'Plan Estándar'}
                       </span>
+                      <CampaignLiveTime createdAt={camp.createdAt} />
                     </div>
 
                     <h2 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
@@ -385,10 +397,13 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                           </div>
 
                           <div>
-                            <span className="text-neutral-500 text-[11px] block">Fecha de Creación:</span>
-                            <span className="font-mono text-[11px] text-neutral-400">
-                              {new Date(camp.createdAt).toLocaleString()}
-                            </span>
+                            <span className="text-neutral-500 text-[11px] block">Momento de Ignición & Fecha Exacta:</span>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <CampaignLiveTime createdAt={camp.createdAt} />
+                              <span className="font-mono text-[11px] text-neutral-400">
+                                {new Date(camp.createdAt).toLocaleString()}
+                              </span>
+                            </div>
                           </div>
 
                           <div>

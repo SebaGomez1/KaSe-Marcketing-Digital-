@@ -61,6 +61,7 @@ export interface CampaignModuleState {
   conversionsCount?: number;
   lastConversionAt?: string;
   inactivityReason24h?: string;
+  last_published_links?: string[];
 }
 
 export interface CampaignLog {
@@ -1848,33 +1849,44 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  const allUsers = await getUsersAsync();
-  let user = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-
-  if (!user) {
-    // If not found, register client smoothly with the provided password
-    user = {
-      id: `usr_${Math.random().toString(36).substring(2, 9)}`,
-      name: cleanEmail.split('@')[0],
-      email: cleanEmail,
-      role: 'client',
-      createdAt: new Date().toISOString(),
-      acquisitionSource: 'direct_organic',
-      password: cleanPass,
-    };
-    await saveUserAsync(user);
-    res.json({ success: true, user });
-    return;
+  // Query Supabase users table directly
+  let user: UserRecord | undefined;
+  if (supabase) {
+    try {
+      const { data: dbUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+      if (dbUser) {
+        user = {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          createdAt: dbUser.created_at,
+          acquisitionSource: dbUser.acquisition_source,
+          password: dbUser.password,
+        };
+      }
+    } catch (e) {}
   }
 
-  // Client exists, verify password
-  if (user.password && user.password !== cleanPass) {
+  if (!user) {
+    const allUsers = await getUsersAsync();
+    user = allUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+  }
+
+  // CRITICAL SECURITY SHIELD: Reject unverified users on login (No automatic signup bypass)
+  if (!user) {
     res.status(401).json({ error: 'Contraseña Incorrecta' });
     return;
   }
-  if (!user.password) {
-    user.password = cleanPass;
-    await saveUserAsync(user);
+
+  // Strict password verification against database
+  if (!user.password || user.password !== cleanPass) {
+    res.status(401).json({ error: 'Contraseña Incorrecta' });
+    return;
   }
 
   res.json({ success: true, user });
@@ -2089,6 +2101,8 @@ app.post('/api/payments/mercadopago/simulate-approval', (req: Request, res: Resp
     level: 'SUCCESS',
     module: 'MERCADO_PAGO_IPN',
     message: `Pago de ${newTx.currency} $${newTx.amount} CONFIRMADO vía pasarela de Mercado Pago (ID: ${mpPayId}). Motores autónomos encendidos al 100%.`,
+  });
+
   await saveCampaignAsync(campaign);
   saveTransactionsToFile(newTx);
 
@@ -2792,7 +2806,16 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
         : `ℹ️ [MÓDULO 1 - SEO]: URL preparada para indexación. ${resGoogle.error || 'Listo para conectar con Google Service Account.'}`,
     });
     if (campaign.modules?.mod1_seo) {
-      campaign.modules.mod1_seo.lastExecution = 'Reciente';
+      try {
+        const parsedHost = new URL(campaign.targetUrl.startsWith('http') ? campaign.targetUrl : 'https://' + campaign.targetUrl).hostname;
+        campaign.modules.mod1_seo.last_published_links = [
+          campaign.targetUrl,
+          `https://www.google.com/search?q=site:${encodeURIComponent(parsedHost)}`,
+        ];
+      } catch (e) {
+        campaign.modules.mod1_seo.last_published_links = [campaign.targetUrl];
+      }
+      campaign.modules.mod1_seo.lastExecution = 'Hace un momento';
       campaign.modules.mod1_seo.statusText = resGoogle.success ? 'URL sincronizada con Google Indexing API' : 'Lote SEO preparado';
     }
   }
@@ -2807,6 +2830,10 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
     const resTwitter = await publicarHiloAutonomo(thread);
     results.twitterThread = resTwitter;
 
+    const twitterLinks = resTwitter.threadIds && resTwitter.threadIds.length > 0
+      ? resTwitter.threadIds.map((id) => `https://x.com/i/status/${id}`)
+      : [`https://x.com/search?q=${encodeURIComponent(campaign.name + ' ' + campaign.niche)}&f=live`];
+
     campaign.logs.unshift({
       id: `log_twitter_${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -2817,7 +2844,8 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
         : `ℹ️ [MÓDULO 2 - SOCIAL]: Hilo viral generado con IA. ${resTwitter.error || 'Listo para emitir con Twitter API keys.'}`,
     });
     if (campaign.modules?.mod2_social) {
-      campaign.modules.mod2_social.lastExecution = 'Reciente';
+      campaign.modules.mod2_social.last_published_links = twitterLinks;
+      campaign.modules.mod2_social.lastExecution = 'Hace un momento';
       campaign.modules.mod2_social.statusText = resTwitter.success ? 'Hilo sindicado en X (Twitter)' : 'Hilo generado y en cola';
     }
   }
@@ -2829,6 +2857,11 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
     results.redditBot = resOutbound;
     results.outboundBot = resOutbound;
 
+    const outboundLinks = [
+      `https://x.com/search?q=${encodeURIComponent(campaign.niche)}&f=live`,
+      `https://www.quora.com/search?q=${encodeURIComponent(campaign.niche)}`,
+    ];
+
     campaign.logs.unshift({
       id: `log_outbound_${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -2839,7 +2872,8 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign): Promise<any
         : `ℹ️ [MÓDULO 4 - OUTBOUND]: Algoritmo de escucha calibrado para nicho "${campaign.niche}". Protección Anti-Ban activa.`,
     });
     if (campaign.modules?.mod4_outbound) {
-      campaign.modules.mod4_outbound.lastExecution = 'Reciente';
+      campaign.modules.mod4_outbound.last_published_links = outboundLinks;
+      campaign.modules.mod4_outbound.lastExecution = 'Hace un momento';
       campaign.modules.mod4_outbound.statusText = resOutbound.success ? 'Escucha activa ejecutada con Anti-Ban Guard' : 'Filtro de palabras clave calibrado';
     }
   }

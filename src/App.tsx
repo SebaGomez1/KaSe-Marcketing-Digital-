@@ -165,6 +165,14 @@ export default function App() {
 
   useEffect(() => {
     fetchCampaigns();
+
+    // Absolute Unitary Conversion Tracking: Poll every 3.5s to render atomized unit-by-unit increments (+1)
+    if (!currentUser) return;
+    const syncTimer = setInterval(() => {
+      fetchCampaigns();
+    }, 3500);
+
+    return () => clearInterval(syncTimer);
   }, [currentUser?.id, currentUser?.email]);
 
   // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
@@ -589,7 +597,8 @@ export default function App() {
         onClose={() => setIsNewCampaignOpen(false)}
         onCreated={handleCreatedCampaign}
         currentUser={currentUser}
-        initialPlan={selectedInitialPlan}
+        initialPlan={selectedInitialPlan || 'starter'}
+        campaign={activeCampaign || null}
         onRequestCheckout={(camp) => {
           setCampaignForCheckout(camp);
           setIsCheckoutModalOpen(true);
