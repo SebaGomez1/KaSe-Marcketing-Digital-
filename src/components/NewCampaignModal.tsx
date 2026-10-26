@@ -12,15 +12,11 @@ import {
   DollarSign, 
   HelpCircle,
   CheckCircle2,
-  Sliders,
   Sparkles,
-  ArrowRight,
   MapPin,
   AlertTriangle,
-  Code2,
   Copy,
   RefreshCw,
-  Globe2,
   Search
 } from 'lucide-react';
 import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult, isUserSuperAdmin } from '../types/growth';
@@ -1142,12 +1138,12 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
             {/* Range slider for fluid selection */}
             {(() => {
-              const presets = currentTypeMeta.targetPresets && currentTypeMeta.targetPresets.length > 0
-                ? currentTypeMeta.targetPresets
+              const presets: number[] = (currentTypeMeta?.targetPresets && (currentTypeMeta.targetPresets as any).length > 0)
+                ? (currentTypeMeta.targetPresets as number[])
                 : [500, 1000, 2000, 5000, 10000, 25000, 50000, 100000];
-              const minVal = Math.min(...presets);
-              const maxVal = Math.max(...presets);
-              const dynamicStep = selectedType === 'plan_sales'
+              const minVal: number = Math.min(...presets);
+              const maxVal: number = Math.max(...presets);
+              const dynamicStep: number = selectedType === 'plan_sales'
                 ? 1
                 : maxVal >= 50000
                 ? 250
@@ -1161,9 +1157,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   min={minVal}
                   max={maxVal}
                   step={dynamicStep}
-                  value={Math.max(minVal, Math.min(targetQuantity, maxVal))}
-                  onChange={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
+                  value={Math.max(minVal, Math.min(Number(targetQuantity) || minVal, maxVal))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const parsed: number = parseInt(e.target.value, 10);
                     if (!isNaN(parsed) && parsed > 0) {
                       handleTargetChange(parsed);
                     }

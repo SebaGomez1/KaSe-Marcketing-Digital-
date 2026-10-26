@@ -4679,9 +4679,9 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
 // ====================================================================
 // PURGA MASIVA POR ÚNICA VEZ AL ARRANCAR EL SERVIDOR (MODO PRODUCCIÓN LIMPIO)
 // ====================================================================
-let initialPurgeExecuted = false;
+let initialPurgeExecuted: boolean = false;
 
-async function purgeAllTestCampaignsOnce(): Promise<{ success: boolean; message: string }> {
+async function purgeAllTestCampaignsOnce(): Promise<any> {
   if (initialPurgeExecuted) {
     return { success: true, message: 'La purga inicial ya fue ejecutada previamente.' };
   }
@@ -4690,59 +4690,64 @@ async function purgeAllTestCampaignsOnce(): Promise<{ success: boolean; message:
   try {
     console.log('[PURGA INICIAL]: Vaciando historial de pruebas en Supabase y localmente...');
 
-    // 1. Limpieza de memoria y archivo local campaigns.json
-    campaigns = [];
+    // 1. Limpieza de memoria y archivo local campaigns.json en bloque aislado
     try {
+      campaigns = [];
       if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
       fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify([], null, 2), 'utf-8');
-    } catch (fsErr) {
-      console.warn('[PURGA INICIAL fs error]:', fsErr);
+    } catch (fsErr: any) {
+      console.warn('[PURGA INICIAL fs error]:', fsErr?.message || fsErr);
     }
 
-    // 2. DELETE directo en Supabase sobre campaigns, conversions y campaign_modules
+    // 2. DELETE directo en Supabase sobre campaigns, conversions y campaign_modules con tipado flexible
     if (supabase) {
       try {
+        const client: any = supabase;
         await Promise.allSettled([
-          supabase.from('campaign_modules').delete().neq('id', 0),
-          supabase.from('conversions').delete().neq('id', 'keep_none'),
-          supabase.from('campaigns').delete().neq('id', 'keep_none'),
+          client.from('campaign_modules').delete().neq('id', 0),
+          client.from('conversions').delete().neq('id', 'keep_none'),
+          client.from('campaigns').delete().neq('id', 'keep_none'),
         ]);
         console.log('[PURGA INICIAL]: Tablas campaigns, conversions y campaign_modules vaciadas en Supabase.');
-      } catch (dbErr) {
-        console.warn('[PURGA INICIAL Supabase error]:', dbErr);
+      } catch (dbErr: any) {
+        console.warn('[PURGA INICIAL Supabase error]:', dbErr?.message || dbErr);
       }
     }
 
-    // 3. DELETE directo en pool de PostgreSQL si está conectado
+    // 3. DELETE directo en pool de PostgreSQL en bloque aislado
     if (pgPool) {
       try {
-        const client = await pgPool.connect();
+        const poolClient: any = await (pgPool as any).connect();
         try {
-          await client.query('DELETE FROM campaign_modules;');
-          await client.query('DELETE FROM conversions;');
-          await client.query('DELETE FROM campaigns;');
+          await poolClient.query('DELETE FROM campaign_modules;');
+          await poolClient.query('DELETE FROM conversions;');
+          await poolClient.query('DELETE FROM campaigns;');
         } finally {
-          client.release();
+          poolClient.release();
         }
-      } catch (pgErr) {
-        console.warn('[PURGA INICIAL pgPool error]:', pgErr);
+      } catch (pgErr: any) {
+        console.warn('[PURGA INICIAL pgPool error]:', pgErr?.message || pgErr);
       }
     }
 
     return { success: true, message: 'Purga masiva de pruebas completada con éxito. Suite lista en limpio.' };
   } catch (err: any) {
-    console.error('[PURGA INICIAL error general]:', err);
+    console.error('[PURGA INICIAL error general]:', err?.message || err);
     return { success: false, message: err?.message || 'Error en purga inicial' };
   }
 }
 
-// Endpoint de inicio/purga directa
-app.all('/api/system/purge-all', async (_req: Request, res: Response) => {
-  initialPurgeExecuted = false; // Permitir re-ejecución forzada si se llama explícitamente al endpoint
-  const result = await purgeAllTestCampaignsOnce();
-  res.json(result);
+// Endpoint de inicio/purga directa tolerante
+app.all('/api/system/purge-all', async (_req: any, res: any) => {
+  try {
+    initialPurgeExecuted = false; // Permitir re-ejecución forzada si se llama explícitamente al endpoint
+    const result: any = await purgeAllTestCampaignsOnce();
+    res.json(result);
+  } catch (endpointErr: any) {
+    res.status(200).json({ success: false, error: endpointErr?.message || 'Error en purga' });
+  }
 });
 
 // START SERVER & VITE INTEGRATION
