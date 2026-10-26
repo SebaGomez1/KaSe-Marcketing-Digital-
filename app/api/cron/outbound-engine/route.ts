@@ -3,7 +3,7 @@ import { supabase } from '../../../../src/lib/db';
 import { ejecutarOutboundSeguroSocialListening } from '../../../../src/lib/networkEngines';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Hasta 60 segundos de ejecución en Vercel Pro
+export const maxDuration = 10; // Límite máximo para cuentas Vercel Hobby
 
 export async function GET(req: NextRequest) {
   return handleOutboundCron(req);
