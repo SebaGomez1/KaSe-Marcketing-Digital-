@@ -39,7 +39,10 @@ export const isSupabaseConfigured = Boolean(
   supabaseEndpoint && 
   rawAnonKey && 
   !supabaseEndpoint.includes('MY_') && 
-  !rawAnonKey.includes('MY_')
+  !rawAnonKey.includes('MY_') &&
+  supabaseEndpoint !== 'https://supabase.co' &&
+  supabaseEndpoint !== 'http://supabase.co' &&
+  !supabaseEndpoint.includes('xxx.supabase.co')
 );
 
 // Determine direct PostgreSQL connection string (Supabase Connection Pooler / Neon / Cloud SQL)
