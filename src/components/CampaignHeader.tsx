@@ -104,6 +104,16 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
               </>
             )}
             <span aria-hidden="true" className="text-neutral-600">·</span>
+            <span className="text-neutral-400 font-mono flex items-center gap-1.5" title="Fecha y hora de publicación">
+              <span>📅 Publicada:</span>
+              <strong className="text-white">
+                {new Date(campaign.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </strong>
+              <strong className="text-emerald-400">
+                {new Date(campaign.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })} hs
+              </strong>
+            </span>
+            <span aria-hidden="true" className="text-neutral-600">·</span>
             <span className="text-neutral-500">
               Zero-Credentials
             </span>

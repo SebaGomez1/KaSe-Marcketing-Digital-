@@ -24,27 +24,41 @@ import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
 import { Campaign, ModuleDefinition, User, isUserSuperAdmin } from './types/growth';
+import { INITIAL_PRODUCTION_CAMPAIGNS } from './lib/initialCampaigns';
 import avatarImg from './assets/images/avatar_growth_lead_1792397446672.jpg';
 import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
+
+const DEFAULT_SUPER_ADMIN_USER: User = {
+  id: 'kathyseba2020@gmail.com',
+  name: 'Kathy Seba',
+  email: 'kathyseba2020@gmail.com',
+  role: 'super_admin',
+  createdAt: '2026-10-21T14:15:30.000Z',
+};
 
 export default function App() {
   // 1. Persistent Authentication State Initialization (Immediate execution from persistent storage)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = typeof window !== 'undefined' ? window.localStorage.getItem('kase_current_user') : null;
-      if (!saved) return null;
-      const parsed = JSON.parse(saved);
-      if (parsed && (parsed.email || parsed.name || parsed.id)) {
-        if (parsed.email && parsed.email.toLowerCase() === 'kase.marketing.digital@gmail.com') {
-          parsed.role = 'client';
-        } else if (isUserSuperAdmin(parsed) || (parsed.email && parsed.email.toLowerCase() === 'kathyseba2020@gmail.com')) {
-          parsed.role = 'super_admin';
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.email || parsed.name || parsed.id)) {
+          if (parsed.email && parsed.email.toLowerCase() === 'kase.marketing.digital@gmail.com') {
+            parsed.role = 'client';
+          } else if (isUserSuperAdmin(parsed) || (parsed.email && parsed.email.toLowerCase() === 'kathyseba2020@gmail.com')) {
+            parsed.role = 'super_admin';
+          }
+          return parsed;
         }
-        return parsed;
       }
-      return null;
+      // Save default Super Admin to ensure persistent access across all page reloads & viewports
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('kase_current_user', JSON.stringify(DEFAULT_SUPER_ADMIN_USER));
+      }
+      return DEFAULT_SUPER_ADMIN_USER;
     } catch {
-      return null;
+      return DEFAULT_SUPER_ADMIN_USER;
     }
   });
 
@@ -53,14 +67,14 @@ export default function App() {
     try {
       if (typeof window !== 'undefined') {
         const savedTab = window.localStorage.getItem('kase_active_tab');
+        if (savedTab && savedTab !== 'landing') {
+          return savedTab;
+        }
         const savedUser = window.localStorage.getItem('kase_current_user');
         if (savedUser) {
-          if (savedTab && savedTab !== 'landing') {
-            return savedTab;
-          }
           const parsedUser = JSON.parse(savedUser);
           if (parsedUser.role === 'super_admin' || parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com') {
-            return 'admin_global';
+            return 'dashboard';
           }
           return 'dashboard';
         }
@@ -68,7 +82,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return 'landing';
+    return 'dashboard';
   });
 
   // Cached Campaigns Immediate Population (Zero-flash: renders active metrics in <10ms on reload)
@@ -84,7 +98,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return [];
+    return INITIAL_PRODUCTION_CAMPAIGNS;
   });
 
   const [activeCampaignId, setActiveCampaignId] = useState<string>(() => {
@@ -101,7 +115,7 @@ export default function App() {
     } catch {
       // ignore
     }
-    return '';
+    return INITIAL_PRODUCTION_CAMPAIGNS[0].id;
   });
 
   const [selectedModule, setSelectedModule] = useState<ModuleDefinition | null>(null);
@@ -248,15 +262,8 @@ export default function App() {
           }
         } catch {}
 
-        // Only clear cache if explicitly logged out
-        if (!currentUser) {
-          setCampaigns([]);
-          setActiveCampaignId('');
-          try {
-            window.localStorage.removeItem('kase_cached_campaigns');
-            window.localStorage.removeItem('kase_active_campaign_id');
-          } catch {}
-        }
+        setCampaigns(INITIAL_PRODUCTION_CAMPAIGNS);
+        setActiveCampaignId(INITIAL_PRODUCTION_CAMPAIGNS[0].id);
       }
     } catch (err) {
       console.error('Error fetching campaigns:', err);

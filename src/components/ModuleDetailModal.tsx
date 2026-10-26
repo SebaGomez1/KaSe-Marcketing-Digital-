@@ -150,7 +150,7 @@ export const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({
             <div className="bg-neutral-900 border border-neutral-800 p-3 rounded-lg">
               <div className="text-neutral-500">{moduleDef.metricLabel}</div>
               <div className="text-lg font-bold font-mono text-white mt-1 tabular-nums">
-                {modState.itemsProcessed.toLocaleString()}
+                {(modState?.itemsProcessed ?? 0).toLocaleString()}
               </div>
             </div>
 

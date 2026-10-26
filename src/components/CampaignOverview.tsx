@@ -188,6 +188,16 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
                 <Clock className="w-3 h-3 text-emerald-400" />
                 <span>{liveCreationTime}</span>
               </span>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono bg-neutral-900 text-neutral-300 border border-neutral-700" title="Fecha y hora de publicación en producción">
+                <span>📅 Publicada:</span>
+                <strong className="text-white">
+                  {new Date(campaign.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </strong>
+                <strong className="text-emerald-400">
+                  {new Date(campaign.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })} hs
+                </strong>
+              </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               <span className="font-mono tabular-nums text-sky-400">

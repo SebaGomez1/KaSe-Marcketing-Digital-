@@ -194,6 +194,8 @@ export interface Campaign {
   plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;
+  pixelToken?: string;
+  pixelVerified?: boolean;
   interactionPreferences?: string; // Para Likes & Engagement
   communicationToneInstructions?: string; // Para Comentarios & Reseñas
   geoTargeting?: GeoTargeting; // Segmentación Geográfica Inteligente
