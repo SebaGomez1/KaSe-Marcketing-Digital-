@@ -11,7 +11,6 @@ import {
   isPostgresConfigured,
   testDbConnection,
   mapRowToCampaign,
-  mapCampaignToRow,
 } from './src/lib/db.ts';
 import { INITIAL_PRODUCTION_CAMPAIGNS } from './src/lib/initialCampaigns.ts';
 import {
@@ -507,6 +506,35 @@ async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
   return campaigns.find((c) => c.id === id) || null;
 }
 
+export function mapCampaignToRow(campaign: any): any {
+  return {
+    id: campaign.id,
+    user_id: campaign.userId || campaign.creatorEmail || null,
+    creator_email: campaign.creatorEmail || campaign.userId || null,
+    name: campaign.name,
+    target_url: campaign.targetUrl,
+    niche: campaign.niche,
+    description: campaign.description,
+    campaign_type: campaign.campaignType,
+    target_unit_label: campaign.targetUnitLabel,
+    min_plan_price: campaign.minPlanPrice !== undefined ? campaign.minPlanPrice : null,
+    max_plan_price: campaign.maxPlanPrice !== undefined ? campaign.maxPlanPrice : null,
+    currency: campaign.currency || 'USD',
+    target_registrations: campaign.targetRegistrations,
+    current_registrations: campaign.currentRegistrations,
+    clicks_count: campaign.clicksCount || 0,
+    plan: campaign.plan,
+    status: campaign.status,
+    webhook_secret: campaign.webhookSecret,
+    interaction_preferences: campaign.interactionPreferences || null,
+    communication_tone_instructions: campaign.communicationToneInstructions || null,
+    geo_targeting: campaign.geoTargeting ? JSON.stringify(campaign.geoTargeting) : null,
+    created_at: campaign.createdAt || new Date().toISOString(),
+    paused_at: campaign.pausedAt || null,
+    billing: campaign.billing ? JSON.stringify(campaign.billing) : null
+  };
+}
+
 async function saveCampaignAsync(campaign: Campaign): Promise<void> {
   if (!campaign || !campaign.id || FAKE_CAMPAIGN_IDS.includes(campaign.id)) return;
 
@@ -523,7 +551,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       const row = mapCampaignToRow(campaign);
       const { error: campError } = await supabase.from('campaigns').upsert(row);
       if (campError) {
-        console.warn('[DB Error Supabase saveCampaignAsync campaigns]:', campError.message, campError.code);
+        console.warn('[DB Error Supabase saveCampaignAsync campaigns]:', campError.message, campError.details || '');
       }
 
       const modEntries = Object.entries(campaign.modules).map(([key, state]) => ({
@@ -536,13 +564,15 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
         last_execution: state.lastExecution,
         status_text: state.statusText,
       }));
-      await (supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' }) as any).catch(() => {});
+      await (supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' }) as any).catch((mErr: any) => {
+        console.warn('[DB Error Supabase saveCampaignAsync campaign_modules]:', mErr?.message || mErr, mErr?.details || '');
+      });
 
       const assignedUserId = campaign.userId || campaign.creatorEmail || null;
 
       if (campaign.recentConversions.length > 0) {
         const c = campaign.recentConversions[0];
-        await supabase.from('conversions').upsert({
+        const { error: convError } = await supabase.from('conversions').upsert({
           id: c.id,
           campaign_id: campaign.id,
           user_id: assignedUserId,
@@ -552,11 +582,14 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
           ip_masked: c.ipMasked,
           referrer: c.referrer,
         });
+        if (convError) {
+          console.warn('[DB Error Supabase saveCampaignAsync conversions]:', convError.message, convError.details || '');
+        }
       }
 
       if (campaign.logs.length > 0) {
         const l = campaign.logs[0];
-        await supabase.from('system_audit_logs').upsert({
+        const { error: logError } = await supabase.from('system_audit_logs').upsert({
           id: l.id,
           campaign_id: campaign.id,
           user_id: assignedUserId,
@@ -565,9 +598,12 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
           module: l.module,
           message: l.message,
         });
+        if (logError) {
+          console.warn('[DB Error Supabase saveCampaignAsync logs]:', logError.message, logError.details || '');
+        }
       }
-    } catch (e) {
-      console.warn('[DB Error Supabase saveCampaignAsync]:', e);
+    } catch (e: any) {
+      console.warn('[DB Error Supabase saveCampaignAsync]:', e?.message || e, e?.details || '');
     }
   }
 
@@ -577,28 +613,29 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       try {
         const row = mapCampaignToRow(campaign);
         await client.query(
-          `INSERT INTO campaigns (id, user_id, creator_email, name, target_url, niche, description, campaign_type, target_unit_label, min_plan_price, max_plan_price, currency, target_registrations, current_registrations, plan, status, webhook_secret, pixel_token, pixel_verified, interaction_preferences, communication_tone_instructions, geo_targeting, created_at, paused_at, billing)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+          `INSERT INTO campaigns (id, user_id, creator_email, name, target_url, niche, description, campaign_type, target_unit_label, min_plan_price, max_plan_price, currency, target_registrations, current_registrations, clicks_count, plan, status, webhook_secret, interaction_preferences, communication_tone_instructions, geo_targeting, created_at, paused_at, billing)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              target_registrations = EXCLUDED.target_registrations,
              current_registrations = EXCLUDED.current_registrations,
+             clicks_count = EXCLUDED.clicks_count,
              plan = EXCLUDED.plan,
              status = EXCLUDED.status,
              paused_at = EXCLUDED.paused_at,
              billing = EXCLUDED.billing`,
           [
             row.id, row.user_id, row.creator_email, row.name, row.target_url, row.niche, row.description, row.campaign_type, row.target_unit_label,
-            row.min_plan_price, row.max_plan_price, row.currency, row.target_registrations, row.current_registrations,
-            row.plan, row.status, row.webhook_secret, row.pixel_token, row.pixel_verified, row.interaction_preferences,
+            row.min_plan_price, row.max_plan_price, row.currency, row.target_registrations, row.current_registrations, row.clicks_count,
+            row.plan, row.status, row.webhook_secret, row.interaction_preferences,
             row.communication_tone_instructions, row.geo_targeting, row.created_at, row.paused_at, row.billing
           ]
         );
       } finally {
         client.release();
       }
-    } catch (e) {
-      console.warn('[DB Error Postgres saveCampaignAsync]:', e);
+    } catch (e: any) {
+      console.warn('[DB Error Postgres saveCampaignAsync]:', e?.message || e, e?.details || '');
     }
   }
 }
