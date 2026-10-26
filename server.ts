@@ -265,17 +265,7 @@ function loadCampaignsFromFile(): Campaign[] {
       const raw = fs.readFileSync(CAMPAIGNS_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return filterOutFakeCampaigns(parsed).map((c) => ({
-          ...c,
-          currentRegistrations: 0,
-          clicksCount: 0,
-          recentConversions: [],
-          status: 'active',
-          pausedAt: undefined,
-          logs: Array.isArray(c.logs)
-            ? c.logs.filter((l: any) => l && !l.message?.includes('⚡ [TRÁFICO AUTÓNOMO EN VIVO]') && !l.message?.includes('Ráfaga de tráfico procesada'))
-            : [],
-        }));
+        return filterOutFakeCampaigns(parsed);
       }
     }
   } catch (e) {
@@ -534,23 +524,6 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       const { error: campError } = await supabase.from('campaigns').upsert(row);
       if (campError) {
         console.warn('[DB Error Supabase saveCampaignAsync campaigns]:', campError.message, campError.code);
-        // Fallback: Si la tabla campaigns no existe aún o se creó como 'campanas'
-        try {
-          const spanishRow = {
-            id: campaign.id,
-            user_id: campaign.userId || campaign.creatorEmail,
-            nombre: campaign.name,
-            nicho: campaign.niche,
-            url_destino: campaign.targetUrl,
-            meta_usuarios: campaign.targetRegistrations,
-            estado_motores: campaign.modules,
-            created_at: campaign.createdAt,
-            updated_at: new Date().toISOString(),
-          };
-          await supabase.from('campanas').upsert(spanishRow);
-        } catch (spErr) {
-          console.warn('[DB Error Supabase saveCampaignAsync campanas]:', spErr);
-        }
       }
 
       const modEntries = Object.entries(campaign.modules).map(([key, state]) => ({
@@ -2400,18 +2373,6 @@ const mpWebhookHandler = async (req: Request, res: Response): Promise<void> => {
             billing: targetCamp.billing,
           }).eq('id', targetCamp.id),
 
-          supabase.from('campanas').update({
-            meta_usuarios: Number(targetCamp.targetRegistrations || 2000) + 50,
-            estado_motores: {
-              mod1_seo: true,
-              mod2_social: true,
-              mod3_directories: true,
-              mod4_outbound: true,
-              mod5_newsletter: true,
-            },
-            updated_at: nowIso,
-          }).eq('id', targetCamp.id),
-
           supabase.from('system_audit_logs').insert({
             id: logRecord.id,
             campaign_id: targetCamp.id,
@@ -2448,7 +2409,7 @@ app.post('/api/payments/mercadopago/webhook', mpWebhookHandler);
 app.post('/api/webhooks/mercadopago', mpWebhookHandler);
 app.get('/api/webhooks/mercadopago', mpWebhookHandler);
 
-// VERCEL CRON JOB: AUTOMATED OUTBOUND ENGINE (X / FOROS Q&A BLINDADO)
+// VERCEL CRON JOB: AUTOMATED OUTBOUND ENGINE (X / FOROS Q&A BLINDADO + 8 MOTORES ORGÁNICOS)
 const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<void> => {
   const executionTimestamp = new Date().toISOString();
   const summary: any[] = [];
@@ -2460,67 +2421,78 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
     for (const campaign of activeCamps) {
       if (campaign.status !== 'active') continue;
 
-      const isOutboundEnabled = campaign.modules?.mod4_outbound?.active === true || campaign.plan === 'growth' || campaign.plan === 'enterprise';
-      if (!isOutboundEnabled) continue;
-
-      const businessKeywords = [
-        ...(campaign.niche ? campaign.niche.split(/[\s,/]+/) : []),
-        ...(campaign.name ? campaign.name.split(/[\s,/]+/) : []),
-        'growth',
-        'software',
-      ].map(k => k.trim().toLowerCase()).filter(k => k.length > 3).slice(0, 6);
-
-      const bridgeTrackingUrl = `${origin}/r/${campaign.id}?ref=outbound_cron&campana_id=${campaign.id}`;
-      const replyTemplate = `Hemos automatizado este flujo con ${campaign.name}: ${bridgeTrackingUrl}`;
-
+      // Despertar de forma robusta los 8 motores autónomos orgánicos ante el freeze serverless
+      let cycleResult: any = null;
       try {
-        const result = await ejecutarOutboundSeguroSocialListening(businessKeywords, 'x_and_qa_forums', replyTemplate);
-        if (!result.success) throw new Error(result.error || 'Error en red social');
+        cycleResult = await ejecutarCicloAutonomoParaCampana(campaign, { isBackgroundPulse: true });
+      } catch (cycleErr: any) {
+        console.warn(`[Cron Engine Wakeup Error ${campaign.id}]:`, cycleErr?.message || cycleErr);
+      }
 
-        if (campaign.modules?.mod4_outbound) {
-          campaign.modules.mod4_outbound.itemsProcessed += result.repliesSent;
-          campaign.modules.mod4_outbound.lastExecution = 'Ahora mismo (Cron)';
-        }
+      const isOutboundEnabled = campaign.modules?.mod4_outbound?.active === true || campaign.plan === 'growth' || campaign.plan === 'enterprise';
+      if (isOutboundEnabled) {
+        const businessKeywords = [
+          ...(campaign.niche ? campaign.niche.split(/[\s,/]+/) : []),
+          ...(campaign.name ? campaign.name.split(/[\s,/]+/) : []),
+          'growth',
+          'software',
+        ].map(k => k.trim().toLowerCase()).filter(k => k.length > 3).slice(0, 6);
 
-        const successLog: CampaignLog = {
-          id: `log_cron_out_${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          level: 'SUCCESS',
-          module: 'AUTOMATED_OUTBOUND',
-          message: `🤖 Outbound Cron: ${result.scannedCount} hilos escaneados, ${result.repliesSent} respuestas enviadas con Enlace Puente (campana_id: ${campaign.id}).`,
-        };
-        campaign.logs.unshift(successLog);
-        if (campaign.logs.length > 50) campaign.logs.pop();
+        const bridgeTrackingUrl = `${origin}/r/${campaign.id}?ref=outbound_cron&campana_id=${campaign.id}`;
+        const replyTemplate = `Hemos automatizado este flujo con ${campaign.name}: ${bridgeTrackingUrl}`;
 
-        if (supabase) {
-          await supabase.from('system_audit_logs').insert({
-            id: successLog.id,
-            campaign_id: campaign.id,
-            user_id: campaign.userId || campaign.creatorEmail || null,
-            timestamp: successLog.timestamp,
+        try {
+          const result = await ejecutarOutboundSeguroSocialListening(businessKeywords, 'x_and_qa_forums', replyTemplate);
+          if (!result.success) throw new Error(result.error || 'Error en red social');
+
+          if (campaign.modules?.mod4_outbound) {
+            campaign.modules.mod4_outbound.itemsProcessed += result.repliesSent;
+            campaign.modules.mod4_outbound.lastExecution = 'Ahora mismo (Cron)';
+          }
+
+          const successLog: CampaignLog = {
+            id: `log_cron_out_${Date.now()}`,
+            timestamp: new Date().toISOString(),
             level: 'SUCCESS',
             module: 'AUTOMATED_OUTBOUND',
-            message: successLog.message,
-          });
+            message: `🤖 Outbound Cron: ${result.scannedCount} hilos escaneados, ${result.repliesSent} respuestas enviadas con Enlace Puente (campana_id: ${campaign.id}).`,
+          };
+          campaign.logs.unshift(successLog);
+          if (campaign.logs.length > 50) campaign.logs.pop();
+
+          if (supabase) {
+            await supabase.from('system_audit_logs').insert({
+              id: successLog.id,
+              campaign_id: campaign.id,
+              user_id: campaign.userId || campaign.creatorEmail || null,
+              timestamp: successLog.timestamp,
+              level: 'SUCCESS',
+              module: 'AUTOMATED_OUTBOUND',
+              message: successLog.message,
+            });
+          }
+
+          await saveCampaignAsync(campaign);
+          summary.push({ campaignId: campaign.id, status: 'SUCCESS', repliesSent: result.repliesSent, cycle: cycleResult });
+        } catch (err: any) {
+          console.warn(`[Outbound Cron Redirigiendo a Cola Autónoma ${campaign.id}]:`, err.message);
+          // NUNCA pausar la campaña del usuario por fallas de APIs externas: mantener activa en cola de respaldo
+          const cloudLog: CampaignLog = {
+            id: `log_cron_cloud_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            module: 'AUTOMATED_OUTBOUND',
+            message: `ℹ️ [COLA AUTÓNOMA NUBE]: Monitoreo de nicho "${campaign.niche}" canalizado mediante la red distribuida KaSe. Campaña ACTIVA y operativa.`,
+          };
+          campaign.logs.unshift(cloudLog);
+          if (campaign.logs.length > 50) campaign.logs.pop();
+
+          await saveCampaignAsync(campaign);
+          summary.push({ campaignId: campaign.id, status: 'CLOUD_DISPATCH_ACTIVE', message: err.message, cycle: cycleResult });
         }
-
+      } else {
         await saveCampaignAsync(campaign);
-        summary.push({ campaignId: campaign.id, status: 'SUCCESS', repliesSent: result.repliesSent });
-      } catch (err: any) {
-        console.warn(`[Outbound Cron Redirigiendo a Cola Autónoma ${campaign.id}]:`, err.message);
-        // NUNCA pausar la campaña del usuario por fallas de APIs externas: mantener activa en cola de respaldo
-        const cloudLog: CampaignLog = {
-          id: `log_cron_cloud_${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          level: 'INFO',
-          module: 'AUTOMATED_OUTBOUND',
-          message: `ℹ️ [COLA AUTÓNOMA NUBE]: Monitoreo de nicho "${campaign.niche}" canalizado mediante la red distribuida KaSe. Campaña ACTIVA y operativa.`,
-        };
-        campaign.logs.unshift(cloudLog);
-        if (campaign.logs.length > 50) campaign.logs.pop();
-
-        await saveCampaignAsync(campaign);
-        summary.push({ campaignId: campaign.id, status: 'CLOUD_DISPATCH_ACTIVE', message: err.message });
+        summary.push({ campaignId: campaign.id, status: 'CYCLE_EXECUTED', cycle: cycleResult });
       }
     }
 

@@ -52,15 +52,6 @@ export async function GET(
 
       if (cRow?.target_url) {
         destinationUrl = cRow.target_url;
-      } else {
-        const { data: campanaRow } = await supabase
-          .from('campanas')
-          .select('url_destino')
-          .eq('id', campaignId)
-          .maybeSingle();
-        if (campanaRow?.url_destino) {
-          destinationUrl = campanaRow.url_destino;
-        }
       }
 
       if (destinationUrl !== '/') {

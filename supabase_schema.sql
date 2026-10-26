@@ -140,47 +140,25 @@ AS $$
 DECLARE
     target_destination TEXT := '/';
     current_count INT := 0;
-    is_uuid BOOLEAN := FALSE;
-    camp_uuid UUID;
 BEGIN
-    -- Validar si el ID es UUID válido
-    BEGIN
-        camp_uuid := target_campaign_id::uuid;
-        is_uuid := TRUE;
-    EXCEPTION WHEN OTHERS THEN
-        is_uuid := FALSE;
-    END;
+    -- 1. Actualizar contador atómico de clics en la tabla unificada 'campaigns'
+    UPDATE public.campaigns
+    SET clicks_count = COALESCE(clicks_count, 0) + 1,
+        updated_at = NOW()
+    WHERE id = target_campaign_id
+    RETURNING target_url, clicks_count INTO target_destination, current_count;
 
-    -- 1. Intentar resolver tabla campanas (UUID) e incrementar contador de clics en metricas_clicks
-    IF is_uuid THEN
-        SELECT url_destino INTO target_destination FROM public.campanas WHERE id = camp_uuid;
-
-        -- Actualizar contador en metricas_clicks (telemetría de tráfico separada)
-        INSERT INTO public.metricas_clicks (campana_id, clics_contador, fecha_actualizacion)
-        VALUES (camp_uuid, 1, NOW())
-        ON CONFLICT (campana_id)
-        DO UPDATE SET
-            clics_contador = public.metricas_clicks.clics_contador + 1,
-            fecha_actualizacion = NOW()
-        RETURNING clics_contador INTO current_count;
+    -- Si la fila no retornó por coincidencia de formato, consultar fallback
+    IF target_destination IS NULL THEN
+        SELECT target_url, COALESCE(clicks_count, 0) INTO target_destination, current_count
+        FROM public.campaigns
+        WHERE id = target_campaign_id;
     END IF;
 
-    -- 2. Si no es UUID o no se encontró en campanas, registrar clic en tabla campaigns (sin alterar current_registrations)
-    IF target_destination = '/' OR target_destination IS NULL THEN
-        SELECT target_url INTO target_destination FROM public.campaigns WHERE id = target_campaign_id;
-
-        UPDATE public.campaigns
-        SET clicks_count = COALESCE(clicks_count, 0) + 1,
-            updated_at = NOW()
-        WHERE id = target_campaign_id
-        RETURNING target_url, clicks_count INTO target_destination, current_count;
-    END IF;
-
-    -- 3. Registrar conversión de manera atómica
-    INSERT INTO public.conversions (id, campaign_id, campana_id, timestamp, method, referrer, ip_masked)
+    -- 2. Registrar evento de conversión de clic de forma atómica en tabla conversions
+    INSERT INTO public.conversions (id, campaign_id, timestamp, method, referrer, ip_masked)
     VALUES (
         'conv_rpc_' || extract(epoch from now())::bigint || '_' || substr(md5(random()::text), 1, 6),
-        target_campaign_id,
         target_campaign_id,
         NOW(),
         'organic_click',

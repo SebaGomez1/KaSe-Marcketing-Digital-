@@ -88,21 +88,8 @@ export async function POST(req: NextRequest) {
             mpPaymentId: paymentId,
             plan: 'growth',
             salesBlock: 50,
-          },
-        }).eq('id', campaignId),
-
-        // Actualizar en tabla relacional 'campanas'
-        supabase.from('campanas').update({
-          meta_usuarios: (campaignRow?.target_registrations || 2000) + 50,
-          estado_motores: {
-            mod1_seo: true,
-            mod2_social: true,
-            mod3_directories: true,
-            mod4_outbound: true,
-            mod5_newsletter: true,
-          },
-          updated_at: nowIso,
-        }).eq('id', campaignId),
+            updated_at: nowIso,
+          }).eq('id', campaignId),
 
         // Registro de auditoría
         supabase.from('system_audit_logs').insert({

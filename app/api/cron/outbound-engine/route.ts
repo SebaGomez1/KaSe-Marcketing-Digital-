@@ -82,8 +82,8 @@ async function handleOutboundCron(req: NextRequest) {
             module: 'AUTOMATED_OUTBOUND',
             message: `🤖 Outbound ejecutado con éxito para "${campaign.name}". ${result.scannedCount} conversaciones rastreadas, ${result.repliesSent} respuestas con Enlace Puente insertadas (campana_id: ${campId}). Anti-Ban Score: 100%.`,
           }),
-          // Actualización de última ejecución en tabla campanas
-          supabase.from('campanas').update({
+          // Actualización de última ejecución en tabla campaigns
+          supabase.from('campaigns').update({
             updated_at: new Date().toISOString(),
           }).eq('id', campId),
         ]);
@@ -106,14 +106,6 @@ async function handleOutboundCron(req: NextRequest) {
           supabase.from('campaigns').update({
             status: 'PAUSADO_TEMPORAL',
             paused_at: new Date().toISOString(),
-          }).eq('id', campId),
-
-          // Guardar estado en tabla campanas
-          supabase.from('campanas').update({
-            estado_motores: {
-              ...(typeof campaign.estado_motores === 'object' ? campaign.estado_motores : {}),
-              mod4_outbound: false,
-            },
             updated_at: new Date().toISOString(),
           }).eq('id', campId),
 
