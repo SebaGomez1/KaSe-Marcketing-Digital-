@@ -454,7 +454,27 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
   if (supabase) {
     try {
       const row = mapCampaignToRow(campaign);
-      await supabase.from('campaigns').upsert(row);
+      const { error: campError } = await supabase.from('campaigns').upsert(row);
+      if (campError) {
+        console.warn('[DB Error Supabase saveCampaignAsync campaigns]:', campError.message, campError.code);
+        // Fallback: Si la tabla campaigns no existe aún o se creó como 'campanas'
+        try {
+          const spanishRow = {
+            id: campaign.id,
+            user_id: campaign.userId || campaign.creatorEmail,
+            nombre: campaign.name,
+            nicho: campaign.niche,
+            url_destino: campaign.targetUrl,
+            meta_usuarios: campaign.targetRegistrations,
+            estado_motores: campaign.modules,
+            created_at: campaign.createdAt,
+            updated_at: new Date().toISOString(),
+          };
+          await supabase.from('campanas').upsert(spanishRow);
+        } catch (spErr) {
+          console.warn('[DB Error Supabase saveCampaignAsync campanas]:', spErr);
+        }
+      }
 
       const modEntries = Object.entries(campaign.modules).map(([key, state]) => ({
         campaign_id: campaign.id,
@@ -466,7 +486,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
         last_execution: state.lastExecution,
         status_text: state.statusText,
       }));
-      await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' });
+      await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' }).catch(() => {});
 
       const assignedUserId = campaign.userId || campaign.creatorEmail || null;
 
@@ -655,8 +675,10 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
           mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
         );
 
-        res.json({ success: true, campaigns: isolatedCampaigns });
-        return;
+        if (isolatedCampaigns.length > 0) {
+          res.json({ success: true, campaigns: isolatedCampaigns });
+          return;
+        }
       }
 
       const isolatedLocal = await getCampaignsAsync(authenticatedUser);
