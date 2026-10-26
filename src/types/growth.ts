@@ -196,6 +196,7 @@ export interface Campaign {
   currency?: string;
   targetRegistrations: number; // Conversion Goal (e.g. 2000 signups, or 50 plan sales, or 25000 views)
   currentRegistrations: number;
+  clicksCount?: number; // Clics orgánicos interceptados en el Enrutador Puente (separados de registros/ventas)
   plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;

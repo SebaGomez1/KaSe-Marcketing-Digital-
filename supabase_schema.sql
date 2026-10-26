@@ -151,15 +151,11 @@ BEGIN
         is_uuid := FALSE;
     END;
 
-    -- 1. Intentar actualizar tabla campanas (UUID)
+    -- 1. Intentar resolver tabla campanas (UUID) e incrementar contador de clics en metricas_clicks
     IF is_uuid THEN
-        UPDATE public.campanas
-        SET meta_usuarios = meta_usuarios + 1,
-            updated_at = NOW()
-        WHERE id = camp_uuid
-        RETURNING url_destino INTO target_destination;
+        SELECT url_destino INTO target_destination FROM public.campanas WHERE id = camp_uuid;
 
-        -- Actualizar contador en metricas_clicks
+        -- Actualizar contador en metricas_clicks (telemetría de tráfico separada)
         INSERT INTO public.metricas_clicks (campana_id, clics_contador, fecha_actualizacion)
         VALUES (camp_uuid, 1, NOW())
         ON CONFLICT (campana_id)
@@ -169,12 +165,15 @@ BEGIN
         RETURNING clics_contador INTO current_count;
     END IF;
 
-    -- 2. Si no es UUID o no se encontró en campanas, actualizar tabla campaigns
+    -- 2. Si no es UUID o no se encontró en campanas, registrar clic en tabla campaigns (sin alterar current_registrations)
     IF target_destination = '/' OR target_destination IS NULL THEN
+        SELECT target_url INTO target_destination FROM public.campaigns WHERE id = target_campaign_id;
+
         UPDATE public.campaigns
-        SET current_registrations = current_registrations + 1
+        SET clicks_count = COALESCE(clicks_count, 0) + 1,
+            updated_at = NOW()
         WHERE id = target_campaign_id
-        RETURNING target_url, current_registrations INTO target_destination, current_count;
+        RETURNING target_url, clicks_count INTO target_destination, current_count;
     END IF;
 
     -- 3. Registrar conversión de manera atómica

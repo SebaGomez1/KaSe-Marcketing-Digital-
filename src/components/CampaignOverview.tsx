@@ -369,14 +369,14 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
         {/* KPI 4 */}
         <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 space-y-1">
           <div className="flex items-center justify-between text-xs text-neutral-400">
-            <span>Integración Externa</span>
+            <span>Tráfico Puente Interceptado</span>
             <ShieldCheck className="w-4 h-4 text-teal-400" />
           </div>
-          <div className="text-lg font-semibold text-white">
-            Enlace Puente Inteligente
+          <div className="text-2xl font-bold font-mono tabular-nums text-cyan-300">
+            {(campaign.clicksCount || 0).toLocaleString()} <span className="text-xs font-normal text-neutral-500">clics</span>
           </div>
           <div className="text-xs text-neutral-400 flex items-center justify-between">
-            <span>Zero-Code sin scripts invasivos</span>
+            <span>Visitas orgánicas derivadas</span>
             <button
               onClick={onOpenIntegration}
               className="text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"

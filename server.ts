@@ -127,6 +127,7 @@ export interface Campaign {
   currency?: string;
   targetRegistrations: number;
   currentRegistrations: number;
+  clicksCount?: number;
   plan: 'basic' | 'starter' | 'growth' | 'enterprise';
   status: 'active' | 'paused_quota_reached' | 'paused_manual' | 'configuring';
   webhookSecret: string;
@@ -1098,7 +1099,9 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       if (campaign.status === 'configuring') {
         campaign.status = 'active';
       }
-      campaign.currentRegistrations += 1;
+      // CRITICAL FIX: Un clic orgánico en el enlace puente es TRÁFICO / VISITA.
+      // NUNCA debe computarse como 'currentRegistrations' (que es la cuota contratada de registros/ventas).
+      campaign.clicksCount = (campaign.clicksCount || 0) + 1;
       
       let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
       const refLower = referrer.toLowerCase();
@@ -1119,7 +1122,7 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       } else if (campaign.modules) {
         const activeKeys = Object.keys(campaign.modules).filter((k) => campaign.modules[k as keyof typeof campaign.modules].active) as (keyof typeof campaign.modules)[];
         if (activeKeys.length > 0) {
-          attributedMod = activeKeys[campaign.currentRegistrations % activeKeys.length];
+          attributedMod = activeKeys[(campaign.clicksCount || 0) % activeKeys.length];
         }
       }
 
@@ -1127,7 +1130,6 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
         if (!campaign.modules[attributedMod].conversionsCount) {
           campaign.modules[attributedMod].conversionsCount = 0;
         }
-        campaign.modules[attributedMod].conversionsCount! += 1;
         campaign.modules[attributedMod].lastConversionAt = nowIso;
       }
 
@@ -1149,14 +1151,12 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
         timestamp: nowIso,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',
-        message: `⚡ Visita orgánica interceptada y guardada en Supabase (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Total: ${campaign.currentRegistrations}/${campaign.targetRegistrations}.`,
+        message: `⚡ Visita orgánica interceptada hacia ${campaign.targetUrl}. Clics acumulados: ${campaign.clicksCount}. (Registros reales: ${campaign.currentRegistrations}/${campaign.targetRegistrations}).`,
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
 
-      evaluateQuotaAndEnforce(campaign, 'Enrutador puente autónomo (click orgánico)');
-
-      // Persistencia SQL directa inmediata en Supabase con RPC atómico
+      // Persistencia SQL directa inmediata en Supabase con RPC atómico (sin alterar cuota de registros)
       if (supabase) {
         try {
           await Promise.allSettled([
@@ -1177,9 +1177,10 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
               referrer: referrer,
             }),
             supabase.from('campaigns').update({
-              current_registrations: campaign.currentRegistrations,
+              clicks_count: campaign.clicksCount,
               status: campaign.status,
               paused_at: campaign.pausedAt,
+              updated_at: nowIso,
             }).eq('id', campaign.id),
             supabase.from('system_audit_logs').insert({
               id: bridgeLog.id,
@@ -2973,10 +2974,12 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign, options: Cyc
     return { success: true, unitsDelivered: 0, status: campaign.status };
   }
 
-  // Determinar cuántas conversiones reales entregar en este pulso (1-3 en heartbeat, o burstCount si fue manual)
+  // Determinar cuántas conversiones reales entregar en este pulso
+  // En pulso de fondo de mantenimiento NO se fabrican registros falsos; se preserva la integridad de métricas
+  // Solo se entregan unidades si es una ráfaga explícita solicitada por el usuario o en modo simulador burst
   const countToDeliver = options.burstCount
     ? Math.min(options.burstCount, remaining)
-    : Math.min(Math.floor(Math.random() * 3) + 1, remaining);
+    : 0;
 
   // 1. MÓDULO 1: Google Search Indexing API & SEO
   if (campaign.modules?.mod1_seo?.active !== false) {
@@ -3147,24 +3150,26 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign, options: Cyc
     unitsAdded++;
   }
 
-  campaign.currentRegistrations += unitsAdded;
-  results.unitsDelivered = unitsAdded;
+  if (unitsAdded > 0) {
+    campaign.currentRegistrations += unitsAdded;
+    results.unitsDelivered = unitsAdded;
 
-  // Registrar auditoría con el incremento exacto
-  const unitLabel = campaign.targetUnitLabel || 'usuarios registrados';
-  const autoLog: CampaignLog = {
-    id: `log_traffic_${Date.now()}`,
-    timestamp: nowIso,
-    level: 'SUCCESS',
-    module: 'CORE_AUTONOMOUS_CONTROLLER',
-    message: `⚡ [TRÁFICO AUTÓNOMO EN VIVO]: +${unitsAdded} ${unitLabel} captados por los 8 motores activos. Total acumulado: ${campaign.currentRegistrations.toLocaleString()}/${campaign.targetRegistrations.toLocaleString()}.`,
-  };
-  campaign.logs.unshift(autoLog);
-  if (campaign.logs.length > 50) campaign.logs = campaign.logs.slice(0, 50);
+    // Registrar auditoría con el incremento exacto
+    const unitLabel = campaign.targetUnitLabel || 'usuarios registrados';
+    const autoLog: CampaignLog = {
+      id: `log_traffic_${Date.now()}`,
+      timestamp: nowIso,
+      level: 'SUCCESS',
+      module: 'CORE_AUTONOMOUS_CONTROLLER',
+      message: `⚡ [TRÁFICO AUTÓNOMO EN VIVO]: +${unitsAdded} ${unitLabel} captados por los 8 motores activos. Total acumulado: ${campaign.currentRegistrations.toLocaleString()}/${campaign.targetRegistrations.toLocaleString()}.`,
+    };
+    campaign.logs.unshift(autoLog);
+    if (campaign.logs.length > 50) campaign.logs = campaign.logs.slice(0, 50);
 
-  // Verificación de corte por cuota
-  const didAutoPause = evaluateQuotaAndEnforce(campaign, 'Tope de meta completado al 100%');
-  results.didAutoPause = didAutoPause;
+    // Verificación de corte por cuota
+    const didAutoPause = evaluateQuotaAndEnforce(campaign, 'Tope de meta completado al 100%');
+    results.didAutoPause = didAutoPause;
+  }
 
   await saveCampaignAsync(campaign);
   return results;

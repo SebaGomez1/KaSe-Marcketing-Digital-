@@ -444,6 +444,18 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                           </div>
 
                           <div>
+                            <span className="text-neutral-500 text-[11px] block">Tráfico Interceptado (Clics al Puente):</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
+                                {(camp.clicksCount || 0).toLocaleString()} clics orgánicos
+                              </span>
+                              <span className="text-[10px] text-neutral-400">
+                                (Tráfico separado de {camp.targetUnitLabel || 'conversiones contratadas'})
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
                             <span className="text-neutral-500 text-[11px] block">Momento de Ignición & Fecha Exacta:</span>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                               <CampaignLiveTime createdAt={camp.createdAt} />

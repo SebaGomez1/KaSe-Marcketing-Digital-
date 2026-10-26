@@ -262,6 +262,7 @@ export function mapRowToCampaign(
     currency: row.currency || 'USD',
     targetRegistrations: Number(row.target_registrations || 2000),
     currentRegistrations: Number(row.current_registrations || 0),
+    clicksCount: Number(row.clicks_count || 0),
     plan: row.plan || 'starter',
     status: row.status || 'configuring',
     webhookSecret: row.webhook_secret || `whsec_${row.id}`,
@@ -294,6 +295,7 @@ export function mapCampaignToRow(campaign: Campaign): any {
     currency: campaign.currency || 'USD',
     target_registrations: campaign.targetRegistrations,
     current_registrations: campaign.currentRegistrations,
+    clicks_count: campaign.clicksCount || 0,
     plan: campaign.plan,
     status: campaign.status,
     webhook_secret: campaign.webhookSecret,
@@ -403,18 +405,16 @@ export async function handleBridgeInterceptionDirectSupabase(
     }
 
     const assignedUserId = campaign.user_id || campaign.creator_email || 'usuario_anonimo';
-    const currentRegs = Number(campaign.current_registrations || 0) + 1;
+    const newClicks = Number(campaign.clicks_count || 0) + 1;
+    const currentRegs = Number(campaign.current_registrations || 0);
     const targetRegs = Number(campaign.target_registrations || 2000);
-    const newStatus = (currentRegs >= targetRegs && campaign.status === 'active')
-      ? 'paused_quota_reached'
-      : campaign.status;
 
-    const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const convId = `click_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const nowIso = new Date().toISOString();
 
-    // 2. Persist conversion record strictly associated to user_id and campana_id in Supabase
+    // 2. Persist click record strictly associated to user_id and campana_id in Supabase
     await Promise.allSettled([
-      // Insert conversion with both campaign_id and campana_id + user_id
+      // Insert organic click telemetry record
       supabase.from('conversions').insert({
         id: convId,
         campaign_id: campaign.id,
@@ -426,11 +426,10 @@ export async function handleBridgeInterceptionDirectSupabase(
         ip_masked: ipMasked,
         referrer: referrer,
       }),
-      // Atomic counter update
+      // Clicks count update without tampering with completed registration quota
       supabase.from('campaigns').update({
-        current_registrations: currentRegs,
-        status: newStatus,
-        paused_at: newStatus === 'paused_quota_reached' ? nowIso : campaign.paused_at,
+        clicks_count: newClicks,
+        updated_at: nowIso,
       }).eq('id', campaign.id),
       // System audit log directly to Supabase
       supabase.from('system_audit_logs').insert({
@@ -440,7 +439,7 @@ export async function handleBridgeInterceptionDirectSupabase(
         timestamp: nowIso,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',
-        message: `⚡ Enlace Puente interceptado: +1 registro guardado en Supabase (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Total: ${currentRegs}/${targetRegs}.`,
+        message: `⚡ Enlace Puente interceptado: +1 clic orgánico derivado al destino (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Clics totales: ${newClicks}. Registros contratados: ${currentRegs}/${targetRegs}.`,
       })
     ]);
 

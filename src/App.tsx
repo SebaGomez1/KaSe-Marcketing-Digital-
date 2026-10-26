@@ -299,7 +299,7 @@ export default function App() {
       clearInterval(syncTimer);
       clearInterval(daemonTimer);
     };
-  }, [currentUser?.id, currentUser?.email, campaigns]);
+  }, [currentUser?.id, currentUser?.email]);
 
   // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
   useEffect(() => {
