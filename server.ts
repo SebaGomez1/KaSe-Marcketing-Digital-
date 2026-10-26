@@ -399,9 +399,14 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
           logRowsByCamp[l.campaign_id].push(l);
         });
 
-        const mapped = filterOutFakeCampaigns(campRows.map((r) => 
-          mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
-        ));
+        const mapped = filterOutFakeCampaigns(campRows.map((r) => {
+          const camp = mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || []);
+          if (camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
+            camp.status = 'active';
+            camp.pausedAt = undefined;
+          }
+          return camp;
+        }));
         if (mapped.length > 0) {
           campaigns = mapped;
           saveCampaignsToFile();
@@ -423,7 +428,14 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
         const params = isSuper ? [] : [userId];
         const res = await client.query(queryStr, params);
         if (res.rows && res.rows.length > 0) {
-          const mapped = filterOutFakeCampaigns(res.rows.map((r) => mapRowToCampaign(r, [], [], [])));
+          const mapped = filterOutFakeCampaigns(res.rows.map((r) => {
+            const camp = mapRowToCampaign(r, [], [], []);
+            if (camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
+              camp.status = 'active';
+              camp.pausedAt = undefined;
+            }
+            return camp;
+          }));
           if (mapped.length > 0) {
             campaigns = mapped;
             saveCampaignsToFile();
@@ -439,10 +451,22 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
   }
 
   if (isSuper) {
-    return filterOutFakeCampaigns(campaigns);
+    const valid = filterOutFakeCampaigns(campaigns);
+    valid.forEach((c) => {
+      if (c.currentRegistrations < c.targetRegistrations && c.status !== 'paused_quota_reached') {
+        c.status = 'active';
+      }
+    });
+    return valid;
   }
   const filtered = campaigns.filter((c) => c.userId === userId || c.creatorEmail === userId);
-  return filterOutFakeCampaigns(filtered);
+  const result = filterOutFakeCampaigns(filtered);
+  result.forEach((c) => {
+    if (c.currentRegistrations < c.targetRegistrations && c.status !== 'paused_quota_reached') {
+      c.status = 'active';
+    }
+  });
+  return result;
 }
 
 async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
@@ -3117,13 +3141,17 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign, options: Cyc
   return results;
 }
 
-// Bucle demonio autónomo en background: escanea campañas activas cada 15 segundos
+// Bucle demonio autónomo en background: escanea campañas cada 15 segundos
 setInterval(async () => {
   try {
-    const activeCamps = campaigns.filter(
-      (c) => c && c.status === 'active' && c.currentRegistrations < c.targetRegistrations && !FAKE_CAMPAIGN_IDS.includes(c.id)
+    const candidateCamps = campaigns.filter(
+      (c) => c && c.currentRegistrations < c.targetRegistrations && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.status !== 'paused_quota_reached'
     );
-    for (const camp of activeCamps) {
+    for (const camp of candidateCamps) {
+      if (camp.status !== 'active') {
+        camp.status = 'active';
+        camp.pausedAt = undefined;
+      }
       await ejecutarCicloAutonomoParaCampana(camp, { isBackgroundPulse: true });
     }
   } catch (err) {
@@ -3135,15 +3163,19 @@ setInterval(async () => {
 app.post('/api/engines/process-active-daemon', async (req: Request, res: Response): Promise<void> => {
   try {
     const allCamps = await getCampaignsAsync();
-    const activeCamps = allCamps.filter(
-      (c) => c && c.status === 'active' && c.currentRegistrations < c.targetRegistrations
+    const candidateCamps = allCamps.filter(
+      (c) => c && c.currentRegistrations < c.targetRegistrations && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.status !== 'paused_quota_reached'
     );
     const results = [];
-    for (const camp of activeCamps) {
+    for (const camp of candidateCamps) {
+      if (camp.status !== 'active') {
+        camp.status = 'active';
+        camp.pausedAt = undefined;
+      }
       const resCycle = await ejecutarCicloAutonomoParaCampana(camp);
-      results.push({ id: camp.id, current: camp.currentRegistrations, added: resCycle?.unitsDelivered || 0 });
+      results.push({ id: camp.id, name: camp.name, current: camp.currentRegistrations, added: resCycle?.unitsDelivered || 0 });
     }
-    res.json({ success: true, processedCount: activeCamps.length, results });
+    res.json({ success: true, processedCount: candidateCamps.length, results });
   } catch (err: any) {
     res.status(500).json({ error: 'Daemon cycle failed', details: err.message });
   }

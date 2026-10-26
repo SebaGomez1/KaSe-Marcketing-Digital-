@@ -277,20 +277,23 @@ export default function App() {
     }, 3500);
 
     // Continuous Autonomous Engine Daemon Keepalive (Vercel Serverless Resilient Pulse)
-    // Every 10s, ping the autonomous daemon endpoint to ensure all 8 engines keep processing and delivering conversions
-    const daemonTimer = setInterval(async () => {
+    // Every 8s, ping the autonomous daemon endpoint to ensure all 8 engines keep processing and delivering conversions
+    const pingDaemon = async () => {
       try {
-        const hasActive = campaigns.some(
-          (c) => c && c.status === 'active' && c.currentRegistrations < c.targetRegistrations
+        const hasPending = campaigns.some(
+          (c) => c && c.currentRegistrations < c.targetRegistrations && c.status !== 'paused_quota_reached'
         );
-        if (hasActive) {
+        if (hasPending) {
           await fetch('/api/engines/process-active-daemon', { method: 'POST' });
           fetchCampaigns();
         }
       } catch {
         // network silent catch
       }
-    }, 10000);
+    };
+
+    pingDaemon();
+    const daemonTimer = setInterval(pingDaemon, 8000);
 
     return () => {
       clearInterval(syncTimer);
