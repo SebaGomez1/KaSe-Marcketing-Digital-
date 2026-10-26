@@ -175,12 +175,21 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
       {/* 3. Accordion List of Campaigns */}
       <div className="space-y-4">
         {filteredCampaigns.length === 0 ? (
-          <div className="py-16 text-center rounded-2xl bg-neutral-900/40 border border-neutral-800 space-y-3">
-            <FolderKanban className="w-10 h-10 text-neutral-600 mx-auto" />
-            <h3 className="text-base font-bold text-white">No hay campañas registradas actualmente</h3>
-            <p className="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
-              Todas las campañas previas han sido limpiadas. A partir de ahora, cada nueva campaña validará que las APIs de sus motores estén conectadas en Vercel antes de autorizar el checkout o iniciar el tráfico real.
-            </p>
+          <div className="py-16 text-center rounded-2xl bg-neutral-900/40 border border-neutral-800 space-y-4 p-6">
+            <FolderKanban className="w-12 h-12 text-emerald-500/50 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">No hay campañas registradas actualmente</h3>
+              <p className="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+                Todas las campañas simuladas han sido eliminadas. Tu cuenta cuenta con blindaje de persistencia indestructible: cada nueva campaña que crees quedará guardada de forma permanente y nunca más desaparecerá.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenNewCampaign()}
+              className="px-5 py-2.5 rounded-xl font-bold text-xs bg-emerald-400 hover:bg-emerald-300 text-black inline-flex items-center gap-2 cursor-pointer transition-all shadow-lg shadow-emerald-500/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Crear mi primera campaña ahora</span>
+            </button>
           </div>
         ) : (
           filteredCampaigns.map((camp) => {

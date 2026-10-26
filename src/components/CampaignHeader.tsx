@@ -19,6 +19,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   onResetCounter,
   isActionLoading = false,
 }) => {
+  if (!campaign) return null;
   const isQuotaReached = campaign.status === 'paused_quota_reached';
   const isManuallyPaused = campaign.status === 'paused_manual';
   const isActive = campaign.status === 'active';

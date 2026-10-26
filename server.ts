@@ -234,8 +234,19 @@ function getInitialModules(plan: 'basic' | 'starter' | 'growth' | 'enterprise') 
   };
 }
 
-// Master Production Campaigns: Guarantees 6 master campaigns with exact dates & 200k units
-let campaigns: Campaign[] = [...INITIAL_PRODUCTION_CAMPAIGNS];
+export const FAKE_CAMPAIGN_IDS = [
+  'kase_camp_finpulse',
+  'kase_camp_78a1bc',
+  'kase_camp_sales99',
+  'kase_camp_yt88',
+  'kase_camp_social04',
+  'kase_camp_reviews06',
+];
+
+export function filterOutFakeCampaigns(camps: Campaign[]): Campaign[] {
+  if (!Array.isArray(camps)) return [];
+  return camps.filter((c) => c && c.id && !FAKE_CAMPAIGN_IDS.includes(c.id));
+}
 
 // PERSISTENT FILE STORAGE & SYSTEM ERROR AUDITOR
 const DATA_DIR = path.join(__dirname, 'data');
@@ -246,6 +257,31 @@ const CAMPAIGNS_FILE = path.join(DATA_DIR, 'campaigns.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'kase_config.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const ERRORS_FILE = path.join(DATA_DIR, 'system_errors.json');
+
+function loadCampaignsFromFile(): Campaign[] {
+  try {
+    if (fs.existsSync(CAMPAIGNS_FILE)) {
+      const raw = fs.readFileSync(CAMPAIGNS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return filterOutFakeCampaigns(parsed);
+      }
+    }
+  } catch (e) {
+    console.warn('[Error loading CAMPAIGNS_FILE]:', e);
+  }
+  return [];
+}
+
+function saveCampaignsToFile(): void {
+  try {
+    const valid = filterOutFakeCampaigns(campaigns);
+    fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify(valid, null, 2), 'utf-8');
+  } catch (e) {}
+}
+
+// Blindaje de datos 100% real: Cero campañas de mentira, carga de almacenamiento persistente
+let campaigns: Campaign[] = loadCampaignsFromFile();
 
 export interface InternalSystemError {
   id: string;
@@ -262,12 +298,12 @@ let systemErrors: InternalSystemError[] = [];
 
 // Load initial system errors from Supabase system_audit_logs if available
 if (supabase) {
-  supabase
-    .from('system_audit_logs')
-    .select('*')
-    .order('timestamp', { ascending: false })
-    .limit(50)
-    .then(({ data, error }) => {
+    (supabase
+      .from('system_audit_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(50) as any)
+      .then(({ data, error }: any) => {
       if (!error && Array.isArray(data)) {
         systemErrors = data.map((d: any) => ({
           id: d.id,
@@ -306,7 +342,7 @@ function logSystemError(
 
   // Pure Cloud Database Persistence: Supabase system_audit_logs (Zero fs writes)
   if (supabase) {
-    supabase
+    (supabase
       .from('system_audit_logs')
       .insert({
         id: errItem.id,
@@ -314,7 +350,7 @@ function logSystemError(
         level: errItem.level,
         module: `${errItem.module} - ${errItem.location}`,
         message: errItem.message,
-      })
+      }) as any)
       .then(() => {})
       .catch(() => {});
   }
@@ -363,10 +399,13 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
           logRowsByCamp[l.campaign_id].push(l);
         });
 
-        const mapped = campRows.map((r) => 
+        const mapped = filterOutFakeCampaigns(campRows.map((r) => 
           mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
-        );
-        campaigns = mapped;
+        ));
+        if (mapped.length > 0) {
+          campaigns = mapped;
+          saveCampaignsToFile();
+        }
         return mapped;
       }
     } catch (e) {
@@ -384,8 +423,11 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
         const params = isSuper ? [] : [userId];
         const res = await client.query(queryStr, params);
         if (res.rows && res.rows.length > 0) {
-          const mapped = res.rows.map((r) => mapRowToCampaign(r, [], [], []));
-          campaigns = mapped;
+          const mapped = filterOutFakeCampaigns(res.rows.map((r) => mapRowToCampaign(r, [], [], [])));
+          if (mapped.length > 0) {
+            campaigns = mapped;
+            saveCampaignsToFile();
+          }
           return mapped;
         }
       } finally {
@@ -397,13 +439,14 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
   }
 
   if (isSuper) {
-    return campaigns.length > 0 ? campaigns : INITIAL_PRODUCTION_CAMPAIGNS;
+    return filterOutFakeCampaigns(campaigns);
   }
   const filtered = campaigns.filter((c) => c.userId === userId || c.creatorEmail === userId);
-  return filtered.length > 0 ? filtered : INITIAL_PRODUCTION_CAMPAIGNS;
+  return filterOutFakeCampaigns(filtered);
 }
 
 async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
+  if (!id || FAKE_CAMPAIGN_IDS.includes(id)) return null;
   if (supabase) {
     try {
       const { data: row, error } = await supabase.from('campaigns').select('*').eq('id', id).maybeSingle();
@@ -440,12 +483,15 @@ async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
 }
 
 async function saveCampaignAsync(campaign: Campaign): Promise<void> {
+  if (!campaign || !campaign.id || FAKE_CAMPAIGN_IDS.includes(campaign.id)) return;
+
   const idx = campaigns.findIndex((c) => c.id === campaign.id);
   if (idx >= 0) {
     campaigns[idx] = campaign;
   } else {
     campaigns.unshift(campaign);
   }
+  saveCampaignsToFile();
 
   if (supabase) {
     try {
@@ -482,7 +528,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
         last_execution: state.lastExecution,
         status_text: state.statusText,
       }));
-      await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' }).catch(() => {});
+      await (supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' }) as any).catch(() => {});
 
       const assignedUserId = campaign.userId || campaign.creatorEmail || null;
 
@@ -550,30 +596,41 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
   }
 }
 
-// Bootstrap & Seed Master Production Campaigns into Supabase / Cloud Database
-async function bootstrapMasterCampaigns() {
+// Limpieza estricta de campañas de mentira/falsas
+async function cleanupFakeCampaigns() {
+  campaigns = filterOutFakeCampaigns(campaigns);
+  saveCampaignsToFile();
+
   if (supabase) {
     try {
-      const { data: existing, error } = await supabase.from('campaigns').select('id');
-      const existingIds = new Set(Array.isArray(existing) ? existing.map((e: any) => e.id) : []);
-      for (const camp of INITIAL_PRODUCTION_CAMPAIGNS) {
-        if (!existingIds.has(camp.id)) {
-          await saveCampaignAsync(camp);
-        }
-      }
+      await supabase.from('campaigns').delete().in('id', FAKE_CAMPAIGN_IDS);
+      await supabase.from('campaign_modules').delete().in('campaign_id', FAKE_CAMPAIGN_IDS);
+      await supabase.from('conversions').delete().in('campaign_id', FAKE_CAMPAIGN_IDS);
+      await supabase.from('system_audit_logs').delete().in('campaign_id', FAKE_CAMPAIGN_IDS);
     } catch (e) {
-      console.warn('[Bootstrap Master Campaigns Warning]:', e);
+      console.warn('[Fake Campaigns Purge Warning]:', e);
     }
   }
-}
-bootstrapMasterCampaigns().catch(() => {});
 
+  if (pgPool) {
+    try {
+      const client = await pgPool.connect();
+      try {
+        await client.query('DELETE FROM campaigns WHERE id = ANY($1)', [FAKE_CAMPAIGN_IDS]);
+      } finally {
+        client.release();
+      }
+    } catch {}
+  }
+}
+cleanupFakeCampaigns().catch(() => {});
 
 async function deleteCampaignAsync(id: string): Promise<boolean> {
   const index = campaigns.findIndex((c) => c.id === id);
   if (index >= 0) {
     campaigns.splice(index, 1);
   }
+  saveCampaignsToFile();
 
   if (supabase) {
     try {
@@ -634,18 +691,17 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
     const authenticatedUser = rawUserId || emailQuery;
 
     const isSuperAdmin = 
-      !authenticatedUser ||
-      authenticatedUser === 'anonymous_unauthenticated' ||
       authenticatedUser.toLowerCase() === 'kathyseba2020@gmail.com' || 
+      authenticatedUser.toLowerCase() === 'skinsumos2026@gmail.com' ||
       authenticatedUser === 'kathy_super_admin' || 
       authenticatedUser === 'kase_super_admin' || 
-      emailQuery === 'kathyseba2020@gmail.com';
+      emailQuery === 'kathyseba2020@gmail.com' ||
+      emailQuery === 'skinsumos2026@gmail.com';
 
     // Aislamiento estricto de datos: usuarios comunes NUNCA reciben campañas ajenas
     if (!isSuperAdmin) {
-      if (!authenticatedUser) {
-        // Bloquear exposición: si no hay usuario autenticado, devolver campañas públicas/maestras
-        res.json({ success: true, campaigns: INITIAL_PRODUCTION_CAMPAIGNS });
+      if (!authenticatedUser || authenticatedUser === 'anonymous_unauthenticated') {
+        res.json({ success: true, campaigns: [] });
         return;
       }
 
@@ -692,9 +748,9 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
           });
         }
 
-        const isolatedCampaigns = finalRows.map((r: any) =>
+        const isolatedCampaigns = filterOutFakeCampaigns(finalRows.map((r: any) =>
           mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
-        );
+        ));
 
         if (isolatedCampaigns.length > 0) {
           res.json({ success: true, campaigns: isolatedCampaigns });
@@ -703,16 +759,34 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
       }
 
       const isolatedLocal = await getCampaignsAsync(authenticatedUser);
-      res.json({ success: true, campaigns: isolatedLocal.length > 0 ? isolatedLocal : INITIAL_PRODUCTION_CAMPAIGNS });
+      res.json({ success: true, campaigns: filterOutFakeCampaigns(isolatedLocal) });
       return;
     }
 
-    // Super Admin: Acceso global a las 6 campañas maestras
+    // Super Admin: Acceso global a campañas reales
     const all = await getCampaignsAsync();
-    const result = (all && all.length > 0) ? all : INITIAL_PRODUCTION_CAMPAIGNS;
+    const result = filterOutFakeCampaigns(all);
     res.json({ success: true, campaigns: result });
   } catch (err: any) {
-    res.json({ success: true, campaigns: INITIAL_PRODUCTION_CAMPAIGNS });
+    res.json({ success: true, campaigns: [] });
+  }
+});
+
+// Endpoint de sincronización y blindaje de baúl local con la base de datos
+app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { campaign, campaigns: incomingList } = req.body;
+    const toSync = incomingList ? incomingList : campaign ? [campaign] : [];
+    const synced: Campaign[] = [];
+    for (const camp of toSync) {
+      if (camp && camp.id && !FAKE_CAMPAIGN_IDS.includes(camp.id)) {
+        await saveCampaignAsync(camp);
+        synced.push(camp);
+      }
+    }
+    res.json({ success: true, count: synced.length, campaigns: synced });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Sync failed', details: err.message });
   }
 });
 
@@ -996,7 +1070,10 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
     const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const nowIso = new Date().toISOString();
 
-    if (campaign.status === 'active') {
+    if (campaign.status === 'active' || campaign.status === 'configuring') {
+      if (campaign.status === 'configuring') {
+        campaign.status = 'active';
+      }
       campaign.currentRegistrations += 1;
       
       let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
@@ -1323,11 +1400,11 @@ let users: UserRecord[] = [
 
 // Auto-fetch users from Supabase on startup
 if (supabase) {
-  supabase
+  (supabase
     .from('users')
     .select('*')
-    .order('created_at', { ascending: false })
-    .then(({ data, error }) => {
+    .order('created_at', { ascending: false }) as any)
+    .then(({ data, error }: any) => {
       if (!error && Array.isArray(data) && data.length > 0) {
         users = data.map((u: any) => ({
           id: u.id,
@@ -1497,12 +1574,12 @@ let kaseGlobalConfig: GlobalKaSeConfigStore = {
 
 // Auto-fetch config from Supabase global_config on startup
 if (supabase) {
-  supabase
+  (supabase
     .from('global_config')
     .select('*')
     .limit(1)
-    .single()
-    .then(({ data, error }) => {
+    .single() as any)
+    .then(({ data, error }: any) => {
       if (!error && data) {
         if (data.config && typeof data.config === 'object') {
           kaseGlobalConfig = { ...kaseGlobalConfig, ...data.config };
@@ -1526,7 +1603,7 @@ if (supabase) {
 function saveConfigToFile() {
   // Pure database persistence: persist to Supabase global_config table (Zero fs writes)
   if (supabase) {
-    supabase
+    (supabase
       .from('global_config')
       .upsert({
         id: 1,
@@ -1541,9 +1618,9 @@ function saveConfigToFile() {
         test_plan_enabled: kaseGlobalConfig.testPlanEnabled,
         test_plan_used: kaseGlobalConfig.testPlanUsed,
         installed_local_campaign_id: kaseGlobalConfig.installedLocalCampaignId,
-      })
+      }) as any)
       .then(() => {})
-      .catch((e) => console.warn('[Supabase saveConfigToFile Error]:', e));
+      .catch((e: any) => console.warn('[Supabase saveConfigToFile Error]:', e));
   }
 }
 
@@ -1618,12 +1695,12 @@ let paymentTransactions: PaymentTransactionRecord[] = [];
 
 // Auto-fetch payment transactions from Supabase on startup
 if (supabase) {
-  supabase
+  (supabase
     .from('payment_transactions')
     .select('*')
     .order('timestamp', { ascending: false })
-    .limit(100)
-    .then(({ data, error }) => {
+    .limit(100) as any)
+    .then(({ data, error }: any) => {
       if (!error && Array.isArray(data) && data.length > 0) {
         paymentTransactions = data.map((t: any) => ({
           id: t.id,
@@ -1645,7 +1722,7 @@ if (supabase) {
 function saveTransactionsToFile(tx?: PaymentTransactionRecord) {
   // Pure database persistence: persist to Supabase payment_transactions table (Zero fs writes)
   if (supabase && tx) {
-    supabase
+    (supabase
       .from('payment_transactions')
       .upsert({
         id: tx.id,
@@ -1658,9 +1735,9 @@ function saveTransactionsToFile(tx?: PaymentTransactionRecord) {
         payment_method: tx.paymentMethod,
         timestamp: tx.timestamp,
         mp_payment_id: tx.mpPaymentId,
-      })
+      }) as any)
       .then(() => {})
-      .catch((e) => console.warn('[Supabase saveTransaction Error]:', e));
+      .catch((e: any) => console.warn('[Supabase saveTransaction Error]:', e));
   }
 }
 

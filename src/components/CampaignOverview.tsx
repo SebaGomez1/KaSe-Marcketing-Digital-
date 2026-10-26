@@ -39,6 +39,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   onOpenPlans,
   isSimulating = false,
 }) => {
+  if (!campaign) return null;
   const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
   const liveCreationTime = useLiveRelativeTime(campaign.createdAt, 1000);
 

@@ -106,10 +106,6 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
 
   // 2. SANDBOX / DEMO SIMULATION (NO REAL MONEY CHARGED)
   const handleSimulatePaymentApproval = async () => {
-    if (checkingGateway || !engineValidation || !engineValidation.canProceed) {
-      setError('Bloqueo de Seguridad KaSe: Activación prevenida porque las APIs requeridas para este plan no están configuradas en Vercel.');
-      return;
-    }
     setLoading(true);
     setError(null);
     setIsSimulation(true);

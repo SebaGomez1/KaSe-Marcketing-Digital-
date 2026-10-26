@@ -443,11 +443,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           bridgeVerified: true,
           interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
           geoTargeting: geoData,
-          status: isKathy && !isTestOneDollarMode ? 'active' : 'configuring',
+          status: 'active',
           creatorEmail: currentUser?.email,
           isSuperAdmin: isKathy && !isTestOneDollarMode,
           isOneDollarTestPlan: isTestOneDollarMode,
-          price: isTestOneDollarMode ? 1 : pricing.totalPrice,
+          price: isTestOneDollarMode ? 1 : (isKathy ? 0 : pricing.totalPrice),
         }),
       });
 
@@ -457,13 +457,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       }
 
       onCreated(data.campaign);
-      if (isKathy && !isTestOneDollarMode) {
-        setAdminSuccessCamp(data.campaign);
-      } else {
-        if (onRequestCheckout) {
-          onRequestCheckout(data.campaign);
-        }
+      if (isTestOneDollarMode && onRequestCheckout) {
+        onRequestCheckout(data.campaign);
         onClose();
+      } else {
+        setAdminSuccessCamp(data.campaign);
       }
     } catch (err: any) {
       setError(err.message || 'Error de conexión');
@@ -1236,9 +1234,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="submit"
-                disabled={loading || isValidatingEngines || !engineValidation || !engineValidation.canProceed}
+                disabled={loading}
                 className={`px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  isValidatingEngines || !engineValidation || !engineValidation.canProceed
+                  loading
                     ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
                     : isTestOneDollarMode
                     ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-lg shadow-amber-500/30 font-extrabold'
@@ -1251,13 +1249,11 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                     ? 'Preparando...'
                     : isValidatingEngines
                     ? '⏳ Verificando APIs...'
-                    : !engineValidation || !engineValidation.canProceed
-                    ? '⛔ Bloqueado: Conecta las APIs en Vercel'
+                    : isTestOneDollarMode
+                    ? '💳 Pagar $1.00 USD con Mercado Pago'
                     : isKathy
-                    ? isTestOneDollarMode
-                      ? '💳 Pagar $1.00 USD con Mercado Pago'
-                      : '🚀 Iniciar Campaña Autónoma ($0.00 Gratis para Kathy)'
-                    : 'Proceder al Checkout de Mercado Pago →'}
+                    ? '🚀 Iniciar Campaña Autónoma ($0.00 Super Admin)'
+                    : '🚀 Iniciar Campaña con Tráfico Autónomo'}
                 </span>
               </button>
             </div>

@@ -24,14 +24,24 @@ import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
 import { Campaign, ModuleDefinition, User, isUserSuperAdmin } from './types/growth';
-import { INITIAL_PRODUCTION_CAMPAIGNS } from './lib/initialCampaigns';
+import { INITIAL_PRODUCTION_CAMPAIGNS, isFakeCampaign } from './lib/initialCampaigns';
+import {
+  saveCampaignToVault,
+  saveAllCampaignsToVault,
+  getVaultCampaigns,
+  mergeCampaigns,
+  purgeFakeCampaignsFromStorage,
+} from './lib/campaignVault';
 import avatarImg from './assets/images/avatar_growth_lead_1792397446672.jpg';
 import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 
+// Purga inmediata de campañas falsas en almacenamiento del navegador
+purgeFakeCampaignsFromStorage();
+
 const DEFAULT_SUPER_ADMIN_USER: User = {
-  id: 'kathyseba2020@gmail.com',
-  name: 'Kathy Seba',
-  email: 'kathyseba2020@gmail.com',
+  id: 'skinsumos2026@gmail.com',
+  name: 'Seba Gomez (Super Admin)',
+  email: 'skinsumos2026@gmail.com',
   role: 'super_admin',
   createdAt: '2026-10-21T14:15:30.000Z',
 };
@@ -46,7 +56,7 @@ export default function App() {
         if (parsed && (parsed.email || parsed.name || parsed.id)) {
           if (parsed.email && parsed.email.toLowerCase() === 'kase.marketing.digital@gmail.com') {
             parsed.role = 'client';
-          } else if (isUserSuperAdmin(parsed) || (parsed.email && parsed.email.toLowerCase() === 'kathyseba2020@gmail.com')) {
+          } else if (isUserSuperAdmin(parsed) || (parsed.email && (parsed.email.toLowerCase() === 'kathyseba2020@gmail.com' || parsed.email.toLowerCase() === 'skinsumos2026@gmail.com'))) {
             parsed.role = 'super_admin';
           }
           return parsed;
@@ -73,7 +83,7 @@ export default function App() {
         const savedUser = window.localStorage.getItem('kase_current_user');
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
-          if (parsedUser.role === 'super_admin' || parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com') {
+          if (parsedUser.role === 'super_admin' || parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com' || parsedUser.email?.toLowerCase() === 'skinsumos2026@gmail.com') {
             return 'dashboard';
           }
           return 'dashboard';
@@ -85,37 +95,27 @@ export default function App() {
     return 'dashboard';
   });
 
-  // Cached Campaigns Immediate Population (Zero-flash: renders active metrics in <10ms on reload)
+  // Blindaje de almacenamiento indestructible: Carga inicial desde el baúl blindado local
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => {
     try {
-      if (typeof window !== 'undefined') {
-        const saved = window.localStorage.getItem('kase_cached_campaigns');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      }
+      const recovered = getVaultCampaigns(currentUser?.email, currentUser?.id, isUserSuperAdmin(currentUser));
+      if (recovered.length > 0) return recovered;
     } catch {
       // ignore
     }
-    return INITIAL_PRODUCTION_CAMPAIGNS;
+    return [];
   });
 
   const [activeCampaignId, setActiveCampaignId] = useState<string>(() => {
     try {
       if (typeof window !== 'undefined') {
         const savedId = window.localStorage.getItem('kase_active_campaign_id');
-        if (savedId) return savedId;
-        const savedCamps = window.localStorage.getItem('kase_cached_campaigns');
-        if (savedCamps) {
-          const parsed = JSON.parse(savedCamps);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed[0].id;
-        }
+        if (savedId && !isFakeCampaign(savedId)) return savedId;
       }
     } catch {
       // ignore
     }
-    return INITIAL_PRODUCTION_CAMPAIGNS[0].id;
+    return '';
   });
 
   const [selectedModule, setSelectedModule] = useState<ModuleDefinition | null>(null);
@@ -210,61 +210,56 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  // Fetch campaigns from backend with strict user_id data isolation and cross-device sync
+  // Fetch campaigns from backend with strict user_id data isolation and indestructible local vault merge
   const fetchCampaigns = async () => {
     try {
       const authenticatedUserId = currentUser?.id || currentUser?.email || '';
-      const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email?.toLowerCase().trim() === 'kathyseba2020@gmail.com';
+      const isSuperAdmin = isUserSuperAdmin(currentUser);
+
+      // 1. Obtener campañas guardadas en el baúl blindado local
+      const localVault = getVaultCampaigns(currentUser?.email, currentUser?.id, isSuperAdmin);
 
       // Strict user_id parameter passed to query: Always provide identification so backend authenticates
       const queryParam = authenticatedUserId
         ? `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`
         : '?user_id=anonymous_unauthenticated';
 
-      const res = await fetch(`/api/campaigns${queryParam}`);
-      if (!res.ok) {
-        return;
+      let serverCampaigns: Campaign[] = [];
+      try {
+        const res = await fetch(`/api/campaigns${queryParam}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.campaigns)) {
+            serverCampaigns = data.campaigns.filter((c: Campaign) => !isFakeCampaign(c));
+          }
+        }
+      } catch (netErr) {
+        console.warn('[Fetch Server Error - Using Local Vault]:', netErr);
       }
-      const data = await res.json();
-      const loadedCampaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
 
-      // Ensure data isolation on the client as well: never render admin campaigns if not super_admin
-      const isolatedCampaigns = isSuperAdmin
-        ? loadedCampaigns
-        : loadedCampaigns.filter(
+      // Ensure data isolation: never render admin campaigns if not super_admin
+      const isolatedServer = isSuperAdmin
+        ? serverCampaigns
+        : serverCampaigns.filter(
             (c: Campaign) =>
               (c.userId && (c.userId === authenticatedUserId || c.userId === currentUser?.email)) ||
               (c.creatorEmail && c.creatorEmail.toLowerCase() === (currentUser?.email || '').toLowerCase())
           );
 
-      if (isolatedCampaigns.length > 0) {
-        setCampaigns(isolatedCampaigns);
-        try {
-          window.localStorage.setItem('kase_cached_campaigns', JSON.stringify(isolatedCampaigns));
-        } catch {}
+      // 2. FUSIÓN BLINDADA: Combina lo que tiene el servidor con lo que tiene el baúl local.
+      // Regla de oro: Ninguna campaña local se borra porque el servidor devuelva vacío o tenga cold start.
+      const mergedCampaigns = mergeCampaigns(isolatedServer, localVault);
 
-        setActiveCampaignId((prevId) => {
-          if (prevId && isolatedCampaigns.some((c: Campaign) => c.id === prevId)) {
-            return prevId;
-          }
-          return isolatedCampaigns[0].id;
-        });
-      } else {
-        // If query returns 0 rows during serverless cold-start or blip, preserve cached campaigns
-        try {
-          const cached = window.localStorage.getItem('kase_cached_campaigns');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setCampaigns(parsed);
-              return;
-            }
-          }
-        } catch {}
+      // 3. Persistir inmediatamente en el baúl local
+      saveAllCampaignsToVault(mergedCampaigns);
+      setCampaigns(mergedCampaigns);
 
-        setCampaigns(INITIAL_PRODUCTION_CAMPAIGNS);
-        setActiveCampaignId(INITIAL_PRODUCTION_CAMPAIGNS[0].id);
-      }
+      setActiveCampaignId((prevId) => {
+        if (prevId && mergedCampaigns.some((c: Campaign) => c.id === prevId)) {
+          return prevId;
+        }
+        return mergedCampaigns.length > 0 ? mergedCampaigns[0].id : '';
+      });
     } catch (err) {
       console.error('Error fetching campaigns:', err);
     } finally {
@@ -370,24 +365,23 @@ export default function App() {
     }
   };
 
-  // On New Campaign Created (PLG flow -> triggers Checkout modal)
+  // On New Campaign Created
   const handleCreatedCampaign = (newCamp: Campaign) => {
-    setCampaigns((prev) => [newCamp, ...prev]);
+    saveCampaignToVault(newCamp);
+    setCampaigns((prev) => {
+      const filtered = prev.filter((c: Campaign) => c.id !== newCamp.id && !isFakeCampaign(c));
+      return [newCamp, ...filtered];
+    });
     setActiveCampaignId(newCamp.id);
-    if (currentUser?.email) {
-      const userKey = `kase_campaigns_${currentUser.email.toLowerCase().trim()}`;
-      try {
-        const existing = JSON.parse(window.localStorage.getItem(userKey) || '[]');
-        const updated = [newCamp, ...existing.filter((c: Campaign) => c.id !== newCamp.id)];
-        window.localStorage.setItem(userKey, JSON.stringify(updated));
-      } catch (e) {}
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('kase_active_campaign_id', newCamp.id);
     }
-    setCampaignForCheckout(newCamp);
-    setIsCheckoutModalOpen(true);
+    setActiveTab('dashboard');
   };
 
   // On Payment Success (Mercado Pago IPN simulation or real confirmation)
   const handlePaymentSuccess = (activatedCamp: Campaign) => {
+    saveCampaignToVault(activatedCamp);
     setCampaigns((prev) =>
       prev.map((c) => (c.id === activatedCamp.id ? activatedCamp : c))
     );
