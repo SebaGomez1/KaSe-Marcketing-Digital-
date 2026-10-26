@@ -2164,6 +2164,106 @@ app.post('/api/payments/mercadopago/webhook', mpWebhookHandler);
 app.post('/api/webhooks/mercadopago', mpWebhookHandler);
 app.get('/api/webhooks/mercadopago', mpWebhookHandler);
 
+// VERCEL CRON JOB: AUTOMATED OUTBOUND ENGINE (X / FOROS Q&A BLINDADO)
+const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<void> => {
+  const executionTimestamp = new Date().toISOString();
+  const summary: any[] = [];
+
+  try {
+    const origin = req.headers.origin || process.env.APP_URL || 'https://kase-marketing.vercel.app';
+    const activeCamps = await getCampaignsAsync();
+
+    for (const campaign of activeCamps) {
+      if (campaign.status !== 'active') continue;
+
+      const isOutboundEnabled = campaign.modules?.mod4_outbound?.active === true || campaign.plan === 'growth' || campaign.plan === 'enterprise';
+      if (!isOutboundEnabled) continue;
+
+      const businessKeywords = [
+        ...(campaign.niche ? campaign.niche.split(/[\s,/]+/) : []),
+        ...(campaign.name ? campaign.name.split(/[\s,/]+/) : []),
+        'growth',
+        'software',
+      ].map(k => k.trim().toLowerCase()).filter(k => k.length > 3).slice(0, 6);
+
+      const bridgeTrackingUrl = `${origin}/r/${campaign.id}?ref=outbound_cron&campana_id=${campaign.id}`;
+      const replyTemplate = `Hemos automatizado este flujo con ${campaign.name}: ${bridgeTrackingUrl}`;
+
+      try {
+        const result = await ejecutarOutboundSeguroSocialListening(businessKeywords, 'x_and_qa_forums', replyTemplate);
+        if (!result.success) throw new Error(result.error || 'Error en red social');
+
+        if (campaign.modules?.mod4_outbound) {
+          campaign.modules.mod4_outbound.itemsProcessed += result.repliesSent;
+          campaign.modules.mod4_outbound.lastExecution = 'Ahora mismo (Cron)';
+        }
+
+        const successLog: CampaignLog = {
+          id: `log_cron_out_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          level: 'SUCCESS',
+          module: 'AUTOMATED_OUTBOUND',
+          message: `🤖 Outbound Cron: ${result.scannedCount} hilos escaneados, ${result.repliesSent} respuestas enviadas con Enlace Puente (campana_id: ${campaign.id}).`,
+        };
+        campaign.logs.unshift(successLog);
+        if (campaign.logs.length > 50) campaign.logs.pop();
+
+        if (supabase) {
+          await supabase.from('system_audit_logs').insert({
+            id: successLog.id,
+            campaign_id: campaign.id,
+            user_id: campaign.userId || campaign.creatorEmail || null,
+            timestamp: successLog.timestamp,
+            level: 'SUCCESS',
+            module: 'AUTOMATED_OUTBOUND',
+            message: successLog.message,
+          });
+        }
+
+        await saveCampaignAsync(campaign);
+        summary.push({ campaignId: campaign.id, status: 'SUCCESS', repliesSent: result.repliesSent });
+      } catch (err: any) {
+        console.warn(`[Outbound Cron Pausando Campaña ${campaign.id}]:`, err.message);
+        campaign.status = 'paused_manual';
+
+        if (supabase) {
+          await Promise.allSettled([
+            supabase.from('campaigns').update({
+              status: 'PAUSADO_TEMPORAL',
+              paused_at: new Date().toISOString(),
+            }).eq('id', campaign.id),
+            supabase.from('campanas').update({
+              estado_motores: {
+                mod4_outbound: false,
+              },
+              updated_at: new Date().toISOString(),
+            }).eq('id', campaign.id),
+            supabase.from('system_audit_logs').insert({
+              id: `log_cron_pause_${Date.now()}`,
+              campaign_id: campaign.id,
+              user_id: campaign.userId || campaign.creatorEmail || null,
+              timestamp: new Date().toISOString(),
+              level: 'WARNING',
+              module: 'AUTOMATED_OUTBOUND',
+              message: `⚠️ Rate limit en canal social externo. Estado: PAUSADO_TEMPORAL para blindar la cuenta.`,
+            }),
+          ]);
+        }
+
+        await saveCampaignAsync(campaign);
+        summary.push({ campaignId: campaign.id, status: 'PAUSADO_TEMPORAL', error: err.message });
+      }
+    }
+
+    res.json({ success: true, timestamp: executionTimestamp, details: summary });
+  } catch (globalErr: any) {
+    res.status(500).json({ success: false, error: globalErr.message });
+  }
+};
+
+app.get('/api/cron/outbound-engine', handleOutboundCronEndpoint);
+app.post('/api/cron/outbound-engine', handleOutboundCronEndpoint);
+
 // Endpoint para entregar la configuración y clave pública de Mercado Pago
 app.get('/api/payments/mercadopago/config', (_req: Request, res: Response): void => {
   const mpDetected = detectMercadoPagoToken();
