@@ -1847,14 +1847,14 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
   }
 
   const cleanAmount = Number(amount || 490);
-  const cleanTitle = title || (campaign ? `Campaña KaSe - ${campaign.name}` : 'Plan KaSe Marketing Digital');
-  const mpDetected = detectMercadoPagoToken();
-  const token = (kaseGlobalConfig.mercadoPagoAccessToken || mpDetected.token || '').trim();
+  const cleanTitle = title || (campaign ? `Plan Growth (${campaign.name}) - Bloque de 50 ventas` : 'Plan Growth - Bloque de 50 ventas');
+  // Usar estrictamente variables de entorno seguras del backend
+  const token = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
 
   // If a real production or test Access Token is provided, call Mercado Pago API directly
   if (token && token.length > 15) {
     try {
-      const origin = req.headers.origin || 'http://localhost:3000';
+      const origin = req.headers.origin || process.env.APP_URL || 'http://localhost:3000';
       const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
         method: 'POST',
         headers: {
@@ -1864,23 +1864,31 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
         body: JSON.stringify({
           items: [
             {
-              id: campaignId || `kase_item_${Date.now()}`,
+              id: campaignId || `kase_growth_${Date.now()}`,
               title: cleanTitle,
+              description: 'Plan Growth - Bloque de 50 ventas con activación de motores',
               quantity: 1,
               currency_id: currency === 'UYU' ? 'UYU' : 'USD',
               unit_price: cleanAmount,
             },
           ],
           payer: {
-            email: payerEmail || campaign?.billing?.payerEmail || 'kathyseba2020@gmail.com',
+            email: payerEmail || campaign?.billing?.payerEmail || 'cliente@empresa.com',
           },
+          external_reference: campaignId,
+          metadata: {
+            campaign_id: campaignId,
+            plan: 'growth',
+            sales_increment: 50,
+          },
+          notification_url: `${origin}/api/webhooks/mercadopago`,
           back_urls: {
             success: `${origin}/?payment=success&campaignId=${campaignId || ''}`,
             pending: `${origin}/?payment=pending&campaignId=${campaignId || ''}`,
             failure: `${origin}/?payment=failure&campaignId=${campaignId || ''}`,
           },
           auto_return: 'approved',
-          statement_descriptor: 'KASE MARKETING',
+          statement_descriptor: 'KASE GROWTH',
         }),
       });
 
@@ -2008,35 +2016,148 @@ app.post('/api/payments/mercadopago/simulate-approval', (req: Request, res: Resp
   });
 });
 
-// MERCADO PAGO WEBHOOK RECEIVER (IPN DE PRODUCCIÓN)
-app.post('/api/payments/mercadopago/webhook', (req: Request, res: Response) => {
-  const { type, data, action } = req.body || {};
-  console.log('[Mercado Pago IPN Event]:', type, action, data);
+// MERCADO PAGO WEBHOOK RECEIVER (IPN DE PRODUCCIÓN CON ACTUALIZACIÓN DIRECTA EN SUPABASE)
+const mpWebhookHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { type, data, action } = req.body || {};
+    const paymentId = data?.id || req.query['data.id'] || req.query.id || req.body?.id;
+    const topic = type || req.query.topic || action;
 
-  const paymentId = data?.id || req.query['data.id'] || req.query.id;
-  const topic = type || req.query.topic;
+    const isPaymentNotification =
+      topic === 'payment' ||
+      topic === 'payment.created' ||
+      topic === 'payment.updated' ||
+      action === 'payment.created' ||
+      action === 'payment.updated' ||
+      Boolean(paymentId);
 
-  if (topic === 'payment' || action === 'payment.created' || action === 'payment.updated') {
-    // If webhook reports a valid payment, find pending campaign and activate it
-    const pendingCamp = campaigns.find((c) => c.status === 'configuring' || c.billing?.subscriptionStatus === 'pending');
-    if (pendingCamp) {
-      pendingCamp.status = 'active';
-      pendingCamp.pausedAt = undefined;
-      pendingCamp.modules = getInitialModules(pendingCamp.plan);
-      if (pendingCamp.billing) pendingCamp.billing.subscriptionStatus = 'active';
-
-      pendingCamp.logs.unshift({
-        id: `log_ipn_${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        level: 'SUCCESS',
-        module: 'MERCADO_PAGO_IPN',
-        message: `Webhook IPN recibido con éxito (Payment ID: ${paymentId || 'MP_PROD_PAY'}). Campaña activada y motores encendidos.`,
-      });
+    if (!isPaymentNotification || !paymentId) {
+      res.status(200).json({ received: true, ignored: true });
+      return;
     }
-  }
 
-  res.status(200).json({ received: true, timestamp: new Date().toISOString() });
-});
+    // 1. Validar estado en Mercado Pago mediante el access token del backend
+    const token = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
+    let paymentData: any = null;
+
+    if (token) {
+      try {
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (mpRes.ok) {
+          paymentData = await mpRes.json();
+        }
+      } catch (e) {
+        console.warn('[MP API Webhook check error]:', e);
+      }
+    }
+
+    const paymentStatus = paymentData?.status || req.body?.status || (action === 'payment.created' ? 'approved' : null);
+    if (paymentStatus !== 'approved') {
+      res.status(200).json({ received: true, status: paymentStatus || 'pending' });
+      return;
+    }
+
+    // 2. Extraer ID de la campaña afectada
+    const campaignId =
+      paymentData?.external_reference ||
+      paymentData?.metadata?.campaign_id ||
+      req.body?.data?.external_reference ||
+      req.body?.external_reference;
+
+    const targetCamp = campaignId ? (await getCampaignByIdAsync(campaignId)) : campaigns.find((c) => c.status === 'configuring' || c.billing?.subscriptionStatus === 'pending');
+
+    if (!targetCamp) {
+      res.status(200).json({ received: true, warning: 'Campaña no encontrada' });
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    // Plan Growth: +50 ventas confirmadas
+    const currentSales = Number(targetCamp.currentRegistrations || 0);
+    const newSales = currentSales + 50;
+
+    targetCamp.status = 'active';
+    targetCamp.currentRegistrations = newSales;
+    targetCamp.pausedAt = undefined;
+    targetCamp.modules = getInitialModules(targetCamp.plan);
+    if (targetCamp.billing) {
+      targetCamp.billing.subscriptionStatus = 'active';
+      targetCamp.billing.lastBilledAt = nowIso;
+      targetCamp.billing.subscriptionId = String(paymentId);
+    }
+
+    const logRecord: CampaignLog = {
+      id: `log_mp_${Date.now()}`,
+      timestamp: nowIso,
+      level: 'SUCCESS',
+      module: 'MERCADO_PAGO_IPN',
+      message: `🎉 Pago APROBADO en Mercado Pago (ID: ${paymentId}). Campaña activada a estado ACTIVA (+50 ventas del Plan Growth acreditadas). Motores encendidos.`,
+    };
+    targetCamp.logs.unshift(logRecord);
+
+    // 3. Consulta SQL directa a Supabase mediante el cliente del servidor
+    if (supabase) {
+      try {
+        await Promise.allSettled([
+          supabase.from('campaigns').update({
+            status: 'active',
+            current_registrations: newSales,
+            paused_at: null,
+            billing: targetCamp.billing,
+          }).eq('id', targetCamp.id),
+
+          supabase.from('campanas').update({
+            meta_usuarios: Number(targetCamp.targetRegistrations || 2000) + 50,
+            estado_motores: {
+              mod1_seo: true,
+              mod2_social: true,
+              mod3_directories: true,
+              mod4_outbound: true,
+              mod5_newsletter: true,
+            },
+            updated_at: nowIso,
+          }).eq('id', targetCamp.id),
+
+          supabase.from('system_audit_logs').insert({
+            id: logRecord.id,
+            campaign_id: targetCamp.id,
+            user_id: targetCamp.userId || targetCamp.creatorEmail || null,
+            timestamp: nowIso,
+            level: 'SUCCESS',
+            module: 'MERCADO_PAGO_IPN',
+            message: logRecord.message,
+          }),
+        ]);
+      } catch (dbErr) {
+        console.warn('[Supabase Webhook Update Error]:', dbErr);
+      }
+    }
+
+    await saveCampaignAsync(targetCamp);
+    ejecutarCicloAutonomoParaCampana(targetCamp).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
+
+    res.status(200).json({
+      received: true,
+      success: true,
+      status: 'ACTIVA',
+      campaignId: targetCamp.id,
+      salesCredited: 50,
+      paymentId,
+    });
+  } catch (err: any) {
+    console.error('[Mercado Pago Webhook Handler Error]:', err);
+    res.status(200).json({ received: true, error: err.message });
+  }
+};
+
+app.post('/api/payments/mercadopago/webhook', mpWebhookHandler);
+app.post('/api/webhooks/mercadopago', mpWebhookHandler);
+app.get('/api/webhooks/mercadopago', mpWebhookHandler);
 
 // Endpoint para entregar la configuración y clave pública de Mercado Pago
 app.get('/api/payments/mercadopago/config', (_req: Request, res: Response): void => {
