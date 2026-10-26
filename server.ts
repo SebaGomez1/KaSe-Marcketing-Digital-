@@ -986,10 +986,15 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
 
       evaluateQuotaAndEnforce(campaign, 'Enrutador puente autónomo (click orgánico)');
 
-      // Persistencia SQL directa inmediata en Supabase
+      // Persistencia SQL directa inmediata en Supabase con RPC atómico
       if (supabase) {
         try {
           await Promise.allSettled([
+            supabase.rpc('increment_clicks', {
+              target_campaign_id: campaign.id,
+              client_ip: ipMasked,
+              client_referrer: referrer,
+            }),
             supabase.from('conversions').insert({
               id: convId,
               campaign_id: campaign.id,

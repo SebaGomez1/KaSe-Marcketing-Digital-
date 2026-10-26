@@ -123,3 +123,76 @@ ON public.metricas_clicks FOR ALL
 TO anon, authenticated
 USING (true)
 WITH CHECK (true);
+
+-- ====================================================================
+-- FUNCIÓN RPC ATÓMICA NATIVA: increment_clicks
+-- Evita race conditions, bloqueos y congelamiento del contador
+-- ====================================================================
+CREATE OR REPLACE FUNCTION public.increment_clicks(
+    target_campaign_id TEXT,
+    client_ip TEXT DEFAULT '185.12.***.***',
+    client_referrer TEXT DEFAULT 'Enlace Puente KaSe'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    target_destination TEXT := '/';
+    current_count INT := 0;
+    is_uuid BOOLEAN := FALSE;
+    camp_uuid UUID;
+BEGIN
+    -- Validar si el ID es UUID válido
+    BEGIN
+        camp_uuid := target_campaign_id::uuid;
+        is_uuid := TRUE;
+    EXCEPTION WHEN OTHERS THEN
+        is_uuid := FALSE;
+    END;
+
+    -- 1. Intentar actualizar tabla campanas (UUID)
+    IF is_uuid THEN
+        UPDATE public.campanas
+        SET meta_usuarios = meta_usuarios + 1,
+            updated_at = NOW()
+        WHERE id = camp_uuid
+        RETURNING url_destino INTO target_destination;
+
+        -- Actualizar contador en metricas_clicks
+        INSERT INTO public.metricas_clicks (campana_id, clics_contador, fecha_actualizacion)
+        VALUES (camp_uuid, 1, NOW())
+        ON CONFLICT (campana_id)
+        DO UPDATE SET
+            clics_contador = public.metricas_clicks.clics_contador + 1,
+            fecha_actualizacion = NOW()
+        RETURNING clics_contador INTO current_count;
+    END IF;
+
+    -- 2. Si no es UUID o no se encontró en campanas, actualizar tabla campaigns
+    IF target_destination = '/' OR target_destination IS NULL THEN
+        UPDATE public.campaigns
+        SET current_registrations = current_registrations + 1
+        WHERE id = target_campaign_id
+        RETURNING target_url, current_registrations INTO target_destination, current_count;
+    END IF;
+
+    -- 3. Registrar conversión de manera atómica
+    INSERT INTO public.conversions (id, campaign_id, campana_id, timestamp, method, referrer, ip_masked)
+    VALUES (
+        'conv_rpc_' || extract(epoch from now())::bigint || '_' || substr(md5(random()::text), 1, 6),
+        target_campaign_id,
+        target_campaign_id,
+        NOW(),
+        'organic_click',
+        client_referrer,
+        client_ip
+    );
+
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'clics_contador', COALESCE(current_count, 1),
+        'destination_url', COALESCE(target_destination, '/')
+    );
+END;
+$$;

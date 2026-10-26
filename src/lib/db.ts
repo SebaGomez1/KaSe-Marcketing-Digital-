@@ -353,7 +353,26 @@ export async function handleBridgeInterceptionDirectSupabase(
   }
 
   try {
-    // 1. Intercept campaign row directly from Supabase
+    // 1. Operación atómica nativa vía .rpc('increment_clicks') para evitar condiciones de carrera
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_clicks', {
+        target_campaign_id: campaignId,
+        client_ip: ipMasked,
+        client_referrer: referrer,
+      });
+
+      if (!rpcErr && rpcData && rpcData.destination_url && rpcData.destination_url !== '/') {
+        return {
+          redirectUrl: rpcData.destination_url,
+          success: true,
+          campaignName: 'Campaña KaSe',
+        };
+      }
+    } catch (e) {
+      // RPC fallback
+    }
+
+    // 2. Consulta y persistencia directa si RPC no estuviera disponible
     const { data: campaign, error } = await supabase
       .from('campaigns')
       .select('*')
