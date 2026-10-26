@@ -100,7 +100,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync initialPlan / campaign when modal opens with neutral fallback guards
+  // Sync initialPlan / campaign ONLY when modal opens (avoids resetting slider on drag)
   useEffect(() => {
     if (!isOpen) return;
     const targetPlan = initialPlan || campaign?.plan || 'starter';
@@ -114,7 +114,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       else if (targetPlan === 'enterprise') setTargetQuantity(100000);
       else setTargetQuantity(2000);
     }
-  }, [initialPlan, campaign, isOpen]);
+  }, [isOpen]);
 
   // Fetch real Vercel API status for the selected plan
   useEffect(() => {
@@ -1106,10 +1106,15 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  min={1}
-                  max={500000}
+                  min={Math.min(...(currentTypeMeta.targetPresets || [10]))}
+                  max={Math.max(...(currentTypeMeta.targetPresets || [100000]), 100000)}
                   value={targetQuantity}
-                  onChange={(e) => handleTargetChange(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      handleTargetChange(parsed);
+                    }
+                  }}
                   className="bg-neutral-900 border border-emerald-500/50 rounded px-2.5 py-1 text-xs font-mono font-bold text-emerald-400 w-28 text-right focus:outline-none focus:border-emerald-400"
                 />
                 <span className="text-xs text-neutral-400 font-medium">{currentTypeMeta.unitLabelPlural}</span>
@@ -1136,15 +1141,37 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
             </div>
 
             {/* Range slider for fluid selection */}
-            <input
-              type="range"
-              min={currentTypeMeta.targetPresets[0] || 10}
-              max={currentTypeMeta.targetPresets[currentTypeMeta.targetPresets.length - 1] || 10000}
-              step={selectedType === 'plan_sales' ? 5 : 100}
-              value={targetQuantity}
-              onChange={(e) => handleTargetChange(parseInt(e.target.value, 10))}
-              className="w-full accent-emerald-400 cursor-pointer h-2 bg-neutral-900 rounded border border-neutral-800"
-            />
+            {(() => {
+              const presets = currentTypeMeta.targetPresets && currentTypeMeta.targetPresets.length > 0
+                ? currentTypeMeta.targetPresets
+                : [500, 1000, 2000, 5000, 10000, 25000, 50000, 100000];
+              const minVal = Math.min(...presets);
+              const maxVal = Math.max(...presets);
+              const dynamicStep = selectedType === 'plan_sales'
+                ? 1
+                : maxVal >= 50000
+                ? 250
+                : maxVal >= 10000
+                ? 100
+                : 25;
+
+              return (
+                <input
+                  type="range"
+                  min={minVal}
+                  max={maxVal}
+                  step={dynamicStep}
+                  value={Math.max(minVal, Math.min(targetQuantity, maxVal))}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      handleTargetChange(parsed);
+                    }
+                  }}
+                  className="w-full accent-emerald-400 cursor-pointer h-2.5 bg-neutral-900 rounded border border-neutral-700 hover:border-emerald-500/50 transition-colors"
+                />
+              );
+            })()}
 
             {/* Tier & Price breakdown card */}
             {(() => {

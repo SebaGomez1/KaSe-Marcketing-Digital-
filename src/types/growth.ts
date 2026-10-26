@@ -401,7 +401,7 @@ export const CAMPAIGN_TYPES_CATALOG: CampaignTypeDefinition[] = [
     howItWorks: 'Activa sindicación SEO en Google, fichas de lanzamiento en directorios globales y escucha activa en foros. Los motores trabajan de forma ininterrumpida hasta alcanzar el número exacto de altas en tu Thank You Page.',
     verificationMethod: 'Enlace Puente Inteligente (/r/:id) que contabiliza automáticamente cada usuario derivado a tu pantalla de registro.',
     defaultTarget: 2000,
-    targetPresets: [500, 1000, 2000, 5000, 10000, 25000],
+    targetPresets: [500, 1000, 2000, 5000, 10000, 25000, 50000, 100000],
     pricePerUnitEstimateUSD: 0.245,
   },
   {

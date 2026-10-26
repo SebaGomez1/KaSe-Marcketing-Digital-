@@ -4676,8 +4676,80 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
   }
 });
 
+// ====================================================================
+// PURGA MASIVA POR ÚNICA VEZ AL ARRANCAR EL SERVIDOR (MODO PRODUCCIÓN LIMPIO)
+// ====================================================================
+let initialPurgeExecuted = false;
+
+async function purgeAllTestCampaignsOnce(): Promise<{ success: boolean; message: string }> {
+  if (initialPurgeExecuted) {
+    return { success: true, message: 'La purga inicial ya fue ejecutada previamente.' };
+  }
+  initialPurgeExecuted = true;
+
+  try {
+    console.log('[PURGA INICIAL]: Vaciando historial de pruebas en Supabase y localmente...');
+
+    // 1. Limpieza de memoria y archivo local campaigns.json
+    campaigns = [];
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify([], null, 2), 'utf-8');
+    } catch (fsErr) {
+      console.warn('[PURGA INICIAL fs error]:', fsErr);
+    }
+
+    // 2. DELETE directo en Supabase sobre campaigns, conversions y campaign_modules
+    if (supabase) {
+      try {
+        await Promise.allSettled([
+          supabase.from('campaign_modules').delete().neq('id', 0),
+          supabase.from('conversions').delete().neq('id', 'keep_none'),
+          supabase.from('campaigns').delete().neq('id', 'keep_none'),
+        ]);
+        console.log('[PURGA INICIAL]: Tablas campaigns, conversions y campaign_modules vaciadas en Supabase.');
+      } catch (dbErr) {
+        console.warn('[PURGA INICIAL Supabase error]:', dbErr);
+      }
+    }
+
+    // 3. DELETE directo en pool de PostgreSQL si está conectado
+    if (pgPool) {
+      try {
+        const client = await pgPool.connect();
+        try {
+          await client.query('DELETE FROM campaign_modules;');
+          await client.query('DELETE FROM conversions;');
+          await client.query('DELETE FROM campaigns;');
+        } finally {
+          client.release();
+        }
+      } catch (pgErr) {
+        console.warn('[PURGA INICIAL pgPool error]:', pgErr);
+      }
+    }
+
+    return { success: true, message: 'Purga masiva de pruebas completada con éxito. Suite lista en limpio.' };
+  } catch (err: any) {
+    console.error('[PURGA INICIAL error general]:', err);
+    return { success: false, message: err?.message || 'Error en purga inicial' };
+  }
+}
+
+// Endpoint de inicio/purga directa
+app.all('/api/system/purge-all', async (_req: Request, res: Response) => {
+  initialPurgeExecuted = false; // Permitir re-ejecución forzada si se llama explícitamente al endpoint
+  const result = await purgeAllTestCampaignsOnce();
+  res.json(result);
+});
+
 // START SERVER & VITE INTEGRATION
 async function startServer() {
+  // Ejecutar purga masiva por única vez al arrancar el servidor
+  await purgeAllTestCampaignsOnce();
+
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
