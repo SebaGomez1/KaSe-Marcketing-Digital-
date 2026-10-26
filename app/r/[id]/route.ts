@@ -104,7 +104,10 @@ export async function GET(
               campana_id: campaignId,
               clics_contador: 1,
               fecha_actualizacion: new Date().toISOString(),
-            }, { onConflict: 'campana_id' })
+            }, { onConflict: 'campana_id' }),
+            supabase.from('campaigns').update({
+              updated_at: new Date().toISOString(),
+            }).eq('id', campaignId)
           ]);
         }
       } catch (err) {

@@ -1310,6 +1310,35 @@ app.post('/api/webhook/conversion/:campaignId', async (req: Request, res: Respon
     const didAutoPause = evaluateQuotaAndEnforce(campaign, 'Webhook conversion autenticada');
     await saveCampaignAsync(campaign);
 
+    // AISLAMIENTO ESTRICTO DE TELEMETRÍA Y CONTADORES POR CAMPAIGN_ID EN SUPABASE:
+    // Asegura que la inserción filtre estrictamente por el parámetro :campaignId de la ruta
+    // y que la actualización separe la telemetría de clics del registro de conversiones reales completadas
+    if (supabase) {
+      try {
+        await Promise.allSettled([
+          supabase.from('conversions').insert({
+            id: convRecord.id,
+            campaign_id: campaignId,
+            campana_id: campaignId,
+            user_id: campaign.userId || campaign.creatorEmail,
+            timestamp: convRecord.timestamp,
+            method: 'webhook',
+            user_tag: userIdentifier,
+            ip_masked: convRecord.ipMasked,
+            referrer: convRecord.referrer,
+          }),
+          supabase.from('campaigns').update({
+            current_registrations: campaign.currentRegistrations,
+            status: campaign.status,
+            paused_at: campaign.pausedAt,
+            updated_at: new Date().toISOString(),
+          }).eq('id', campaignId),
+        ]);
+      } catch (dbErr) {
+        console.warn('[Webhook Supabase Isolation Error]:', dbErr);
+      }
+    }
+
     res.json({
       success: true,
       authenticated: true,

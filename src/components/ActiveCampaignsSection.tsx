@@ -19,7 +19,8 @@ import {
   Lock,
   Code2,
   DollarSign,
-  Users
+  Users,
+  Copy
 } from 'lucide-react';
 import { Campaign, User, isUserSuperAdmin } from '../types/growth';
 import { useLiveRelativeTime } from '../utils/timeFormat';
@@ -59,6 +60,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   });
 
   const [filterType, setFilterType] = useState<string>('all');
+  const [copiedBridgeId, setCopiedBridgeId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => ({
@@ -409,9 +411,35 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
                         <div className="space-y-2 text-xs text-neutral-300">
                           <div>
-                            <span className="text-neutral-500 text-[11px] block">Enlace Puente Autónomo:</span>
-                            <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800 block truncate">
-                              /r/{camp.id}
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-neutral-500 text-[11px] font-medium">Enlace Puente Aislado:</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://vercel.app';
+                                  const bridgeUrl = `${origin}/r/${camp.id}`;
+                                  navigator.clipboard.writeText(bridgeUrl);
+                                  setCopiedBridgeId(camp.id);
+                                  setTimeout(() => setCopiedBridgeId(null), 2000);
+                                }}
+                                className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 cursor-pointer bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 px-2 py-0.5 rounded transition-all"
+                                title={`Copiar enlace puente exclusivo para ${camp.id}`}
+                              >
+                                {copiedBridgeId === camp.id ? (
+                                  <>
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                    <span>¡Copiado!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copiar Enlace</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-1 rounded border border-neutral-800 block truncate select-all">
+                              {typeof window !== 'undefined' ? `${window.location.origin}/r/${camp.id}` : `https://vercel.app/r/${camp.id}`}
                             </code>
                           </div>
 
