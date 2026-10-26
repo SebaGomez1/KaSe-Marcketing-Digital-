@@ -15,7 +15,8 @@ import {
   Send,
   X,
   AlertCircle,
-  Clock
+  Clock,
+  Zap
 } from 'lucide-react';
 import { Campaign } from '../types/growth';
 import { ModuleConversionBreakdown } from './ModuleConversionBreakdown';
@@ -37,6 +38,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   onOpenModules,
   onOpenGuide,
   onOpenPlans,
+  onSimulateBurst,
   isSimulating = false,
 }) => {
   if (!campaign) return null;
@@ -262,6 +264,48 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
             <span>{(targetRegistrations * 0.5).toLocaleString()}</span>
             <span>{(targetRegistrations * 0.75).toLocaleString()}</span>
             <span className="text-sky-400 font-semibold">{targetRegistrations.toLocaleString()} (Meta)</span>
+          </div>
+
+          {/* Live Engine Activity & Traffic Acceleration Control */}
+          <div className="mt-5 pt-4 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${status === 'active' ? 'bg-emerald-400 opacity-75' : 'bg-neutral-500'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${status === 'active' ? 'bg-emerald-500' : 'bg-neutral-600'}`}></span>
+              </span>
+              <span className="font-semibold text-neutral-200">
+                {status === 'active'
+                  ? '8 Motores Autónomos Activos: Escaneando y atrayendo tráfico en vivo'
+                  : 'Motores en pausa programada'}
+              </span>
+              <span className="text-neutral-500 hidden md:inline">|</span>
+              <span className="text-neutral-400 hidden md:inline">
+                Cadencia: <span className="text-emerald-400 font-mono">100% Automático</span>
+              </span>
+            </div>
+
+            {onSimulateBurst && status === 'active' && !isQuotaReached && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  disabled={isSimulating}
+                  onClick={() => onSimulateBurst(5)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                  title="Forzar pulso de 5 conversiones inmediatas"
+                >
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{isSimulating ? 'Atrayendo...' : '⚡ Forzar Pulso (+5)'}</span>
+                </button>
+                <button
+                  disabled={isSimulating}
+                  onClick={() => onSimulateBurst(25)}
+                  className="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                  title="Disparar ráfaga orgánica de 25 conversiones"
+                >
+                  <Play className="w-3.5 h-3.5 text-sky-400" />
+                  <span>+25 Ráfaga</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

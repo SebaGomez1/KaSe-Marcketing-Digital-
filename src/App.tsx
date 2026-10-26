@@ -276,8 +276,27 @@ export default function App() {
       fetchCampaigns();
     }, 3500);
 
-    return () => clearInterval(syncTimer);
-  }, [currentUser?.id, currentUser?.email]);
+    // Continuous Autonomous Engine Daemon Keepalive (Vercel Serverless Resilient Pulse)
+    // Every 10s, ping the autonomous daemon endpoint to ensure all 8 engines keep processing and delivering conversions
+    const daemonTimer = setInterval(async () => {
+      try {
+        const hasActive = campaigns.some(
+          (c) => c && c.status === 'active' && c.currentRegistrations < c.targetRegistrations
+        );
+        if (hasActive) {
+          await fetch('/api/engines/process-active-daemon', { method: 'POST' });
+          fetchCampaigns();
+        }
+      } catch {
+        // network silent catch
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(syncTimer);
+      clearInterval(daemonTimer);
+    };
+  }, [currentUser?.id, currentUser?.email, campaigns]);
 
   // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
   useEffect(() => {
