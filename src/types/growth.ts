@@ -1,3 +1,5 @@
+export * from './database';
+
 export interface CampaignModuleState {
   active: boolean;
   name: string;
