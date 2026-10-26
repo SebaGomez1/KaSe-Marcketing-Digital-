@@ -265,7 +265,17 @@ function loadCampaignsFromFile(): Campaign[] {
       const raw = fs.readFileSync(CAMPAIGNS_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return filterOutFakeCampaigns(parsed);
+        return filterOutFakeCampaigns(parsed).map((c) => ({
+          ...c,
+          currentRegistrations: 0,
+          clicksCount: 0,
+          recentConversions: [],
+          status: 'active',
+          pausedAt: undefined,
+          logs: Array.isArray(c.logs)
+            ? c.logs.filter((l: any) => l && !l.message?.includes('⚡ [TRÁFICO AUTÓNOMO EN VIVO]') && !l.message?.includes('Ráfaga de tráfico procesada'))
+            : [],
+        }));
       }
     }
   } catch (e) {
@@ -2978,24 +2988,8 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign, options: Cyc
     return { success: true, unitsDelivered: 0, status: campaign.status };
   }
 
-  // Tráfico y captación orgánica real:
-  // Cuando los motores están activos (status === 'active'), los 8 módulos prospectan y canalizan
-  // tráfico orgánico continuo estrictamente enrutado a través de su Enlace Puente (/r/:id).
-  let countToDeliver = 0;
-  if (options.burstCount) {
-    countToDeliver = Math.min(options.burstCount, remaining);
-  } else if (options.isBackgroundPulse) {
-    // Cadencia natural orgánica continua de captación autónoma por ciclo de escaneo
-    countToDeliver = Math.min(1 + Math.floor(Math.random() * 2), remaining);
-  } else {
-    countToDeliver = Math.min(2, remaining);
-  }
-
-  // Incremento de impresiones y visitas orgánicas enrutadas por el puente
-  const bridgeClicksToAdd = options.burstCount
-    ? Math.max(1, Math.floor(options.burstCount * 1.5))
-    : (2 + Math.floor(Math.random() * 3));
-  campaign.clicksCount = (campaign.clicksCount || 0) + bridgeClicksToAdd;
+  // Los 8 motores autónomos operan en modo producción 100% orgánico sin bots ni simulaciones.
+  // Toda conversión y registro se genera exclusivamente a partir de interacciones humanas reales.
 
   // 1. MÓDULO 1: Google Search Indexing API & SEO
   if (campaign.modules?.mod1_seo?.active !== false) {
@@ -3132,83 +3126,26 @@ async function ejecutarCicloAutonomoParaCampana(campaign: Campaign, options: Cyc
   };
 
   const nowIso = new Date().toISOString();
-  let unitsAdded = 0;
-
-  for (let i = 0; i < countToDeliver; i++) {
-    const modKey = (activeKeys.length > 0
-      ? activeKeys[(campaign.currentRegistrations + i) % activeKeys.length]
-      : 'mod1_seo') as keyof typeof campaign.modules;
-
-    const rDomain = sampleLeadDomains[Math.floor(Math.random() * sampleLeadDomains.length)];
-    const rName = sampleLeadNames[Math.floor(Math.random() * sampleLeadNames.length)];
-    const leadEmail = `${rName}_${Math.floor(Math.random() * 900 + 100)}@${rDomain}`;
-
-    const refList = engineReferrers[modKey] || ['https://www.google.com'];
-    const chosenRef = refList[Math.floor(Math.random() * refList.length)];
-
-    const convRecord: ConversionRecord = {
-      id: `conv_auto_${Date.now()}_${i}_${Math.floor(Math.random() * 1000)}`,
-      timestamp: nowIso,
-      method: 'bridge_router',
-      userTag: leadEmail,
-      ipMasked: `185.${Math.floor(Math.random() * 200 + 10)}.***.***`,
-      referrer: chosenRef,
-      attributedModule: modKey,
-    };
-
-    campaign.recentConversions.unshift(convRecord);
-    if (campaign.recentConversions.length > 50) campaign.recentConversions.pop();
-
-    if (campaign.modules && campaign.modules[modKey]) {
-      campaign.modules[modKey].conversionsCount = (campaign.modules[modKey].conversionsCount || 0) + 1;
-      campaign.modules[modKey].lastConversionAt = nowIso;
-    }
-
-    unitsAdded++;
-  }
-
-  if (unitsAdded > 0) {
-    campaign.currentRegistrations += unitsAdded;
-    results.unitsDelivered = unitsAdded;
-
-    // Registrar auditoría con el incremento exacto
-    const unitLabel = campaign.targetUnitLabel || 'usuarios registrados';
-    const autoLog: CampaignLog = {
-      id: `log_traffic_${Date.now()}`,
-      timestamp: nowIso,
-      level: 'SUCCESS',
-      module: 'CORE_AUTONOMOUS_CONTROLLER',
-      message: `⚡ [TRÁFICO AUTÓNOMO EN VIVO]: +${unitsAdded} ${unitLabel} captados por los 8 motores activos. Total acumulado: ${campaign.currentRegistrations.toLocaleString()}/${campaign.targetRegistrations.toLocaleString()}.`,
-    };
-    campaign.logs.unshift(autoLog);
-    if (campaign.logs.length > 50) campaign.logs = campaign.logs.slice(0, 50);
-
-    // Verificación de corte por cuota
-    const didAutoPause = evaluateQuotaAndEnforce(campaign, 'Tope de meta completado al 100%');
-    results.didAutoPause = didAutoPause;
-  }
-
+  // Modo 100% Producción Orgánica:
+  // Los motores actualizan indexación y sindicación activa.
+  // NO se fabrican registros ni bots artificiales; las conversiones corren únicamente por tráfico humano real vía puente o webhook.
   await saveCampaignAsync(campaign);
   return results;
 }
 
-// Bucle demonio autónomo en background: escanea campañas cada 15 segundos
+// Bucle demonio autónomo en background: sincroniza motores de indexación y sindicación cada 60 segundos
 setInterval(async () => {
   try {
     const candidateCamps = campaigns.filter(
-      (c) => c && c.currentRegistrations < c.targetRegistrations && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.status !== 'paused_quota_reached'
+      (c) => c && c.status === 'active' && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.currentRegistrations < c.targetRegistrations
     );
     for (const camp of candidateCamps) {
-      if (camp.status !== 'active') {
-        camp.status = 'active';
-        camp.pausedAt = undefined;
-      }
       await ejecutarCicloAutonomoParaCampana(camp, { isBackgroundPulse: true });
     }
   } catch (err) {
     console.warn('[Autonomous Traffic Daemon Warning]:', err);
   }
-}, 15000);
+}, 60000);
 
 // Endpoint de latido para entornos serverless (Vercel)
 app.post('/api/engines/process-active-daemon', async (req: Request, res: Response): Promise<void> => {
@@ -3232,21 +3169,11 @@ app.post('/api/engines/process-active-daemon', async (req: Request, res: Respons
   }
 });
 
-// Endpoint para forzar pulso de ráfaga orgánica inmediata en una campaña
-app.post('/api/engines/force-traffic-pulse', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { campaignId, count } = req.body;
-    const campaign = await getCampaignByIdAsync(campaignId);
-    if (!campaign) {
-      res.status(404).json({ error: 'Campaña no encontrada' });
-      return;
-    }
-    const pulseCount = parseInt(count || 5, 10);
-    const results = await ejecutarCicloAutonomoParaCampana(campaign, { burstCount: pulseCount });
-    res.json({ success: true, results, campaign });
-  } catch (err: any) {
-    res.status(500).json({ error: 'Pulse failed', details: err.message });
-  }
+// ENDPOINT DE RÁFAGA ARTIFICIAL DESACTIVADO (MODO 100% PRODUCCIÓN ORGÁNICA)
+app.post('/api/engines/force-traffic-pulse', async (_req: Request, res: Response): Promise<void> => {
+  res.status(403).json({
+    error: 'Modo Ráfaga Desactivado: KaSe opera con tráfico orgánico real. Las visitas deben llegar mediante el Enlace Puente.',
+  });
 });
 
 app.post('/api/engines/execute-cycle/:campaignId', async (req: Request, res: Response): Promise<void> => {

@@ -24,12 +24,10 @@ import { useLiveRelativeTime } from '../utils/timeFormat';
 
 interface CampaignOverviewProps {
   campaign: Campaign;
-  onSimulateBurst?: (count: number) => void;
   onOpenIntegration: () => void;
   onOpenModules: () => void;
   onOpenGuide: () => void;
   onOpenPlans: () => void;
-  isSimulating?: boolean;
 }
 
 export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
@@ -38,8 +36,6 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
   onOpenModules,
   onOpenGuide,
   onOpenPlans,
-  onSimulateBurst,
-  isSimulating = false,
 }) => {
   if (!campaign) return null;
   const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
@@ -280,32 +276,9 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
               </span>
               <span className="text-neutral-500 hidden md:inline">|</span>
               <span className="text-neutral-400 hidden md:inline">
-                Cadencia: <span className="text-emerald-400 font-mono">100% Automático</span>
+                Cadencia: <span className="text-emerald-400 font-mono">100% Orgánico</span>
               </span>
             </div>
-
-            {onSimulateBurst && status === 'active' && !isQuotaReached && (
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  disabled={isSimulating}
-                  onClick={() => onSimulateBurst(5)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
-                  title="Forzar pulso de 5 conversiones inmediatas"
-                >
-                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{isSimulating ? 'Atrayendo...' : '⚡ Forzar Pulso (+5)'}</span>
-                </button>
-                <button
-                  disabled={isSimulating}
-                  onClick={() => onSimulateBurst(25)}
-                  className="px-3 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
-                  title="Disparar ráfaga orgánica de 25 conversiones"
-                >
-                  <Play className="w-3.5 h-3.5 text-sky-400" />
-                  <span>+25 Ráfaga</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

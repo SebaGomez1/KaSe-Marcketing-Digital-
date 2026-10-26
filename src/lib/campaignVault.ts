@@ -17,19 +17,24 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
+const VAULT_RESET_VERSION_KEY = 'kase_organic_reset_v4';
+
 /**
  * Purga proactivamente cualquier campaña de mentira/falsa almacenada previamente en localStorage
+ * y reinicia todos los contadores a 0 para garantizar tráfico 100% orgánico sin bots.
  */
 export function purgeFakeCampaignsFromStorage(): void {
   if (!isBrowser()) return;
   try {
+    const isResetDone = window.localStorage.getItem(VAULT_RESET_VERSION_KEY) === 'true';
+
     const keysToCheck = [
       VAULT_MASTER_KEY,
       VAULT_CACHE_KEY,
       'kase_active_campaign_id',
     ];
 
-    // Revisar todas las claves del localStorage que comiencen con kase_
+    // Revisar todas las claves del localStorage que comiencen con kase_ o camp_
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i);
       if (k && (k.startsWith('kase_') || k.startsWith('camp_'))) {
@@ -53,18 +58,57 @@ export function purgeFakeCampaignsFromStorage(): void {
 
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter((c: any) => !isFakeCampaign(c));
-          if (cleaned.length !== parsed.length) {
-            window.localStorage.setItem(key, JSON.stringify(cleaned));
+          let cleaned = parsed.filter((c: any) => !isFakeCampaign(c));
+          if (!isResetDone) {
+            cleaned = cleaned.map((c: any) => {
+              if (c && typeof c === 'object') {
+                return {
+                  ...c,
+                  currentRegistrations: 0,
+                  clicksCount: 0,
+                  recentConversions: [],
+                  status: 'active',
+                  pausedAt: undefined,
+                  logs: Array.isArray(c.logs)
+                    ? c.logs.filter((l: any) => l && !l.message?.includes('⚡ [TRÁFICO AUTÓNOMO EN VIVO]') && !l.message?.includes('Ráfaga de tráfico procesada'))
+                    : [],
+                  modules: c.modules ? Object.fromEntries(
+                    Object.entries(c.modules).map(([mk, mv]: [string, any]) => [
+                      mk,
+                      { ...mv, conversionsCount: 0, lastConversionAt: undefined }
+                    ])
+                  ) : c.modules,
+                };
+              }
+              return c;
+            });
           }
+          window.localStorage.setItem(key, JSON.stringify(cleaned));
         } else if (parsed && typeof parsed === 'object') {
           if (isFakeCampaign(parsed.id || parsed)) {
             window.localStorage.removeItem(key);
+          } else if (!isResetDone && parsed.id) {
+            const resetCamp = {
+              ...parsed,
+              currentRegistrations: 0,
+              clicksCount: 0,
+              recentConversions: [],
+              status: 'active',
+              pausedAt: undefined,
+              logs: Array.isArray(parsed.logs)
+                ? parsed.logs.filter((l: any) => l && !l.message?.includes('⚡ [TRÁFICO AUTÓNOMO EN VIVO]') && !l.message?.includes('Ráfaga de tráfico procesada'))
+                : [],
+            };
+            window.localStorage.setItem(key, JSON.stringify(resetCamp));
           }
         }
       } catch {
         // clave no es json, omitir
       }
+    }
+
+    if (!isResetDone) {
+      window.localStorage.setItem(VAULT_RESET_VERSION_KEY, 'true');
     }
   } catch (e) {
     console.warn('[Vault Purge Error]:', e);
@@ -274,31 +318,10 @@ export function mergeCampaigns(serverCampaigns: Campaign[], localVault: Campaign
     }
   }
 
-  // 2. Superponer/actualizar con datos del servidor
+  // 2. Superponer/actualizar con datos del servidor (el servidor es la autoridad de datos reales)
   for (const s of serverCampaigns) {
     if (!s || !s.id || isFakeCampaign(s)) continue;
-    const local = map.get(s.id);
-    if (!local) {
-      map.set(s.id, s);
-    } else {
-      // Tomar lo mejor de ambos:
-      // Conservar el mayor número de registros o la versión más activa
-      const currentRegs = Math.max(local.currentRegistrations || 0, s.currentRegistrations || 0);
-      const recentConvs = (s.recentConversions && s.recentConversions.length >= (local.recentConversions?.length || 0))
-        ? s.recentConversions
-        : local.recentConversions || [];
-      const logs = (s.logs && s.logs.length >= (local.logs?.length || 0))
-        ? s.logs
-        : local.logs || [];
-
-      map.set(s.id, {
-        ...local,
-        ...s,
-        currentRegistrations: currentRegs,
-        recentConversions: recentConvs,
-        logs,
-      });
-    }
+    map.set(s.id, s);
   }
 
   return Array.from(map.values());

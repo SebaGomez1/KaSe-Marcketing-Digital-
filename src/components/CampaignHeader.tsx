@@ -7,7 +7,7 @@ interface CampaignHeaderProps {
   allCampaigns: Campaign[];
   onSelectCampaign: (id: string) => void;
   onToggleStatus: () => void;
-  onResetCounter: () => void;
+  onResetCounter?: () => void;
   isActionLoading?: boolean;
 }
 
@@ -141,16 +141,6 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
           >
             <Power className="w-3.5 h-3.5" />
             <span>{isActive ? 'Pausar Motores' : 'Reanudar Motores'}</span>
-          </button>
-
-          <button
-            onClick={onResetCounter}
-            disabled={isActionLoading}
-            title="Reiniciar contador a 0 para pruebas de ciclo"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-700 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 transition-colors cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isActionLoading ? 'animate-spin' : ''}`} />
-            <span>Reiniciar Contador</span>
           </button>
         </div>
       </div>

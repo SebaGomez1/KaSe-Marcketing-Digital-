@@ -10,7 +10,6 @@ import { CampaignOverview } from './components/CampaignOverview';
 import { ModulesGrid } from './components/ModulesGrid';
 import { ModuleDetailModal } from './components/ModuleDetailModal';
 import { IntegrationPanel } from './components/IntegrationPanel';
-import { TrafficSimulator } from './components/TrafficSimulator';
 import { PlansComparison } from './components/PlansComparison';
 import { SystemAuditLogs } from './components/SystemAuditLogs';
 import { NewCampaignModal } from './components/NewCampaignModal';
@@ -315,24 +314,7 @@ export default function App() {
 
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) || campaigns[0];
 
-  // Quick Action: Simulate Burst
-  const handleSimulateBurst = async (count: number) => {
-    if (!activeCampaign) return;
-    setIsActionLoading(true);
-    try {
-      const res = await fetch(`/api/campaigns/${activeCampaign.id}/simulate-burst`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count }),
-      });
-      await res.json();
-      await fetchCampaigns();
-    } catch (err) {
-      console.error('Error in simulate burst:', err);
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
+
 
   // Quick Action: Reset Counter
   const handleResetCounter = async () => {
@@ -630,12 +612,10 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <CampaignOverview
                 campaign={activeCampaign}
-                onSimulateBurst={handleSimulateBurst}
                 onOpenIntegration={() => setActiveTab('integration')}
                 onOpenModules={() => setActiveTab('modules')}
                 onOpenGuide={() => setActiveTab('guide')}
                 onOpenPlans={() => setActiveTab('plans')}
-                isSimulating={isActionLoading}
               />
             )}
 
@@ -790,7 +770,6 @@ export default function App() {
         campaigns={campaigns}
         onToggleCampaignStatus={handleToggleStatus}
         onResetCounter={handleResetCounter}
-        onSimulateBurst={(count) => handleSimulateBurst(count)}
         onOpenNewCampaign={handleOpenNewCampaign}
         onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}

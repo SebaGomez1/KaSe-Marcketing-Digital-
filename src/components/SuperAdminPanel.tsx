@@ -1803,17 +1803,7 @@ DATABASE_URL=...`}</pre>
               <div className="text-2xl font-bold font-mono text-white">
                 {metrics?.totalConversionsDelivered !== undefined ? metrics.totalConversionsDelivered.toLocaleString() : '0'}
               </div>
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-emerald-400 font-mono">100% auditadas</span>
-                <button
-                  onClick={handleResetAllConversions}
-                  disabled={isResettingConversions}
-                  className="text-[10px] px-2 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 font-mono transition-colors cursor-pointer"
-                  title="Reiniciar todas las conversiones y campañas a cero"
-                >
-                  {isResettingConversions ? 'Reiniciando...' : conversionsResetSuccess ? '✓ En Cero' : 'Reiniciar a Cero (0)'}
-                </button>
-              </div>
+              <div className="text-[11px] text-emerald-400 font-mono">100% auditadas</div>
             </div>
 
             <div className="p-4 bg-neutral-900/80 border border-neutral-800 rounded-xl space-y-1">
