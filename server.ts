@@ -295,38 +295,37 @@ function logSystemError(
   return errItem;
 }
 
-// Restore campaigns from disk if existing
-if (fs.existsSync(CAMPAIGNS_FILE)) {
-  try {
-    const raw = fs.readFileSync(CAMPAIGNS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      campaigns = parsed;
-    }
-  } catch (e) {
-    console.error('Error loading campaigns from disk:', e);
-  }
-}
-
-function saveCampaignsToFile() {
-  try {
-    fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify(campaigns, null, 2), 'utf-8');
-  } catch (e) {
-    // In serverless environments (Vercel), local FS is read-only or ephemeral
-  }
-}
-
-// ASYNCHRONOUS DATABASE REPOSITORY (PostgreSQL / Supabase with Local Fallback)
-async function getCampaignsAsync(): Promise<Campaign[]> {
+// Pure SQL Direct Repository using Supabase Client (Zero fs JSON dependency)
+async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
   if (supabase) {
     try {
-      const { data: campRows, error } = await supabase
+      let query = supabase
         .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
-      if (!error && Array.isArray(campRows) && campRows.length > 0) {
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: campRows, error } = await query.order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(campRows)) {
+        if (campRows.length === 0 && userId) {
+          // If searching by userId and empty, check creator_email as fallback
+          const { data: emailRows } = await supabase
+            .from('campaigns')
+            .select('*')
+            .eq('creator_email', userId)
+            .order('created_at', { ascending: false });
+          if (emailRows && emailRows.length > 0) {
+            return emailRows.map((r) => mapRowToCampaign(r, [], [], []));
+          }
+          return [];
+        }
+
         const campIds = campRows.map((c) => c.id);
+        if (campIds.length === 0) return [];
+
         const [modulesRes, convsRes, logsRes] = await Promise.all([
           supabase.from('campaign_modules').select('*').in('campaign_id', campIds),
           supabase.from('conversions').select('*').in('campaign_id', campIds).order('timestamp', { ascending: false }).limit(200),
@@ -355,7 +354,6 @@ async function getCampaignsAsync(): Promise<Campaign[]> {
           mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
         );
         campaigns = mapped;
-        saveCampaignsToFile();
         return mapped;
       }
     } catch (e) {
@@ -427,7 +425,6 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
   } else {
     campaigns.unshift(campaign);
   }
-  saveCampaignsToFile();
 
   if (supabase) {
     try {
@@ -446,11 +443,15 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       }));
       await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' });
 
+      const assignedUserId = campaign.userId || campaign.creatorEmail || null;
+
       if (campaign.recentConversions.length > 0) {
         const c = campaign.recentConversions[0];
         await supabase.from('conversions').upsert({
           id: c.id,
           campaign_id: campaign.id,
+          campana_id: campaign.id,
+          user_id: assignedUserId,
           timestamp: c.timestamp,
           method: c.method,
           user_tag: c.userTag,
@@ -464,6 +465,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
         await supabase.from('system_audit_logs').upsert({
           id: l.id,
           campaign_id: campaign.id,
+          user_id: assignedUserId,
           timestamp: l.timestamp,
           level: l.level,
           module: l.module,
@@ -481,8 +483,8 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       try {
         const row = mapCampaignToRow(campaign);
         await client.query(
-          `INSERT INTO campaigns (id, name, target_url, niche, description, campaign_type, target_unit_label, min_plan_price, max_plan_price, currency, target_registrations, current_registrations, plan, status, webhook_secret, pixel_token, pixel_verified, interaction_preferences, communication_tone_instructions, geo_targeting, created_at, paused_at, billing)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          `INSERT INTO campaigns (id, user_id, creator_email, name, target_url, niche, description, campaign_type, target_unit_label, min_plan_price, max_plan_price, currency, target_registrations, current_registrations, plan, status, webhook_secret, pixel_token, pixel_verified, interaction_preferences, communication_tone_instructions, geo_targeting, created_at, paused_at, billing)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
            ON CONFLICT (id) DO UPDATE SET
              name = EXCLUDED.name,
              target_registrations = EXCLUDED.target_registrations,
@@ -492,7 +494,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
              paused_at = EXCLUDED.paused_at,
              billing = EXCLUDED.billing`,
           [
-            row.id, row.name, row.target_url, row.niche, row.description, row.campaign_type, row.target_unit_label,
+            row.id, row.user_id, row.creator_email, row.name, row.target_url, row.niche, row.description, row.campaign_type, row.target_unit_label,
             row.min_plan_price, row.max_plan_price, row.currency, row.target_registrations, row.current_registrations,
             row.plan, row.status, row.webhook_secret, row.pixel_token, row.pixel_verified, row.interaction_preferences,
             row.communication_tone_instructions, row.geo_targeting, row.created_at, row.paused_at, row.billing
@@ -511,7 +513,6 @@ async function deleteCampaignAsync(id: string): Promise<boolean> {
   const index = campaigns.findIndex((c) => c.id === id);
   if (index >= 0) {
     campaigns.splice(index, 1);
-    saveCampaignsToFile();
   }
 
   if (supabase) {
@@ -568,19 +569,81 @@ function evaluateQuotaAndEnforce(campaign: Campaign, reason: string): boolean {
 // REST API ROUTES - ASYNCHRONOUS DATABASE QUERIES (PRODUCCIÓN REAL MASIVA)
 app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => {
   try {
-    const all = await getCampaignsAsync();
+    const rawUserId = (req.query.user_id as string || req.query.userId as string || '').trim();
     const emailQuery = (req.query.email as string || '').toLowerCase().trim();
-    if (emailQuery && emailQuery !== 'kathyseba2020@gmail.com') {
-      const userCampaigns = all.filter(c => 
-        (c.creatorEmail && c.creatorEmail.toLowerCase() === emailQuery) ||
-        (c.billing?.payerEmail && c.billing.payerEmail.toLowerCase() === emailQuery)
-      );
-      res.json({ success: true, campaigns: userCampaigns });
+    const authenticatedUser = rawUserId || emailQuery;
+
+    const isSuperAdmin = authenticatedUser.toLowerCase() === 'kathyseba2020@gmail.com' || authenticatedUser === 'kathy_super_admin';
+
+    // Aislamiento estricto de datos: usuarios comunes NUNCA reciben campañas de administrador ni ajenas
+    if (!isSuperAdmin) {
+      if (!authenticatedUser) {
+        // Bloquear exposición: si no hay usuario autenticado, devolver lista vacía
+        res.json({ success: true, campaigns: [] });
+        return;
+      }
+
+      // Consulta directa SQL mediante el cliente de Supabase con .eq('user_id', authenticatedUser)
+      if (supabase) {
+        let { data: userRows, error } = await supabase
+          .from('campaigns')
+          .select('*')
+          .eq('user_id', authenticatedUser)
+          .order('created_at', { ascending: false });
+
+        let finalRows = userRows || [];
+        if (finalRows.length === 0 && authenticatedUser.includes('@')) {
+          const { data: emailRows } = await supabase
+            .from('campaigns')
+            .select('*')
+            .eq('creator_email', authenticatedUser)
+            .order('created_at', { ascending: false });
+          finalRows = emailRows || [];
+        }
+
+        const campIds = finalRows.map((c: any) => c.id);
+        let moduleRowsByCamp: Record<string, any[]> = {};
+        let convRowsByCamp: Record<string, any[]> = {};
+        let logRowsByCamp: Record<string, any[]> = {};
+
+        if (campIds.length > 0) {
+          const [modulesRes, convsRes, logsRes] = await Promise.all([
+            supabase.from('campaign_modules').select('*').in('campaign_id', campIds),
+            supabase.from('conversions').select('*').in('campaign_id', campIds).order('timestamp', { ascending: false }).limit(200),
+            supabase.from('system_audit_logs').select('*').in('campaign_id', campIds).order('timestamp', { ascending: false }).limit(200),
+          ]);
+          (modulesRes.data || []).forEach((m: any) => {
+            if (!moduleRowsByCamp[m.campaign_id]) moduleRowsByCamp[m.campaign_id] = [];
+            moduleRowsByCamp[m.campaign_id].push(m);
+          });
+          (convsRes.data || []).forEach((c: any) => {
+            if (!convRowsByCamp[c.campaign_id]) convRowsByCamp[c.campaign_id] = [];
+            convRowsByCamp[c.campaign_id].push(c);
+          });
+          (logsRes.data || []).forEach((l: any) => {
+            if (!logRowsByCamp[l.campaign_id]) logRowsByCamp[l.campaign_id] = [];
+            logRowsByCamp[l.campaign_id].push(l);
+          });
+        }
+
+        const isolatedCampaigns = finalRows.map((r: any) =>
+          mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
+        );
+
+        res.json({ success: true, campaigns: isolatedCampaigns });
+        return;
+      }
+
+      const isolatedLocal = await getCampaignsAsync(authenticatedUser);
+      res.json({ success: true, campaigns: isolatedLocal });
       return;
     }
+
+    // Super Admin: Acceso global
+    const all = await getCampaignsAsync();
     res.json({ success: true, campaigns: all });
   } catch (err: any) {
-    res.status(500).json({ error: 'Fallo al consultar base de datos externa', details: err.message, campaigns });
+    res.status(500).json({ error: 'Fallo al consultar base de datos en Supabase', details: err.message, campaigns: [] });
   }
 });
 
@@ -676,6 +739,7 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
       currentRegistrations: 0,
       plan: selectedPlan,
       status: initialStatus,
+      userId: (req.body.userId || req.body.user_id || creatorEmail || '').trim(),
       creatorEmail: (creatorEmail || '').toLowerCase().trim(),
       interactionPreferences: interactionPreferences ? String(interactionPreferences).trim() : undefined,
       communicationToneInstructions: communicationToneInstructions ? String(communicationToneInstructions).trim() : undefined,
@@ -814,13 +878,11 @@ app.delete('/api/campaigns/:id', async (req: Request, res: Response): Promise<vo
   }
 });
 
-// ENRUTADOR PUENTE (TRAFFIC BRIDGE & SMART REDIRECT - REQUERIMIENTO 1)
-app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => {
+// ENRUTADOR PUENTE INTELIGENTE (/r/:id y /r/:campaignId) - PERSISTENCIA SQL DIRECTA EN SUPABASE
+const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { campaignId } = req.params;
-    const campaign = await getCampaignByIdAsync(campaignId);
-
-    if (!campaign) {
+    const campaignId = (req.params.campaignId || req.params.id || '').trim();
+    if (!campaignId) {
       res.redirect(302, '/');
       return;
     }
@@ -828,11 +890,46 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
     const referrer = (req.query.ref as string) || req.headers['referer'] || 'Enrutador Puente KaSe (Orgánico)';
     const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
 
-    // Interceptación 100% autónoma de cada click orgánico derivado por los motores
+    // 1. Interceptar campaña directamente desde Supabase sin dependencias en fs
+    let campaign: Campaign | null = null;
+    let assignedUserId = 'usuario_anonimo';
+
+    if (supabase) {
+      try {
+        const { data: cRow, error } = await supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', campaignId)
+          .maybeSingle();
+
+        if (cRow && !error) {
+          assignedUserId = cRow.user_id || cRow.creator_email || 'usuario_anonimo';
+          campaign = mapRowToCampaign(cRow);
+        }
+      } catch (e) {
+        console.warn('[Bridge Supabase Lookup Error]:', e);
+      }
+    }
+
+    if (!campaign) {
+      campaign = await getCampaignByIdAsync(campaignId);
+      if (campaign) {
+        assignedUserId = campaign.userId || campaign.creatorEmail || 'usuario_anonimo';
+      }
+    }
+
+    if (!campaign) {
+      res.redirect(302, '/');
+      return;
+    }
+
+    // 2. Interceptación y guardado estricto asociándolo a 'user_id' y 'campana_id' en Supabase
+    const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const nowIso = new Date().toISOString();
+
     if (campaign.status === 'active') {
       campaign.currentRegistrations += 1;
       
-      // Attribute conversion to responsible autonomous module
       let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
       const refLower = referrer.toLowerCase();
       if (refLower.includes('twitter') || refLower.includes('t.co') || refLower.includes('x.com') || refLower.includes('linkedin')) {
@@ -861,12 +958,12 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
           campaign.modules[attributedMod].conversionsCount = 0;
         }
         campaign.modules[attributedMod].conversionsCount! += 1;
-        campaign.modules[attributedMod].lastConversionAt = new Date().toISOString();
+        campaign.modules[attributedMod].lastConversionAt = nowIso;
       }
 
       const convRecord: ConversionRecord = {
-        id: `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toISOString(),
+        id: convId,
+        timestamp: nowIso,
         method: 'organic_click',
         userTag: `click_organico_${Math.random().toString(36).substring(2, 7)}`,
         ipMasked,
@@ -879,23 +976,59 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
 
       const bridgeLog: CampaignLog = {
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowIso,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',
-        message: `⚡ Visita orgánica interceptada y contabilizada para "${campaign.name}" vía Enrutador Puente (/r/${campaign.id}). Total acumulado: ${campaign.currentRegistrations}/${campaign.targetRegistrations}.`,
+        message: `⚡ Visita orgánica interceptada y guardada en Supabase (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Total: ${campaign.currentRegistrations}/${campaign.targetRegistrations}.`,
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
 
       evaluateQuotaAndEnforce(campaign, 'Enrutador puente autónomo (click orgánico)');
+
+      // Persistencia SQL directa inmediata en Supabase
+      if (supabase) {
+        try {
+          await Promise.allSettled([
+            supabase.from('conversions').insert({
+              id: convId,
+              campaign_id: campaign.id,
+              campana_id: campaign.id,
+              user_id: assignedUserId,
+              timestamp: nowIso,
+              method: 'organic_click',
+              user_tag: convRecord.userTag,
+              ip_masked: ipMasked,
+              referrer: referrer,
+            }),
+            supabase.from('campaigns').update({
+              current_registrations: campaign.currentRegistrations,
+              status: campaign.status,
+              paused_at: campaign.pausedAt,
+            }).eq('id', campaign.id),
+            supabase.from('system_audit_logs').insert({
+              id: bridgeLog.id,
+              campaign_id: campaign.id,
+              user_id: assignedUserId,
+              timestamp: nowIso,
+              level: 'SUCCESS',
+              module: 'ENRUTADOR_PUENTE',
+              message: bridgeLog.message,
+            }),
+          ]);
+        } catch (dbErr) {
+          console.warn('[Direct Supabase Bridge write error]:', dbErr);
+        }
+      }
+
       await saveCampaignAsync(campaign);
     } else {
       const bridgeLog: CampaignLog = {
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowIso,
         level: 'INFO',
         module: 'ENRUTADOR_PUENTE',
-        message: `Visita canalizada hacia "${campaign.name}" vía Enrutador Puente (/r/${campaign.id}). Campaña pausada o en cuota completada.`,
+        message: `Visita canalizada hacia "${campaign.name}" vía Enlace Puente (/r/${campaign.id}). Campaña pausada o en cuota completada.`,
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
@@ -916,7 +1049,10 @@ app.get('/r/:campaignId', async (req: Request, res: Response): Promise<void> => 
   } catch (err) {
     res.redirect(302, '/');
   }
-});
+};
+
+app.get('/r/:campaignId', handleBridgeRoute);
+app.get('/r/:id', handleBridgeRoute);
 
 // WEBHOOK DE CONVERSIÓN BLINDADO CRIPTOGRÁFICAMENTE (ORDEN DE TRABAJO 2)
 app.post('/api/webhook/conversion/:campaignId', async (req: Request, res: Response): Promise<void> => {

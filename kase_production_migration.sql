@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS users (
 -- Indexación de correos para búsquedas rápidas durante autenticación
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
--- 3. TABLA DE CAMPAÑAS (ESTRUCTURA PRINCIPAL)
+-- 3. TABLA DE CAMPAÑAS (ESTRUCTURA PRINCIPAL CON AISLAMIENTO POR USER_ID)
 CREATE TABLE IF NOT EXISTS campaigns (
     id VARCHAR(50) PRIMARY KEY,
+    user_id VARCHAR(100),
+    creator_email VARCHAR(255),
     name VARCHAR(255) NOT NULL,
     target_url TEXT NOT NULL,
     niche VARCHAR(255) NOT NULL,
@@ -43,10 +45,10 @@ CREATE TABLE IF NOT EXISTS campaigns (
     currency VARCHAR(10) DEFAULT 'USD',
     target_registrations INT NOT NULL,
     current_registrations INT DEFAULT 0,
-    plan VARCHAR(50) NOT NULL CHECK (plan IN ('starter', 'growth', 'enterprise')),
+    plan VARCHAR(50) NOT NULL CHECK (plan IN ('basic', 'starter', 'growth', 'enterprise')),
     status campaign_status_type DEFAULT 'configuring',
     webhook_secret VARCHAR(255) NOT NULL,
-    pixel_token VARCHAR(255) NOT NULL,
+    pixel_token VARCHAR(255),
     pixel_verified BOOLEAN DEFAULT FALSE,
     interaction_preferences TEXT,
     communication_tone_instructions TEXT,
@@ -56,8 +58,14 @@ CREATE TABLE IF NOT EXISTS campaigns (
     billing JSONB -- Almacena información de pasarela de pago Mercado Pago Uruguay
 );
 
--- Indexación de campañas para optimización de consultas del motor
+-- Migración retrocompatible para bases de datos existentes
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creator_email VARCHAR(255);
+
+-- Indexación de campañas para optimización de consultas del motor y aislamiento de usuario
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_campaigns_user_id ON campaigns(user_id);
+CREATE INDEX IF NOT EXISTS idx_campaigns_creator_email ON campaigns(creator_email);
 
 -- 4. TABLA DE MÓDULOS DE CAPTACIÓN (ESTADO DE LOS 8 MOTORES)
 CREATE TABLE IF NOT EXISTS campaign_modules (
@@ -73,19 +81,27 @@ CREATE TABLE IF NOT EXISTS campaign_modules (
     UNIQUE(campaign_id, module_key)
 );
 
--- 5. TABLA DE CONVERSIONES Y EVENTOS LOGRADOS
+-- 5. TABLA DE CONVERSIONES Y EVENTOS LOGRADOS (ENLACE PUENTE Y WEBHOOK)
 CREATE TABLE IF NOT EXISTS conversions (
     id VARCHAR(50) PRIMARY KEY,
     campaign_id VARCHAR(50) REFERENCES campaigns(id) ON DELETE CASCADE,
+    campana_id VARCHAR(50),
+    user_id VARCHAR(100),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    method VARCHAR(50) CHECK (method IN ('webhook', 'pixel', 'simulator')),
+    method VARCHAR(50) CHECK (method IN ('webhook', 'pixel', 'simulator', 'organic_click')),
     user_tag VARCHAR(255),
     ip_masked VARCHAR(50),
     referrer TEXT
 );
 
--- Indexación de conversiones por campaña y tiempo
+-- Migración retrocompatible para tabla de conversiones
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS campana_id VARCHAR(50);
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
+
+-- Indexación de conversiones por campaña, usuario y tiempo
 CREATE INDEX IF NOT EXISTS idx_conversions_campaign_id ON conversions(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_campana_id ON conversions(campana_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_user_id ON conversions(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_timestamp ON conversions(timestamp DESC);
 
 -- 6. TABLA DE AUDITORÍA Y BITÁCORA DEL CORE

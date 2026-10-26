@@ -122,50 +122,39 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  // Fetch campaigns from backend with user-account persistence and cross-device sync
+  // Fetch campaigns from backend with strict user_id data isolation and cross-device sync
   const fetchCampaigns = async () => {
     try {
-      const emailQuery = currentUser?.email ? `?email=${encodeURIComponent(currentUser.email)}` : '';
-      const res = await fetch(`/api/campaigns${emailQuery}`);
+      const authenticatedUserId = currentUser?.id || currentUser?.email || '';
+      const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email?.toLowerCase().trim() === 'kathyseba2020@gmail.com';
+
+      // Strict user_id parameter passed to query
+      const queryParam = isSuperAdmin
+        ? ''
+        : authenticatedUserId
+        ? `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`
+        : '?user_id=anonymous_unauthenticated';
+
+      const res = await fetch(`/api/campaigns${queryParam}`);
       const data = await res.json();
-      if (data.campaigns && data.campaigns.length > 0) {
-        setCampaigns(data.campaigns);
-        if (currentUser?.email) {
-          try {
-            window.localStorage.setItem(
-              `kase_campaigns_${currentUser.email.toLowerCase().trim()}`,
-              JSON.stringify(data.campaigns)
-            );
-          } catch (e) {}
-        }
-        if (!activeCampaignId || !data.campaigns.some((c: Campaign) => c.id === activeCampaignId)) {
-          setActiveCampaignId(data.campaigns[0].id);
+      const loadedCampaigns = Array.isArray(data.campaigns) ? data.campaigns : [];
+
+      // Ensure data isolation on the client as well: never render admin campaigns if not super_admin
+      const isolatedCampaigns = isSuperAdmin
+        ? loadedCampaigns
+        : loadedCampaigns.filter(
+            (c: Campaign) =>
+              (c.userId && c.userId === authenticatedUserId) ||
+              (c.creatorEmail && c.creatorEmail.toLowerCase() === (currentUser?.email || '').toLowerCase())
+          );
+
+      setCampaigns(isolatedCampaigns);
+      if (isolatedCampaigns.length > 0) {
+        if (!activeCampaignId || !isolatedCampaigns.some((c: Campaign) => c.id === activeCampaignId)) {
+          setActiveCampaignId(isolatedCampaigns[0].id);
         }
       } else {
-        // If server returned 0 campaigns for this user, check local storage backup for this email
-        if (currentUser?.email) {
-          const userKey = `kase_campaigns_${currentUser.email.toLowerCase().trim()}`;
-          const cached = window.localStorage.getItem(userKey);
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setCampaigns(parsed);
-                if (!activeCampaignId || !parsed.some((c: Campaign) => c.id === activeCampaignId)) {
-                  setActiveCampaignId(parsed[0].id);
-                }
-                // Resync cached campaigns to backend
-                parsed.forEach((c) => {
-                  fetch('/api/campaigns', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(c),
-                  }).catch(() => {});
-                });
-              }
-            } catch (e) {}
-          }
-        }
+        setActiveCampaignId('');
       }
     } catch (err) {
       console.error('Error fetching campaigns:', err);
@@ -176,7 +165,7 @@ export default function App() {
 
   useEffect(() => {
     fetchCampaigns();
-  }, [currentUser?.email]);
+  }, [currentUser?.id, currentUser?.email]);
 
   // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
   useEffect(() => {

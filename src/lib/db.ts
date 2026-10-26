@@ -10,10 +10,23 @@ import {
 
 const { Pool } = pg;
 
-// Supabase / PostgreSQL configuration from Environment Variables
-const rawDbUrl = process.env.DATABASE_URL?.trim() || '';
-const rawSupabaseUrl = process.env.SUPABASE_URL?.trim() || '';
-const rawAnonKey = process.env.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+// Supabase / PostgreSQL configuration from Environment Variables (Universal Support: Node, Next.js, Vite)
+const rawDbUrl = (process.env.DATABASE_URL || '').trim();
+const rawSupabaseUrl = (
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) ||
+  ''
+).trim();
+const rawAnonKey = (
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) ||
+  ''
+).trim();
 
 // Determine Supabase HTTP API config
 const supabaseEndpoint = rawSupabaseUrl.startsWith('http') 
@@ -217,6 +230,8 @@ export function mapRowToCampaign(
 
   return {
     id: row.id,
+    userId: row.user_id || row.creator_email || undefined,
+    creatorEmail: row.creator_email || row.user_id || undefined,
     name: row.name,
     targetUrl: row.target_url,
     niche: row.niche || 'Tecnología',
@@ -233,10 +248,10 @@ export function mapRowToCampaign(
     webhookSecret: row.webhook_secret || `whsec_${row.id}`,
     interactionPreferences: row.interaction_preferences || undefined,
     communicationToneInstructions: row.communication_tone_instructions || undefined,
-    geoTargeting: row.geo_targeting || undefined,
+    geoTargeting: row.geo_targeting ? (typeof row.geo_targeting === 'string' ? JSON.parse(row.geo_targeting) : row.geo_targeting) : undefined,
     createdAt: row.created_at || new Date().toISOString(),
     pausedAt: row.paused_at || undefined,
-    billing: row.billing || undefined,
+    billing: row.billing ? (typeof row.billing === 'string' ? JSON.parse(row.billing) : row.billing) : undefined,
     modules: defaultModules,
     recentConversions,
     logs,
@@ -247,6 +262,8 @@ export function mapRowToCampaign(
 export function mapCampaignToRow(campaign: Campaign): any {
   return {
     id: campaign.id,
+    user_id: campaign.userId || campaign.creatorEmail || null,
+    creator_email: campaign.creatorEmail || campaign.userId || null,
     name: campaign.name,
     target_url: campaign.targetUrl,
     niche: campaign.niche,
@@ -268,4 +285,134 @@ export function mapCampaignToRow(campaign: Campaign): any {
     paused_at: campaign.pausedAt || null,
     billing: campaign.billing ? JSON.stringify(campaign.billing) : null,
   };
+}
+
+// Direct SQL / Supabase query with strict data isolation for user panel
+export async function fetchUserCampaignsFromSupabase(userId: string): Promise<Campaign[]> {
+  if (!supabase) return [];
+  try {
+    const { data: rows, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error || !rows || rows.length === 0) {
+      // Also fallback to check creator_email if user_id was stored as email
+      const { data: emailRows } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('creator_email', userId)
+        .order('created_at', { ascending: false });
+      if (!emailRows || emailRows.length === 0) return [];
+      return emailRows.map((r) => mapRowToCampaign(r));
+    }
+
+    const campIds = rows.map((c) => c.id);
+    const [modulesRes, convsRes, logsRes] = await Promise.all([
+      supabase.from('campaign_modules').select('*').in('campaign_id', campIds),
+      supabase.from('conversions').select('*').in('campaign_id', campIds).order('timestamp', { ascending: false }).limit(200),
+      supabase.from('system_audit_logs').select('*').in('campaign_id', campIds).order('timestamp', { ascending: false }).limit(200),
+    ]);
+
+    const moduleRowsByCamp: Record<string, any[]> = {};
+    (modulesRes.data || []).forEach((m) => {
+      if (!moduleRowsByCamp[m.campaign_id]) moduleRowsByCamp[m.campaign_id] = [];
+      moduleRowsByCamp[m.campaign_id].push(m);
+    });
+
+    const convRowsByCamp: Record<string, any[]> = {};
+    (convsRes.data || []).forEach((c) => {
+      if (!convRowsByCamp[c.campaign_id]) convRowsByCamp[c.campaign_id] = [];
+      convRowsByCamp[c.campaign_id].push(c);
+    });
+
+    const logRowsByCamp: Record<string, any[]> = {};
+    (logsRes.data || []).forEach((l) => {
+      if (!logRowsByCamp[l.campaign_id]) logRowsByCamp[l.campaign_id] = [];
+      logRowsByCamp[l.campaign_id].push(l);
+    });
+
+    return rows.map((r) => 
+      mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || [])
+    );
+  } catch (err) {
+    console.warn('[Direct Supabase fetchUserCampaigns error]:', err);
+    return [];
+  }
+}
+
+// Direct SQL / Supabase handler for Enlace Puente dynamic route
+export async function handleBridgeInterceptionDirectSupabase(
+  campaignId: string, 
+  referrer: string = 'Enlace Puente KaSe', 
+  ipMasked: string = '185.12.***.***'
+): Promise<{ redirectUrl: string; success: boolean; campaignName?: string }> {
+  if (!supabase) {
+    return { redirectUrl: '/', success: false };
+  }
+
+  try {
+    // 1. Intercept campaign row directly from Supabase
+    const { data: campaign, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', campaignId)
+      .maybeSingle();
+
+    if (error || !campaign) {
+      return { redirectUrl: '/', success: false };
+    }
+
+    const assignedUserId = campaign.user_id || campaign.creator_email || 'usuario_anonimo';
+    const currentRegs = Number(campaign.current_registrations || 0) + 1;
+    const targetRegs = Number(campaign.target_registrations || 2000);
+    const newStatus = (currentRegs >= targetRegs && campaign.status === 'active')
+      ? 'paused_quota_reached'
+      : campaign.status;
+
+    const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const nowIso = new Date().toISOString();
+
+    // 2. Persist conversion record strictly associated to user_id and campana_id in Supabase
+    await Promise.allSettled([
+      // Insert conversion with both campaign_id and campana_id + user_id
+      supabase.from('conversions').insert({
+        id: convId,
+        campaign_id: campaign.id,
+        campana_id: campaign.id,
+        user_id: assignedUserId,
+        timestamp: nowIso,
+        method: 'organic_click',
+        user_tag: `bridge_click_${Math.random().toString(36).substring(2, 7)}`,
+        ip_masked: ipMasked,
+        referrer: referrer,
+      }),
+      // Atomic counter update
+      supabase.from('campaigns').update({
+        current_registrations: currentRegs,
+        status: newStatus,
+        paused_at: newStatus === 'paused_quota_reached' ? nowIso : campaign.paused_at,
+      }).eq('id', campaign.id),
+      // System audit log directly to Supabase
+      supabase.from('system_audit_logs').insert({
+        id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        campaign_id: campaign.id,
+        user_id: assignedUserId,
+        timestamp: nowIso,
+        level: 'SUCCESS',
+        module: 'ENRUTADOR_PUENTE',
+        message: `⚡ Enlace Puente interceptado: +1 registro guardado en Supabase (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Total: ${currentRegs}/${targetRegs}.`,
+      })
+    ]);
+
+    return { 
+      redirectUrl: campaign.target_url || '/', 
+      success: true, 
+      campaignName: campaign.name 
+    };
+  } catch (e) {
+    console.error('[Error handleBridgeInterceptionDirectSupabase]:', e);
+    return { redirectUrl: '/', success: false };
+  }
 }
