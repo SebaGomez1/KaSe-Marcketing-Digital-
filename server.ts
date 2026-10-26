@@ -514,17 +514,17 @@ export function mapCampaignToRow(campaign: any): any {
     name: campaign.name,
     target_url: campaign.targetUrl,
     niche: campaign.niche,
-    description: campaign.description,
-    campaign_type: campaign.campaignType,
-    target_unit_label: campaign.targetUnitLabel,
+    description: campaign.description || null,
+    campaign_type: campaign.campaignType || 'user_registrations',
+    target_unit_label: campaign.targetUnitLabel || 'registros',
     min_plan_price: campaign.minPlanPrice !== undefined ? campaign.minPlanPrice : null,
     max_plan_price: campaign.maxPlanPrice !== undefined ? campaign.maxPlanPrice : null,
     currency: campaign.currency || 'USD',
-    target_registrations: campaign.targetRegistrations,
-    current_registrations: campaign.currentRegistrations,
-    clicks_count: campaign.clicksCount || 0,
-    plan: campaign.plan,
-    status: campaign.status,
+    target_registrations: Number(campaign.targetRegistrations || 2000),
+    current_registrations: Number(campaign.currentRegistrations || 0),
+    clicks_count: Number(campaign.clicksCount || 0),
+    plan: campaign.plan || 'starter',
+    status: campaign.status || 'active',
     webhook_secret: campaign.webhookSecret,
     interaction_preferences: campaign.interactionPreferences || null,
     communication_tone_instructions: campaign.communicationToneInstructions || null,
@@ -4793,7 +4793,8 @@ async function startServer() {
   await purgeAllTestCampaignsOnce();
 
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    const { createServer: createViteServer } = await import('vite');
+    const viteModule = 'vite';
+    const { createServer: createViteServer } = await import(/* @vite-ignore */ viteModule);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
