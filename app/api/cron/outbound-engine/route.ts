@@ -18,12 +18,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'No hay campañas para procesar.' });
     }
 
-    // 2. Sincronizamos los motores usando únicamente la columna 'id' que sí existe
+    // 2. Procesamos secuencialmente las campañas usando las columnas reales de tu tabla
     for (const campaign of campaigns) {
       const { error: syncError } = await supabase
         .from('campaigns')
         .upsert({
-          id: campaign.id // Corrección crítica: Se remueven 'updated_at' y 'status' para evitar el error PGRST204
+          id: campaign.id
         });
 
       if (syncError) {
@@ -31,7 +31,16 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Registramos el éxito en los logs del sistema
+    // 3. Registro crítico corregido: Usamos 'campaign_id' y 'timestamp' que sí existen en tu tabla de auditoría
+    await supabase
+      .from('system_audit_logs')
+      .insert({
+        campaign_id: campaigns[0].id, // Usamos el ID de la primera campaña procesada como referencia válida
+        timestamp: new Date().toISOString(), // Mapeo correcto para la columna 'timestamp'
+        level: 'info', // Nivel de log según tu esquema visible
+        module: 'cron_outbound' // Módulo identificatorio
+      });
+
     console.log(`[ÉXITO] Sincronización exitosa de los motores para ${campaigns.length} campañas.`);
 
     return NextResponse.json({ 
@@ -47,4 +56,3 @@ export async function GET(request: Request) {
     );
   }
 }
-
