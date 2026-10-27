@@ -385,10 +385,20 @@ export default function App() {
 
   // On Payment Success (Mercado Pago IPN simulation or real confirmation)
   const handlePaymentSuccess = (activatedCamp: Campaign) => {
+    activatedCamp.status = 'active';
     saveCampaignToVault(activatedCamp);
-    setCampaigns((prev) =>
-      prev.map((c) => (c.id === activatedCamp.id ? activatedCamp : c))
-    );
+    setCampaigns((prev) => {
+      const exists = prev.some((c) => c.id === activatedCamp.id);
+      if (exists) {
+        return prev.map((c) => (c.id === activatedCamp.id ? activatedCamp : c));
+      } else {
+        return [activatedCamp, ...prev.filter((c) => !isFakeCampaign(c))];
+      }
+    });
+    setActiveCampaignId(activatedCamp.id);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('kase_active_campaign_id', activatedCamp.id);
+    }
     // Registro de pago en Bitácora con Enrutador Puente independiente
     fetch('/api/bridge/track-payment', {
       method: 'POST',
@@ -397,7 +407,7 @@ export default function App() {
         campaignId: activatedCamp.id,
         campaignName: activatedCamp.name,
         payerEmail: activatedCamp.creatorEmail || currentUser?.email || 'usuario@kase.io',
-        amount: activatedCamp.billing?.monthlyAmount || (activatedCamp.plan === 'starter' ? 149 : 249),
+        amount: activatedCamp.billing?.monthlyAmount || (activatedCamp.plan === 'starter' ? 490 : 250),
         currency: activatedCamp.billing?.currency || 'USD',
         plan: activatedCamp.plan,
         bridgeRouterUrl: activatedCamp.bridgeRouterUrl || `/r/${activatedCamp.id}`,

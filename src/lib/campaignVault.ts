@@ -56,19 +56,22 @@ export function purgeFakeCampaignsFromStorage(): void {
 
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) {
-          // Filtrar de forma estricta solo aquellas campañas cuyo ID coincida con FAKE_MOCK_CAMPAIGN_IDS
+          // Filtrar campañas falsas y campañas impagas (status 'configuring') de usuarios comunes
           const cleaned = parsed.filter((c: any) => {
             const id = typeof c === 'string' ? c : c?.id;
-            return !id || !FAKE_MOCK_CAMPAIGN_IDS.includes(id);
+            if (!id || FAKE_MOCK_CAMPAIGN_IDS.includes(id)) return false;
+            const isKathy = c?.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+            if (!isKathy && c?.status === 'configuring') return false;
+            return true;
           });
           // Se preserva intacto el array limpio sin alterar contadores de producción
           window.localStorage.setItem(key, JSON.stringify(cleaned));
         } else if (parsed && typeof parsed === 'object') {
           const id = parsed.id || '';
-          if (FAKE_MOCK_CAMPAIGN_IDS.includes(id)) {
+          const isKathy = parsed.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+          if (FAKE_MOCK_CAMPAIGN_IDS.includes(id) || (!isKathy && parsed.status === 'configuring')) {
             window.localStorage.removeItem(key);
           }
-          // Las campañas reales se mantienen inmutables con sus contadores y conversiones
         }
       } catch {
         // Clave no es JSON, omitir
@@ -84,6 +87,9 @@ export function purgeFakeCampaignsFromStorage(): void {
  */
 export function saveCampaignToVault(campaign: Campaign): void {
   if (!isBrowser() || !campaign || !campaign.id || isFakeCampaign(campaign)) return;
+  const isKathy = campaign.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
+  // Bloqueo estricto: Campañas no pagadas (status 'configuring') de usuarios comunes NUNCA se guardan en el baúl
+  if (!isKathy && campaign.status === 'configuring') return;
 
   try {
     // 1. Guardar en Master Vault
@@ -177,6 +183,8 @@ export function getVaultCampaigns(userEmail?: string, userId?: string, isSuperAd
   const belongsToUser = (c: Campaign): boolean => {
     if (!c || !c.id || isFakeCampaign(c)) return false;
     if (isSuperAdmin) return true; // Super admin (kathyseba2020@gmail.com) ve todas las campañas reales
+    // Campañas impagas (status 'configuring') de usuarios comunes NUNCA deben mostrarse
+    if (c.status === 'configuring') return false;
     const cEmail = (c.creatorEmail || '').toLowerCase().trim();
     const cUser = (c.userId || '').trim().toLowerCase();
 

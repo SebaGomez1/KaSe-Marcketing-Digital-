@@ -450,7 +450,7 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
           campaigns = mapped;
           saveCampaignsToFile();
         }
-        return mapped;
+        return isSuper ? mapped : mapped.filter((c) => c.status !== 'configuring');
       }
     } catch (e) {
       console.warn('[DB Error Supabase getCampaignsAsync]:', e);
@@ -970,14 +970,14 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
           .eq('user_id', authenticatedUser)
           .order('created_at', { ascending: false });
 
-        let finalRows = userRows || [];
+        let finalRows = (userRows || []).filter((r: any) => isSuperAdmin || r.status !== 'configuring');
         if (finalRows.length === 0 && authenticatedUser.includes('@')) {
           const { data: emailRows } = await supabase
             .from('campaigns')
             .select('*')
             .eq('creator_email', authenticatedUser)
             .order('created_at', { ascending: false });
-          finalRows = emailRows || [];
+          finalRows = (emailRows || []).filter((r: any) => isSuperAdmin || r.status !== 'configuring');
         }
 
         const campIds = finalRows.map((c: any) => c.id);

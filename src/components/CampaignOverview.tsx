@@ -329,7 +329,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
             {activeModulesCount} <span className="text-sm font-normal text-neutral-500">/ 8</span>
           </div>
           <div className="text-xs text-neutral-400 flex items-center justify-between">
-            <span>Plan {plan.toUpperCase()}</span>
+            <span>Plan {String(plan || 'starter').toUpperCase()}</span>
             <button
               onClick={onOpenModules}
               className="text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
@@ -416,7 +416,7 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
                         {conv.userTag}
                       </div>
                       <div className="text-neutral-500 flex items-center gap-2 truncate">
-                        <span>{conv.method.toUpperCase()}</span>
+                        <span>{String(conv.method || 'webhook').toUpperCase()}</span>
                         <span aria-hidden="true">·</span>
                         <span className="truncate">{conv.referrer}</span>
                       </div>

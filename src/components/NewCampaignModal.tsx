@@ -502,12 +502,13 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         throw new Error(data.error || 'Error al dar de alta la campaña');
       }
 
-      onCreated(data.campaign);
       if (isKathy && !isTestOneDollarMode) {
         // Beneficio exclusivo de creación sin pagar para Kathy Seba (kathyseba2020@gmail.com)
+        onCreated(data.campaign);
         setAdminSuccessCamp(data.campaign);
       } else {
-        // Obligatorio para todos los demás usuarios: pasar por caja Mercado Pago sí o sí
+        // Obligatorio para todos los demás usuarios: pasar por caja Mercado Pago sí o sí.
+        // La campaña NO se agrega al estado ni al baúl hasta que el pago sea aprobado en Mercado Pago.
         if (onRequestCheckout) {
           onRequestCheckout(data.campaign);
         }

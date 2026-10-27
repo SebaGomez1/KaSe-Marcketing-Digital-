@@ -209,24 +209,24 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
             <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-neutral-400">Campaña a Iniciar:</span>
-                <span className="font-bold text-white font-mono">{campaign.name}</span>
+                <span className="font-bold text-white font-mono">{campaign?.name || 'Campaña KaSe'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-neutral-400">Meta Contratada:</span>
                 <span className="font-mono text-emerald-400 font-bold">
-                  {campaign.targetRegistrations.toLocaleString()} {campaign.targetUnitLabel}
+                  {Number(campaign?.targetRegistrations || 2000).toLocaleString()} {campaign?.targetUnitLabel || 'conversiones'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-neutral-400">Nivel de Suite:</span>
                 <span className="font-mono text-white uppercase font-bold">
-                  Plan {campaign.plan}
+                  Plan {String(campaign?.plan || 'starter')}
                 </span>
               </div>
               <div className="pt-2 border-t border-neutral-800 flex items-center justify-between">
                 <span className="text-neutral-200 font-semibold">Total a Facturar:</span>
                 <span className="text-base font-bold font-mono text-emerald-400">
-                  ${amount.toLocaleString()} {currency} / mes
+                  ${Number(amount || 490).toLocaleString()} {currency} / mes
                 </span>
               </div>
             </div>
@@ -273,7 +273,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
             <div className="p-3 bg-neutral-900/60 rounded-xl border border-neutral-800 text-[11px] text-neutral-400 flex items-start gap-2">
               <Lock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <span>
-                <strong>Compromiso de Apagado Exacto KaSe:</strong> Únicamente cuando se completen las <strong className="text-neutral-200">{campaign.targetRegistrations.toLocaleString()} conversiones</strong> garantizadas se detendrán los motores. No hay sobrecuotas ocultas.
+                <strong>Compromiso de Apagado Exacto KaSe:</strong> Únicamente cuando se completen las <strong className="text-neutral-200">{Number(campaign?.targetRegistrations || 2000).toLocaleString()} conversiones</strong> garantizadas se detendrán los motores. No hay sobrecuotas ocultas.
               </span>
             </div>
 
@@ -285,10 +285,10 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                   <span>Escudo de Seguridad KaSe: Cobro Preventivamente Bloqueado</span>
                 </div>
                 <p className="text-[11px] text-neutral-300 leading-relaxed">
-                  No se autoriza el cobro al cliente hasta verificar que las APIs del motor para el plan <strong>{campaign.plan.toUpperCase()}</strong> estén conectadas y operativas en Vercel. Esto protege al cliente y garantiza la entrega del 100% del servicio contratado.
+                  No se autoriza el cobro al cliente hasta verificar que las APIs del motor para el plan <strong>{String(campaign?.plan || 'starter').toUpperCase()}</strong> estén conectadas y operativas en Vercel. Esto protege al cliente y garantiza la entrega del 100% del servicio contratado.
                 </p>
                 <div className="text-[10px] text-rose-300 font-mono">
-                  Motores pendientes: {engineValidation.missingModules.map((m) => m.name).join('; ')}
+                  Motores pendientes: {(engineValidation?.missingModules || []).map((m) => m.name).join('; ') || 'Configuración pendiente'}
                 </div>
               </div>
             )}
