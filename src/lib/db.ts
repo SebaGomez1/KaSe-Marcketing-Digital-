@@ -281,8 +281,18 @@ export function mapRowToCampaign(
 // Map Campaign object to DB columns for insert/upsert
 export function mapCampaignToRow(campaign: any): any {
   if (!campaign) return null;
+  const numMin = campaign.minPlanPrice !== undefined && campaign.minPlanPrice !== null 
+    ? Number(campaign.minPlanPrice) 
+    : (campaign.min_plan_price !== undefined && campaign.min_plan_price !== null ? Number(campaign.min_plan_price) : null);
+  const numMax = campaign.maxPlanPrice !== undefined && campaign.maxPlanPrice !== null 
+    ? Number(campaign.maxPlanPrice) 
+    : (campaign.max_plan_price !== undefined && campaign.max_plan_price !== null ? Number(campaign.max_plan_price) : null);
+  const numTarget = Number(campaign.targetRegistrations ?? campaign.target_registrations ?? 2000);
+  const numCurrent = Number(campaign.currentRegistrations ?? campaign.current_registrations ?? 0);
+  const numClicks = Number(campaign.clicksCount ?? campaign.clicks_count ?? 0);
+
   return {
-    id: campaign.id,
+    id: String(campaign.id),
     user_id: campaign.userId || campaign.creatorEmail || campaign.user_id || null,
     creator_email: campaign.creatorEmail || campaign.userId || campaign.creator_email || null,
     name: campaign.name || 'Sin título',
@@ -291,16 +301,12 @@ export function mapCampaignToRow(campaign: any): any {
     description: campaign.description || null,
     campaign_type: campaign.campaignType || campaign.campaign_type || 'user_registrations',
     target_unit_label: campaign.targetUnitLabel || campaign.target_unit_label || 'registros',
-    min_plan_price: campaign.minPlanPrice !== undefined && campaign.minPlanPrice !== null 
-      ? Number(campaign.minPlanPrice) 
-      : (campaign.min_plan_price !== undefined && campaign.min_plan_price !== null ? Number(campaign.min_plan_price) : null),
-    max_plan_price: campaign.maxPlanPrice !== undefined && campaign.maxPlanPrice !== null 
-      ? Number(campaign.maxPlanPrice) 
-      : (campaign.max_plan_price !== undefined && campaign.max_plan_price !== null ? Number(campaign.max_plan_price) : null),
+    min_plan_price: numMin !== null && Number.isFinite(numMin) ? numMin : null,
+    max_plan_price: numMax !== null && Number.isFinite(numMax) ? numMax : null,
     currency: campaign.currency || 'USD',
-    target_registrations: Number(campaign.targetRegistrations ?? campaign.target_registrations ?? 2000),
-    current_registrations: Number(campaign.currentRegistrations ?? campaign.current_registrations ?? 0),
-    clicks_count: Number(campaign.clicksCount ?? campaign.clicks_count ?? 0),
+    target_registrations: Number.isFinite(numTarget) ? Math.floor(numTarget) : 2000,
+    current_registrations: Number.isFinite(numCurrent) ? Math.floor(numCurrent) : 0,
+    clicks_count: Number.isFinite(numClicks) ? Math.floor(numClicks) : 0,
     plan: campaign.plan || 'starter',
     status: campaign.status || 'active',
     webhook_secret: campaign.webhookSecret || campaign.webhook_secret || `whsec_${campaign.id}`,

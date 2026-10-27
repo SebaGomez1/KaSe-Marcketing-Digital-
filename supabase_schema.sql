@@ -72,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_campaign_modules_campaign_id ON public.campaign_m
 CREATE TABLE IF NOT EXISTS public.conversions (
     id VARCHAR(100) PRIMARY KEY,
     campaign_id VARCHAR(100) REFERENCES public.campaigns(id) ON DELETE CASCADE,
+    campana_id VARCHAR(100),
     user_id VARCHAR(100),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     method VARCHAR(50) DEFAULT 'organic_click',
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS public.conversions (
     referrer TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_conversions_campaign_id ON public.conversions(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_campana_id ON public.conversions(campana_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_user_id ON public.conversions(user_id);
 CREATE INDEX IF NOT EXISTS idx_conversions_timestamp ON public.conversions(timestamp DESC);
 
@@ -149,14 +151,11 @@ ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaign_modules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.global_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_transactions ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para 'campaigns'
 DROP POLICY IF EXISTS "Permitir lectura publica de campanas activas" ON public.campaigns;
-CREATE POLICY "Permitir lectura publica de campanas activas"
-ON public.campaigns FOR SELECT
-TO anon, authenticated
-USING (true);
-
 DROP POLICY IF EXISTS "Permitir gestion de campanas" ON public.campaigns;
 CREATE POLICY "Permitir gestion de campanas"
 ON public.campaigns FOR ALL
@@ -164,17 +163,14 @@ TO anon, authenticated
 USING (true)
 WITH CHECK (true);
 
--- Políticas para 'conversions'
+-- Políticas para 'conversions' (FOR ALL para permitir INSERT y UPDATE en upsert)
 DROP POLICY IF EXISTS "Permitir lectura de conversiones" ON public.conversions;
-CREATE POLICY "Permitir lectura de conversiones"
-ON public.conversions FOR SELECT
-TO anon, authenticated
-USING (true);
-
 DROP POLICY IF EXISTS "Permitir insercion de conversiones" ON public.conversions;
-CREATE POLICY "Permitir insercion de conversiones"
-ON public.conversions FOR INSERT
+DROP POLICY IF EXISTS "Permitir gestion de conversiones" ON public.conversions;
+CREATE POLICY "Permitir gestion de conversiones"
+ON public.conversions FOR ALL
 TO anon, authenticated
+USING (true)
 WITH CHECK (true);
 
 -- Políticas para 'campaign_modules'
@@ -189,6 +185,22 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "Permitir acceso a bitacora" ON public.system_audit_logs;
 CREATE POLICY "Permitir acceso a bitacora"
 ON public.system_audit_logs FOR ALL
+TO anon, authenticated
+USING (true)
+WITH CHECK (true);
+
+-- Políticas para 'global_config'
+DROP POLICY IF EXISTS "Permitir gestion de config" ON public.global_config;
+CREATE POLICY "Permitir gestion de config"
+ON public.global_config FOR ALL
+TO anon, authenticated
+USING (true)
+WITH CHECK (true);
+
+-- Políticas para 'payment_transactions'
+DROP POLICY IF EXISTS "Permitir gestion de pagos" ON public.payment_transactions;
+CREATE POLICY "Permitir gestion de pagos"
+ON public.payment_transactions FOR ALL
 TO anon, authenticated
 USING (true)
 WITH CHECK (true);

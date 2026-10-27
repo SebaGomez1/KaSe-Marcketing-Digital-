@@ -149,3 +149,49 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO users (id, name, email, role, acquisition_source)
 VALUES ('kathy_super_admin', 'Kathy Seba', 'kathyseba2020@gmail.com', 'super_admin', 'direct_organic')
 ON CONFLICT (email) DO UPDATE SET role = 'super_admin';
+
+-- 8. TABLA DE TRANSACCIONES DE PAGO
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id VARCHAR(100) PRIMARY KEY,
+    campaign_id VARCHAR(100),
+    campaign_name VARCHAR(255),
+    client_email VARCHAR(255),
+    amount NUMERIC(10, 2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'USD',
+    status VARCHAR(50) DEFAULT 'approved',
+    payment_method VARCHAR(50) DEFAULT 'mercadopago_uy',
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    mp_payment_id VARCHAR(100),
+    mp_preference_id VARCHAR(100)
+);
+
+-- ====================================================================
+-- ROW LEVEL SECURITY (RLS) - PERMISOS DE LECTURA Y ESCRITURA TOTAL
+-- ====================================================================
+ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE campaign_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE system_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE global_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir gestion de campanas" ON campaigns;
+CREATE POLICY "Permitir gestion de campanas" ON campaigns FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir lectura de conversiones" ON conversions;
+DROP POLICY IF EXISTS "Permitir insercion de conversiones" ON conversions;
+DROP POLICY IF EXISTS "Permitir gestion de conversiones" ON conversions;
+CREATE POLICY "Permitir gestion de conversiones" ON conversions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir acceso a modulos" ON campaign_modules;
+CREATE POLICY "Permitir acceso a modulos" ON campaign_modules FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir acceso a bitacora" ON system_audit_logs;
+CREATE POLICY "Permitir acceso a bitacora" ON system_audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir gestion de config" ON global_config;
+CREATE POLICY "Permitir gestion de config" ON global_config FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Permitir gestion de pagos" ON payment_transactions;
+CREATE POLICY "Permitir gestion de pagos" ON payment_transactions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
