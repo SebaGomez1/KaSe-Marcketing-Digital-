@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     if (fetchError) throw fetchError;
 
     if (!campaigns || campaigns.length === 0) {
-      return NextResponse.json({ success: true, message: 'No hay campañas para procesar.' });
+      return NextResponse.json({ success: true, message: 'No campaigns found.' });
     }
 
     for (const campaign of campaigns) {
@@ -25,11 +25,10 @@ export async function GET(request: Request) {
         });
 
       if (syncError) {
-        console.error(`Error sincronizando campaña ${campaign.id}:`, syncError);
+        console.error(`Error:`, syncError);
       }
     }
 
-    // Corrección crítica de sintaxis: Seleccionamos el primer elemento de la lista usando [0] de forma correcta
     const firstCampaignId = campaigns[0].id;
     const uniqueId = `log_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -43,17 +42,17 @@ export async function GET(request: Request) {
         module: 'cron_outbound'
       });
 
-    console.log(`[ÉXITO] Sincronización exitosa de los motores para ${campaigns.length} campañas.`);
+    console.log(`[SUCCESS] Motors sync completed.`);
 
     return NextResponse.json({ 
       success: true, 
-      message: `Motores sincronizados correctamente. Procesadas ${campaigns.length} campañas.` 
+      message: `Motors synchronized completed.` 
     });
 
   } catch (error: any) {
-    console.error('Error crítico en el motor de captación:', error);
+    console.error('Critical error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Error interno del servidor.' },
+      { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }
     );
   }
