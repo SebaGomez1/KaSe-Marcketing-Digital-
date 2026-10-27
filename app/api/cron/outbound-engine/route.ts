@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     if (fetchError) throw fetchError;
 
     if (!campaigns || campaigns.length === 0) {
-      return Response.json({ success: true, message: 'No campaigns found.' });
+      return Response.json({ success: true, message: 'No campaigns found.', system_audit_logs: [] });
     }
 
     for (const campaign of campaigns) {
@@ -51,15 +51,27 @@ export async function GET(request: Request) {
         id: uniqueId,
         campaign_id: firstCampaignId,
         timestamp: new Date().toISOString(),
-        level: 'info',
-        module: 'cron_outbound'
+        level: 'INFO',
+        module: 'cron_outbound',
+        message: `Sincronización exitosa de motores para ${campaigns.length} campañas.`
       });
 
     console.log(`[SUCCESS] Motors sync completed.`);
 
+    // Obtener las ejecuciones recientes de system_audit_logs para mostrarlas en la respuesta
+    const { data: auditLogs } = await supabase
+      .from('system_audit_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(30);
+
     return Response.json({ 
       success: true, 
-      message: `Motors synchronized completed.` 
+      message: `Motors synchronized completed.`,
+      executed_at: new Date().toISOString(),
+      campaigns_processed: campaigns.length,
+      latest_log_id: uniqueId,
+      system_audit_logs: auditLogs || []
     });
 
   } catch (error: any) {

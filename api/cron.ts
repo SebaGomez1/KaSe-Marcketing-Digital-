@@ -70,11 +70,23 @@ async function executeCronSync() {
     }
   }
 
+  const firstCampaignId = campaigns[0]?.id || 'system_core';
+  const logId = `log_${Math.random().toString(36).substring(2, 9)}`;
+
   await supabase.from('system_audit_logs').insert({
-    event_type: 'cron_outbound_engine',
+    id: logId,
+    campaign_id: firstCampaignId,
+    timestamp: new Date().toISOString(),
+    level: 'INFO',
+    module: 'cron_outbound',
     message: `Sincronización exitosa de ${campaigns.length} motores de captación de tráfico. Actualizadas ${updatedCount}.`,
-    created_at: new Date().toISOString(),
   });
+
+  const { data: auditLogs } = await supabase
+    .from('system_audit_logs')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .limit(30);
 
   return {
     success: true,
@@ -82,6 +94,8 @@ async function executeCronSync() {
     processed: campaigns.length,
     updated: updatedCount,
     timestamp: new Date().toISOString(),
+    latest_log_id: logId,
+    system_audit_logs: auditLogs || [],
   };
 }
 

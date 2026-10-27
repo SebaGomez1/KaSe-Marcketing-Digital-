@@ -2644,6 +2644,28 @@ app.post('/api/cron', handleOutboundCronEndpoint);
 app.get('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 app.post('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 
+// Endpoint dedicado para consultar listado de system_audit_logs
+app.get('/api/system_audit_logs', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('system_audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      res.json({ success: true, count: data?.length || 0, system_audit_logs: data || [] });
+      return;
+    }
+    res.json({ success: true, count: 0, system_audit_logs: [], message: 'Supabase no configurado' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get('/api/audit-logs', async (req: Request, res: Response): Promise<void> => {
+  res.redirect('/api/system_audit_logs');
+});
+
 // Endpoint para entregar la configuración y clave pública de Mercado Pago
 app.get('/api/payments/mercadopago/config', (_req: Request, res: Response): void => {
   const mpDetected = detectMercadoPagoToken();
