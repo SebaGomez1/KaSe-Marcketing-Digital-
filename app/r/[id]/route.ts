@@ -97,7 +97,8 @@ export async function GET(
               fecha_actualizacion: new Date().toISOString(),
             }, { onConflict: 'campana_id' }),
             supabase.from('campaigns').update({
-              updated_at: new Date().toISOString(),
+              status: 'active',
+              paused_at: null,
             }).eq('id', campaignId)
           ]);
         }

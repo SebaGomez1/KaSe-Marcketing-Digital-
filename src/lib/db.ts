@@ -438,7 +438,6 @@ export async function handleBridgeInterceptionDirectSupabase(
       // Clicks count update without tampering with completed registration quota
       supabase.from('campaigns').update({
         clicks_count: newClicks,
-        updated_at: nowIso,
       }).eq('id', campaign.id),
       // System audit log directly to Supabase
       supabase.from('system_audit_logs').insert({

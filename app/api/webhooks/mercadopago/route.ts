@@ -88,7 +88,6 @@ export async function POST(req: NextRequest) {
             mpPaymentId: paymentId,
             plan: 'growth',
             salesBlock: 50,
-            updated_at: nowIso,
           }).eq('id', campaignId),
 
         // Registro de auditoría

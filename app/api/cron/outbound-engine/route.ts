@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
@@ -14,18 +13,32 @@ export async function GET(request: Request) {
     if (fetchError) throw fetchError;
 
     if (!campaigns || campaigns.length === 0) {
-      return NextResponse.json({ success: true, message: 'No campaigns found.' });
+      return Response.json({ success: true, message: 'No campaigns found.' });
     }
 
     for (const campaign of campaigns) {
-      const { error: syncError } = await supabase
+      // Usar columnas validadas en el esquema (status, paused_at). NO enviar updated_at que dispara PGRST204
+      let { error: syncError } = await supabase
         .from('campaigns')
-        .upsert({
-          id: campaign.id
-        });
+        .update({
+          status: 'active',
+          paused_at: null
+        })
+        .eq('id', campaign.id);
 
       if (syncError) {
-        console.error(`Error:`, syncError);
+        const { error: upsertErr } = await supabase
+          .from('campaigns')
+          .upsert({
+            id: campaign.id,
+            status: 'active',
+            paused_at: null
+          }, { onConflict: 'id' });
+        syncError = upsertErr;
+      }
+
+      if (syncError) {
+        console.error(`Error sincronizando campaña ${campaign.id}:`, syncError.message || syncError);
       }
     }
 
@@ -44,14 +57,14 @@ export async function GET(request: Request) {
 
     console.log(`[SUCCESS] Motors sync completed.`);
 
-    return NextResponse.json({ 
+    return Response.json({ 
       success: true, 
       message: `Motors synchronized completed.` 
     });
 
   } catch (error: any) {
     console.error('Critical error:', error);
-    return NextResponse.json(
+    return Response.json(
       { success: false, error: error.message || 'Internal Server Error' },
       { status: 500 }
     );

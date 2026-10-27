@@ -44,16 +44,27 @@ async function executeCronSync() {
 
   let updatedCount = 0;
   for (const campaign of campaigns) {
-    const { error: syncError } = await supabase
+    let { error: syncError } = await supabase
       .from('campaigns')
-      .upsert({
-        id: campaign.id,
-        updated_at: new Date().toISOString(),
+      .update({
         status: 'active',
-      });
+        paused_at: null,
+      })
+      .eq('id', campaign.id);
 
     if (syncError) {
-      console.error(`Error sincronizando campaña ${campaign.id}:`, syncError);
+      const { error: upsertErr } = await supabase
+        .from('campaigns')
+        .upsert({
+          id: campaign.id,
+          status: 'active',
+          paused_at: null,
+        }, { onConflict: 'id' });
+      syncError = upsertErr;
+    }
+
+    if (syncError) {
+      console.error(`Error sincronizando campaña ${campaign.id}:`, syncError.message || syncError);
     } else {
       updatedCount++;
     }

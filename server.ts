@@ -1302,7 +1302,6 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
               clicks_count: campaign.clicksCount,
               status: campaign.status,
               paused_at: campaign.pausedAt,
-              updated_at: nowIso,
             }).eq('id', campaign.id),
             supabase.from('system_audit_logs').insert({
               id: bridgeLog.id,
@@ -1453,7 +1452,6 @@ app.post('/api/webhook/conversion/:campaignId', async (req: Request, res: Respon
             current_registrations: campaign.currentRegistrations,
             status: campaign.status,
             paused_at: campaign.pausedAt,
-            updated_at: new Date().toISOString(),
           }).eq('id', campaignId),
         ]);
       } catch (dbErr) {
@@ -3390,7 +3388,6 @@ app.post('/api/admin/reset-all-conversions', async (_req: Request, res: Response
             clicks_count: 0,
             status: 'active',
             paused_at: null,
-            updated_at: new Date().toISOString(),
           }).neq('id', 'permanent_keep_none'),
         ]);
       } catch (dbErr) {
@@ -3918,7 +3915,6 @@ app.post('/api/campaigns/:id/reset-counter', async (req: Request, res: Response)
           clicks_count: 0,
           status: 'active',
           paused_at: null,
-          updated_at: new Date().toISOString(),
         }).eq('id', campaign.id),
       ]);
     } catch (e) {}

@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
 -- Migración retrocompatible para bases de datos existentes
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS creator_email VARCHAR(255);
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
 -- Indexación de campañas para optimización de consultas del motor y aislamiento de usuario
 CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
