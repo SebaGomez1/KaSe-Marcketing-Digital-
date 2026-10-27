@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // Corrección crítica: Tomamos el ID de la primera campaña disponible en la lista de forma segura [0].id
+    // Corrección crítica de sintaxis: Seleccionamos el primer elemento de la lista usando [0] de forma correcta
     const firstCampaignId = campaigns[0].id;
     const uniqueId = `log_${Math.random().toString(36).substr(2, 9)}`;
 
