@@ -419,9 +419,11 @@ export default function App() {
   }
 
   // Safe New Campaign Trigger: Requires login first, can pre-select plan
-  const handleOpenNewCampaign = (planId?: 'basic' | 'starter' | 'growth' | 'enterprise') => {
-    if (planId) {
-      setSelectedInitialPlan(planId);
+  const handleOpenNewCampaign = (planId?: unknown) => {
+    if (typeof planId === 'string' && ['basic', 'starter', 'growth', 'enterprise'].includes(planId)) {
+      setSelectedInitialPlan(planId as 'basic' | 'starter' | 'growth' | 'enterprise');
+    } else {
+      setSelectedInitialPlan('starter');
     }
     if (!currentUser) {
       setIsAuthModalOpen(true);

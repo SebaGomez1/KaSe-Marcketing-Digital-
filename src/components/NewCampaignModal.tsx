@@ -49,7 +49,14 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   campaign,
 }) => {
   // Strict null-guards: Fallback to neutral default values if campaign or initialPlan is undefined
-  const resolvedPlan = initialPlan || campaign?.plan || 'starter';
+  const sanitizePlan = (p: unknown): 'basic' | 'starter' | 'growth' | 'enterprise' => {
+    if (typeof p === 'string' && ['basic', 'starter', 'growth', 'enterprise'].includes(p)) {
+      return p as 'basic' | 'starter' | 'growth' | 'enterprise';
+    }
+    return 'starter';
+  };
+
+  const resolvedPlan = sanitizePlan(initialPlan || campaign?.plan);
   const defaultInitialQty =
     resolvedPlan === 'basic'
       ? 1000
@@ -99,7 +106,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   // Sync initialPlan / campaign ONLY when modal opens (avoids resetting slider on drag)
   useEffect(() => {
     if (!isOpen) return;
-    const targetPlan = initialPlan || campaign?.plan || 'starter';
+    const targetPlan = sanitizePlan(initialPlan || campaign?.plan);
     setPlan(targetPlan);
     if (campaign?.targetRegistrations) {
       setTargetQuantity(campaign.targetRegistrations);
@@ -1285,12 +1292,12 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
               {isValidatingEngines ? (
                 <div className="space-y-1 text-[11px] text-neutral-400">
-                  <p>Consultando el estado de conexión de los motores del plan <strong>{plan.toUpperCase()}</strong> en las variables de entorno de Vercel...</p>
+                  <p>Consultando el estado de conexión de los motores del plan <strong>{String(plan || 'starter').toUpperCase()}</strong> en las variables de entorno de Vercel...</p>
                 </div>
               ) : (!engineValidation || !engineValidation.canProceed) ? (
                 <div className="space-y-2 text-[11px] text-neutral-300">
                   <p className="leading-relaxed">
-                    Por <strong>política de seguridad y garantía estricta de entrega de servicio 100% real</strong>, no se puede proceder al checkout ni cobrar campañas hasta que las APIs de los motores del plan <strong>{plan.toUpperCase()}</strong> estén configuradas por la administración en Vercel. Esto garantiza que ningún usuario pague por un servicio sin respaldo técnico activo:
+                    Por <strong>política de seguridad y garantía estricta de entrega de servicio 100% real</strong>, no se puede proceder al checkout ni cobrar campañas hasta que las APIs de los motores del plan <strong>{String(plan || 'starter').toUpperCase()}</strong> estén configuradas por la administración en Vercel. Esto garantiza que ningún usuario pague por un servicio sin respaldo técnico activo:
                   </p>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                     {(engineValidation?.missingModules || []).map((m) => (
@@ -1312,7 +1319,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               ) : (
                 <div className="space-y-1 text-[11px] text-neutral-300">
                   <p className="leading-relaxed">
-                    Todos los motores del plan <strong>{plan.toUpperCase()}</strong> tienen sus credenciales validadas en Vercel. Al pasar al checkout se procederá al cobro y la campaña comenzará de inmediato con tráfico 100% real.
+                    Todos los motores del plan <strong>{String(plan || 'starter').toUpperCase()}</strong> tienen sus credenciales validadas en Vercel. Al pasar al checkout se procederá al cobro y la campaña comenzará de inmediato con tráfico 100% real.
                   </p>
                   <p className="text-[10px] text-emerald-400">
                     ✨ Cero configuración para el cliente: infraestructura autónoma gestionada y respaldada por KaSe.

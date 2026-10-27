@@ -166,11 +166,11 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
         {/* Action: Create New Campaign */}
         <button
-          onClick={onOpenNewCampaign}
+          onClick={() => onOpenNewCampaign()}
           className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-black font-bold text-xs rounded-xl transition-all shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Crear Nueva Campaña</span>
+          <span>Crear Nueva Campaña</span>
         </button>
       </div>
 

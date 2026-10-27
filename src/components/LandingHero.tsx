@@ -401,7 +401,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                     <ArrowRight className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={onOpenNewCampaign}
+                    onClick={() => onOpenNewCampaign()}
                     className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer"
                   >
                     + Nueva Campaña
@@ -566,7 +566,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                   </button>
 
                   <button
-                    onClick={onOpenNewCampaign}
+                    onClick={() => onOpenNewCampaign()}
                     className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-xs rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
                     <span>+ Crear Nueva Campaña</span>
@@ -647,7 +647,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             </h2>
           </div>
           <button
-            onClick={onOpenNewCampaign}
+            onClick={() => onOpenNewCampaign()}
             className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
           >
             <span>Crear Campaña Ahora</span>
