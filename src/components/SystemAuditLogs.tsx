@@ -1,17 +1,93 @@
-import React, { useState } from 'react';
-import { Terminal, ShieldAlert, CheckCircle2, Info, AlertTriangle, Filter, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  Terminal, 
+  ShieldAlert, 
+  CheckCircle2, 
+  Info, 
+  AlertTriangle, 
+  Filter, 
+  Search, 
+  RefreshCw, 
+  Route, 
+  CreditCard, 
+  UserPlus, 
+  Globe 
+} from 'lucide-react';
 import { Campaign, CampaignLog } from '../types/growth';
 
 interface SystemAuditLogsProps {
-  campaign: Campaign;
+  campaign?: Campaign | null;
+  allCampaigns?: Campaign[];
 }
 
-export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign }) => {
+export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allCampaigns = [] }) => {
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [serverLogs, setServerLogs] = useState<CampaignLog[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const filteredLogs = campaign.logs.filter((log) => {
-    if (filterLevel !== 'all' && log.level !== filterLevel) return false;
+  const fetchServerLogs = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/system_audit_logs');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.system_audit_logs)) {
+          setServerLogs(data.system_audit_logs);
+        }
+      }
+    } catch (e) {
+      console.warn('[Bitácora] Error al cargar logs globales:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchServerLogs();
+  }, [campaign?.id]);
+
+  // Combine campaign logs with server-side bridge logs without duplicates
+  const allLogsMap = new Map<string, CampaignLog>();
+
+  // Add campaign specific logs if available
+  if (campaign?.logs) {
+    campaign.logs.forEach((l) => allLogsMap.set(l.id, l));
+  }
+
+  // Also collect logs from other campaigns if available for super admin view
+  allCampaigns.forEach((c) => {
+    if (c.logs) {
+      c.logs.forEach((l) => allLogsMap.set(l.id, l));
+    }
+  });
+
+  // Add global server bridge logs
+  serverLogs.forEach((l) => {
+    if (!allLogsMap.has(l.id)) {
+      allLogsMap.set(l.id, l);
+    }
+  });
+
+  const mergedLogs = Array.from(allLogsMap.values()).sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
+  const filteredLogs = mergedLogs.filter((log) => {
+    const text = (log.message + ' ' + log.module).toLowerCase();
+
+    if (filterLevel === 'PUENTES') {
+      if (!text.includes('puente') && !text.includes('/r/')) return false;
+    } else if (filterLevel === 'HERO') {
+      if (!text.includes('hero')) return false;
+    } else if (filterLevel === 'REGISTROS') {
+      if (!text.includes('registro') && !text.includes('registrado') && !text.includes('usuario')) return false;
+    } else if (filterLevel === 'PAGOS') {
+      if (!text.includes('pago') && !text.includes('mercadopago') && !text.includes('cobro')) return false;
+    } else if (filterLevel !== 'all' && log.level !== filterLevel) {
+      return false;
+    }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
@@ -51,48 +127,136 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign }) =>
     }
   };
 
+  const getModuleCategoryBadge = (moduleName: string, message: string) => {
+    const lower = (moduleName + ' ' + message).toLowerCase();
+    if (lower.includes('hero')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 px-1.5 py-0.5 rounded">
+          <Globe className="w-2.5 h-2.5" />
+          <span>PUENTE HERO</span>
+        </span>
+      );
+    }
+    if (lower.includes('registro') || lower.includes('registrado')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-950/40 border border-purple-800/50 px-1.5 py-0.5 rounded">
+          <UserPlus className="w-2.5 h-2.5" />
+          <span>PUENTE REGISTRO</span>
+        </span>
+      );
+    }
+    if (lower.includes('pago') || lower.includes('mercadopago') || lower.includes('cobro')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-800/50 px-1.5 py-0.5 rounded">
+          <CreditCard className="w-2.5 h-2.5" />
+          <span>PUENTE PAGO</span>
+        </span>
+      );
+    }
+    if (lower.includes('puente') || lower.includes('/r/')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-teal-300 bg-teal-950/40 border border-teal-800/50 px-1.5 py-0.5 rounded">
+          <Route className="w-2.5 h-2.5" />
+          <span>ENRUTADOR PUENTE</span>
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded">
+        {moduleName}
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-neutral-800">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            Bitácora de Auditoría del Motor
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              Bitácora de Tráfico y Enrutadores Puente
+            </h2>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              HTTP 307 + Clics Orgánicos
+            </span>
+          </div>
           <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-            Registro cronológico inmutable de eventos del controlador autónomo, llamadas de Webhook, disparos de Píxel y órdenes de auto-pausa.
+            Registro cronológico inmutable de todo el tráfico orgánico que pasa por los enrutadores puente: visitas al Hero, pasos de registro (+1 usuario registrado) y pagos de campañas independientes (/r/:id).
           </p>
         </div>
 
-        {/* Filter controls */}
+        {/* Filter & Refresh controls */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={fetchServerLogs}
+            disabled={isLoading}
+            className="p-1.5 rounded-md bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+            title="Recargar bitácora en vivo"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-400' : ''}`} />
+          </button>
+
           <div className="relative">
             <input
               type="text"
-              placeholder="Buscar en logs..."
+              placeholder="Buscar en bitácora..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-neutral-900 border border-neutral-700 rounded-md px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 w-44"
             />
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-neutral-900 border border-neutral-800 rounded-md">
-            {['all', 'SUCCESS', 'ALERT', 'INFO'].map((lvl) => (
+          <div className="flex items-center gap-1 p-1 bg-neutral-900 border border-neutral-800 rounded-md overflow-x-auto">
+            {[
+              { id: 'all', label: 'TODOS' },
+              { id: 'PUENTES', label: 'PUENTES' },
+              { id: 'HERO', label: 'HERO' },
+              { id: 'REGISTROS', label: 'REGISTROS' },
+              { id: 'PAGOS', label: 'PAGOS' },
+              { id: 'SUCCESS', label: 'ÉXITO' },
+              { id: 'ALERT', label: 'ALERTAS' },
+            ].map((f) => (
               <button
-                key={lvl}
-                onClick={() => setFilterLevel(lvl)}
-                className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors cursor-pointer ${
-                  filterLevel === lvl
-                    ? 'bg-neutral-800 text-white font-semibold'
+                key={f.id}
+                onClick={() => setFilterLevel(f.id)}
+                className={`px-2 py-1 text-[10px] font-mono rounded transition-colors cursor-pointer whitespace-nowrap ${
+                  filterLevel === f.id
+                    ? 'bg-emerald-500 text-black font-bold'
                     : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                {lvl.toUpperCase()}
+                {f.label}
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Campaign Dedicated Bridge Info Banner */}
+      {campaign && (
+        <div className="p-3.5 rounded-xl bg-neutral-900/60 border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+              <Route className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-white font-bold flex items-center gap-2">
+                <span>Enrutador Puente Independiente de esta Campaña:</span>
+                <span className="font-mono text-emerald-400">/r/{campaign.id}</span>
+              </div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">
+                Destino final: <code className="text-neutral-300 font-mono">{campaign.targetUrl}</code> · Redirección HTTP 307 atómica.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0 font-mono text-[11px]">
+            <span className="text-neutral-400">Clics interceptados: <strong className="text-white">{campaign.clicksCount || 0}</strong></span>
+            <span className="text-neutral-600">·</span>
+            <span className="text-neutral-400">Registros: <strong className="text-emerald-400">{campaign.currentRegistrations} / {campaign.targetRegistrations}</strong></span>
+          </div>
+        </div>
+      )}
 
       {/* Logs Table */}
       <div className="bg-[#161616] border border-neutral-800 rounded-xl overflow-hidden shadow-sm">
@@ -102,15 +266,19 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign }) =>
               <tr className="border-b border-neutral-800 bg-neutral-900/60 text-neutral-400 font-mono text-[11px]">
                 <th className="py-3 px-4 font-semibold">HORA (UTC)</th>
                 <th className="py-3 px-4 font-semibold">NIVEL</th>
-                <th className="py-3 px-4 font-semibold">MÓDULO / ORIGEN</th>
-                <th className="py-3 px-4 font-semibold">MENSAJE DEL SISTEMA</th>
+                <th className="py-3 px-4 font-semibold">CANAL / ENRUTADOR</th>
+                <th className="py-3 px-4 font-semibold">REGISTRO DE EVENTO EN BITÁCORA</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/80 font-mono">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-neutral-500">
-                    No se encontraron registros que coincidan con el filtro.
+                  <td colSpan={4} className="py-10 text-center text-neutral-500">
+                    <div className="space-y-1">
+                      <Route className="w-6 h-6 mx-auto text-neutral-600 mb-2" />
+                      <p className="text-neutral-400 font-medium">No hay eventos en la bitácora que coincidan con el filtro.</p>
+                      <p className="text-[11px] text-neutral-500">Todo el tráfico de enlaces puente (/r/:id), visitas a Hero y registros se registra automáticamente aquí.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -131,10 +299,10 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign }) =>
                     <td className="py-3 px-4 whitespace-nowrap">
                       {getLevelBadge(log.level)}
                     </td>
-                    <td className="py-3 px-4 text-neutral-300 font-semibold whitespace-nowrap">
-                      {log.module}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {getModuleCategoryBadge(log.module, log.message)}
                     </td>
-                    <td className="py-3 px-4 text-neutral-300 font-sans leading-relaxed">
+                    <td className="py-3 px-4 text-neutral-200 font-sans leading-relaxed">
                       {log.message}
                     </td>
                   </tr>

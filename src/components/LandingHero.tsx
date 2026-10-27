@@ -182,6 +182,14 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       }
 
       if (authUser) {
+        if (authMode === 'register') {
+          // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados (Requerimiento 5)
+          fetch('/api/bridge/track-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
+          }).catch(() => {});
+        }
         // Remember this specific account on this device
         const deviceData = { email: authUser.email, name: authUser.name, role: authUser.role };
         localStorage.setItem('kase_device_account', JSON.stringify(deviceData));

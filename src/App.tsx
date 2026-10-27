@@ -37,37 +37,35 @@ import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 // Purga inmediata de campañas falsas en almacenamiento del navegador
 purgeFakeCampaignsFromStorage();
 
-const DEFAULT_SUPER_ADMIN_USER: User = {
-  id: 'skinsumos2026@gmail.com',
-  name: 'Seba Gomez (Super Admin)',
-  email: 'skinsumos2026@gmail.com',
+const KATHY_SUPER_ADMIN_USER: User = {
+  id: 'kathy_super_admin',
+  name: 'Kathy Seba (Super Admin)',
+  email: 'kathyseba2020@gmail.com',
   role: 'super_admin',
-  createdAt: '2026-10-21T14:15:30.000Z',
+  createdAt: '2026-09-24T07:16:24.570Z',
+  acquisitionSource: 'direct_organic',
 };
 
 export default function App() {
-  // 1. Persistent Authentication State Initialization (Immediate execution from persistent storage)
+  // 1. Persistent Authentication State: Solo kathyseba2020@gmail.com puede ser Super Admin
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = typeof window !== 'undefined' ? window.localStorage.getItem('kase_current_user') : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.name || parsed.id)) {
-          if (parsed.email && parsed.email.toLowerCase() === 'kase.marketing.digital@gmail.com') {
-            parsed.role = 'client';
-          } else if (isUserSuperAdmin(parsed) || (parsed.email && (parsed.email.toLowerCase() === 'kathyseba2020@gmail.com' || parsed.email.toLowerCase() === 'skinsumos2026@gmail.com'))) {
+          const cleanEmail = (parsed.email || '').toLowerCase().trim();
+          if (cleanEmail === 'kathyseba2020@gmail.com') {
             parsed.role = 'super_admin';
+          } else {
+            parsed.role = 'client';
           }
           return parsed;
         }
       }
-      // Save default Super Admin to ensure persistent access across all page reloads & viewports
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('kase_current_user', JSON.stringify(DEFAULT_SUPER_ADMIN_USER));
-      }
-      return DEFAULT_SUPER_ADMIN_USER;
+      return null;
     } catch {
-      return DEFAULT_SUPER_ADMIN_USER;
+      return null;
     }
   });
 
@@ -76,22 +74,21 @@ export default function App() {
     try {
       if (typeof window !== 'undefined') {
         const savedTab = window.localStorage.getItem('kase_active_tab');
-        if (savedTab && savedTab !== 'landing') {
+        if (savedTab) {
           return savedTab;
         }
         const savedUser = window.localStorage.getItem('kase_current_user');
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
-          if (parsedUser.role === 'super_admin' || parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com' || parsedUser.email?.toLowerCase() === 'skinsumos2026@gmail.com') {
+          if (parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com') {
             return 'dashboard';
           }
-          return 'dashboard';
         }
       }
     } catch {
       // ignore
     }
-    return 'dashboard';
+    return 'landing';
   });
 
   // Blindaje de almacenamiento indestructible: Carga inicial desde el baúl blindado local
@@ -206,22 +203,38 @@ export default function App() {
     }
   }, []);
 
+  // 5. Registrar visita del Enrutador Puente en Hero al iniciar la aplicación
+  useEffect(() => {
+    fetch('/api/bridge/track-hero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        referrer: typeof document !== 'undefined' ? document.referrer || 'Tráfico Orgánico Directo' : 'Hero',
+      }),
+    }).catch(() => {});
+  }, []);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   // Fetch campaigns from backend with strict user_id data isolation and indestructible local vault merge
   const fetchCampaigns = async () => {
     try {
-      const authenticatedUserId = currentUser?.id || currentUser?.email || '';
-      const isSuperAdmin = isUserSuperAdmin(currentUser);
+      if (!currentUser) {
+        setCampaigns([]);
+        setActiveCampaignId('');
+        return;
+      }
 
-      // 1. Obtener campañas guardadas en el baúl blindado local
+      const authenticatedUserId = currentUser?.id || currentUser?.email || '';
+      const cleanEmail = (currentUser?.email || '').trim().toLowerCase();
+      const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
+
+      // 1. Obtener campañas guardadas en el baúl blindado local (Aislamiento de Privacidad)
       const localVault = getVaultCampaigns(currentUser?.email, currentUser?.id, isSuperAdmin);
 
       // Strict user_id parameter passed to query: Always provide identification so backend authenticates
-      const queryParam = authenticatedUserId
-        ? `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`
-        : '?user_id=anonymous_unauthenticated';
+      const queryParam = `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`;
 
       let serverCampaigns: Campaign[] = [];
       try {
@@ -236,17 +249,16 @@ export default function App() {
         console.warn('[Fetch Server Error - Using Local Vault]:', netErr);
       }
 
-      // Ensure data isolation: never render admin campaigns if not super_admin
+      // Ensure strict privacy: Solo Kathy Seba ve todo. Los usuarios normales solo ven sus campañas.
       const isolatedServer = isSuperAdmin
         ? serverCampaigns
         : serverCampaigns.filter(
             (c: Campaign) =>
-              (c.userId && (c.userId === authenticatedUserId || c.userId === currentUser?.email)) ||
-              (c.creatorEmail && c.creatorEmail.toLowerCase() === (currentUser?.email || '').toLowerCase())
+              (c.creatorEmail && c.creatorEmail.toLowerCase() === cleanEmail) ||
+              (c.userId && (c.userId.toLowerCase() === cleanEmail || c.userId === currentUser.id))
           );
 
       // 2. FUSIÓN BLINDADA: Combina lo que tiene el servidor con lo que tiene el baúl local.
-      // Regla de oro: Ninguna campaña local se borra porque el servidor devuelva vacío o tenga cold start.
       const mergedCampaigns = mergeCampaigns(isolatedServer, localVault);
 
       // 3. Persistir inmediatamente en el baúl local
@@ -312,25 +324,22 @@ export default function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [activeTab, activeCampaignId]);
 
+  // Bitácora Requerimiento 5: Si el usuario solo llega al Hero: Registrar visita del enrutador puente
+  useEffect(() => {
+    if (activeTab === 'landing') {
+      fetch('/api/bridge/track-hero', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referrer: typeof document !== 'undefined' ? (document.referrer || 'Tráfico Orgánico Directo') : 'Orgánico' }),
+      }).catch(() => {});
+    }
+  }, [activeTab]);
+
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) || campaigns[0];
 
 
 
-  // Quick Action: Reset Counter
-  const handleResetCounter = async () => {
-    if (!activeCampaign) return;
-    setIsActionLoading(true);
-    try {
-      await fetch(`/api/campaigns/${activeCampaign.id}/reset-counter`, {
-        method: 'POST',
-      });
-      await fetchCampaigns();
-    } catch (err) {
-      console.error('Error resetting counter:', err);
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
+  // Campaign resets are permanently prohibited (organic traffic execution only)
 
   // Quick Action: Toggle Status
   const handleToggleStatus = async () => {
@@ -389,6 +398,21 @@ export default function App() {
     setCampaigns((prev) =>
       prev.map((c) => (c.id === activatedCamp.id ? activatedCamp : c))
     );
+    // Registro de pago en Bitácora con Enrutador Puente independiente
+    fetch('/api/bridge/track-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        campaignId: activatedCamp.id,
+        campaignName: activatedCamp.name,
+        payerEmail: activatedCamp.creatorEmail || currentUser?.email || 'usuario@kase.io',
+        amount: activatedCamp.billing?.monthlyAmount || (activatedCamp.plan === 'starter' ? 149 : 249),
+        currency: activatedCamp.billing?.currency || 'USD',
+        plan: activatedCamp.plan,
+        bridgeRouterUrl: activatedCamp.bridgeRouterUrl || `/r/${activatedCamp.id}`,
+      }),
+    }).catch(console.error);
+
     setActiveTab('dashboard');
   };
 
@@ -499,7 +523,6 @@ export default function App() {
           allCampaigns={campaigns}
           onSelectCampaign={(id) => setActiveCampaignId(id)}
           onToggleStatus={handleToggleStatus}
-          onResetCounter={handleResetCounter}
           isActionLoading={isActionLoading}
         />
       )}
@@ -607,6 +630,8 @@ export default function App() {
             }}
             currentUser={currentUser}
           />
+        ) : activeTab === 'logs' ? (
+          <SystemAuditLogs campaign={activeCampaign || null} allCampaigns={campaigns} />
         ) : activeCampaign ? (
           <>
             {activeTab === 'dashboard' && (
@@ -624,10 +649,6 @@ export default function App() {
                 campaign={activeCampaign}
                 onRefreshCampaign={fetchCampaigns}
               />
-            )}
-
-            {activeTab === 'logs' && (
-              <SystemAuditLogs campaign={activeCampaign} />
             )}
           </>
         ) : (
@@ -769,7 +790,6 @@ export default function App() {
         activeCampaign={activeCampaign}
         campaigns={campaigns}
         onToggleCampaignStatus={handleToggleStatus}
-        onResetCounter={handleResetCounter}
         onOpenNewCampaign={handleOpenNewCampaign}
         onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}

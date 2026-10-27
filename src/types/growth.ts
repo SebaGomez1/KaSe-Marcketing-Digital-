@@ -75,24 +75,20 @@ export interface User {
 
 export const ADMIN_EMAILS = [
   'kathyseba2020@gmail.com',
-  'skinsumos2026@gmail.com',
-  'sebagomez1@gmail.com',
-  'sebagomez@gmail.com',
 ];
 export const ADMIN_PASSWORD = 'Felipe.1';
 
 export function isUserSuperAdmin(user?: User | { email?: string; role?: string } | null): boolean {
   if (!user) return false;
   const email = (user.email || '').trim().toLowerCase();
-  if (email === 'kase.marketing.digital@gmail.com') return false;
-  return ADMIN_EMAILS.includes(email) || user.role === 'super_admin';
+  // Beneficio exclusivo para el administrador kathyseba2020@gmail.com. Ninguna otra cuenta es administradora.
+  return email === 'kathyseba2020@gmail.com';
 }
 
 export function isValidAdminCredentials(email?: string, password?: string): boolean {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
-  if (cleanEmail === 'kase.marketing.digital@gmail.com') return false;
-  if (!ADMIN_EMAILS.includes(cleanEmail)) return false;
+  if (cleanEmail !== 'kathyseba2020@gmail.com') return false;
   return cleanPass === ADMIN_PASSWORD || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!';
 }
 

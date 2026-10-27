@@ -356,9 +356,48 @@ function logSystemError(
   return errItem;
 }
 
+export interface BridgeAuditLog {
+  id: string;
+  timestamp: string;
+  level: string;
+  module: string;
+  message: string;
+  campaign_id?: string;
+  user_id?: string;
+}
+
+const inMemoryAuditLogs: BridgeAuditLog[] = [];
+
+export function recordAuditLog(log: BridgeAuditLog): void {
+  inMemoryAuditLogs.unshift(log);
+  if (inMemoryAuditLogs.length > 500) {
+    inMemoryAuditLogs.pop();
+  }
+  if (supabase) {
+    supabase
+      .from('system_audit_logs')
+      .insert({
+        id: log.id,
+        timestamp: log.timestamp,
+        level: log.level,
+        module: log.module,
+        message: log.message,
+        campaign_id: log.campaign_id || null,
+        user_id: log.user_id || null,
+      })
+      .then(() => {})
+      .catch(() => {});
+  }
+}
+
 // Pure SQL Direct Repository using Supabase Client (Zero fs JSON dependency)
 async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
-  const isSuper = !userId || userId === 'kathyseba2020@gmail.com' || userId === 'kathy_super_admin' || userId === 'kase_super_admin' || userId === 'anonymous_unauthenticated';
+  const isSuper = userId?.toLowerCase() === 'kathyseba2020@gmail.com' || userId === 'kathy_super_admin' || userId === 'kase_super_admin';
+
+  // Strict isolation: if not super admin and no userId provided or anonymous, return empty list
+  if (!isSuper && (!userId || userId === 'anonymous_unauthenticated')) {
+    return [];
+  }
 
   if (supabase) {
     try {
@@ -366,7 +405,7 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
         .from('campaigns')
         .select('*');
 
-      if (userId && !isSuper) {
+      if (!isSuper && userId) {
         query = query.eq('user_id', userId);
       }
 
@@ -400,7 +439,8 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
 
         const mapped = filterOutFakeCampaigns(campRows.map((r) => {
           const camp = mapRowToCampaign(r, moduleRowsByCamp[r.id] || [], convRowsByCamp[r.id] || [], logRowsByCamp[r.id] || []);
-          if (camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
+          // Do not auto-activate campaigns that are still configuring (unpaid checkout pending)
+          if (camp.status !== 'configuring' && camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
             camp.status = 'active';
             camp.pausedAt = undefined;
           }
@@ -429,7 +469,7 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
         if (res.rows && res.rows.length > 0) {
           const mapped = filterOutFakeCampaigns(res.rows.map((r) => {
             const camp = mapRowToCampaign(r, [], [], []);
-            if (camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
+            if (camp.status !== 'configuring' && camp.currentRegistrations < camp.targetRegistrations && camp.status !== 'paused_quota_reached') {
               camp.status = 'active';
               camp.pausedAt = undefined;
             }
@@ -452,7 +492,7 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
   if (isSuper) {
     const valid = filterOutFakeCampaigns(campaigns);
     valid.forEach((c) => {
-      if (c.currentRegistrations < c.targetRegistrations && c.status !== 'paused_quota_reached') {
+      if (c.status !== 'configuring' && c.currentRegistrations < c.targetRegistrations && campStatusIsNotPaused(c)) {
         c.status = 'active';
       }
     });
@@ -461,11 +501,15 @@ async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
   const filtered = campaigns.filter((c) => c.userId === userId || c.creatorEmail === userId);
   const result = filterOutFakeCampaigns(filtered);
   result.forEach((c) => {
-    if (c.currentRegistrations < c.targetRegistrations && c.status !== 'paused_quota_reached') {
+    if (c.status !== 'configuring' && c.currentRegistrations < c.targetRegistrations && campStatusIsNotPaused(c)) {
       c.status = 'active';
     }
   });
   return result;
+}
+
+function campStatusIsNotPaused(c: Campaign): boolean {
+  return c.status !== 'paused_quota_reached';
 }
 
 async function getCampaignByIdAsync(id: string): Promise<Campaign | null> {
@@ -836,11 +880,9 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
 
     const isSuperAdmin = 
       authenticatedUser.toLowerCase() === 'kathyseba2020@gmail.com' || 
-      authenticatedUser.toLowerCase() === 'skinsumos2026@gmail.com' ||
       authenticatedUser === 'kathy_super_admin' || 
       authenticatedUser === 'kase_super_admin' || 
-      emailQuery === 'kathyseba2020@gmail.com' ||
-      emailQuery === 'skinsumos2026@gmail.com';
+      emailQuery === 'kathyseba2020@gmail.com';
 
     // Aislamiento estricto de datos: usuarios comunes NUNCA reciben campañas ajenas
     if (!isSuperAdmin) {
@@ -1009,7 +1051,9 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
     const isOneDollarPlan = req.body.isOneDollarTestPlan === true || plan === 'test_one_dollar' || Number(req.body.price) === 1;
     const isCleanAdminEmail = creatorEmail && creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com';
     const isKathy = (isCleanAdminEmail || (isSuperAdmin && creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com')) && !isOneDollarPlan;
-    const initialStatus = isOneDollarPlan ? 'configuring' : isKathy ? 'active' : (status === 'configuring' ? 'configuring' : 'active');
+    // REGLA ESTRICTA REQUERIMIENTO 2: Solo Kathy puede crear campañas activas sin pagar.
+    // Todos los demás usuarios pasan obligatoriamente por caja; la campaña queda en 'configuring' hasta que abonen.
+    const initialStatus = isKathy ? 'active' : 'configuring';
 
     const newCampaign: Campaign = {
       id: `kase_camp_${Math.random().toString(36).substring(2, 9)}`,
@@ -1155,17 +1199,44 @@ app.put('/api/campaigns/:id', async (req: Request, res: Response): Promise<void>
   }
 });
 
-// Delete campaign
+// Delete campaign - EXCLUSIVO PARA SUPER ADMIN (Requerimiento 6)
 app.delete('/api/campaigns/:id', async (req: Request, res: Response): Promise<void> => {
   try {
+    const adminHeader = (req.headers['x-admin-email'] as string || req.query.admin_email as string || '').toLowerCase().trim();
+    if (adminHeader !== 'kathyseba2020@gmail.com') {
+      res.status(403).json({ error: 'Acción no autorizada: Solo el Super Administrador (kathyseba2020@gmail.com) puede eliminar campañas.' });
+      return;
+    }
     const deleted = await deleteCampaignAsync(req.params.id);
     if (!deleted) {
       res.status(404).json({ error: 'Campaña no encontrada' });
       return;
     }
-    res.json({ success: true, message: 'Campaña eliminada de la base de datos' });
+    res.json({ success: true, message: 'Campaña eliminada permanentemente por Super Admin' });
   } catch (err: any) {
     res.status(500).json({ error: 'Error al eliminar campaña de la base de datos', details: err.message });
+  }
+});
+
+// Bulk Delete campaigns - EXCLUSIVO PARA SUPER ADMIN (Requerimiento 6)
+app.post('/api/admin/delete-campaigns', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminHeader = (req.headers['x-admin-email'] as string || req.body.adminEmail || '').toLowerCase().trim();
+    if (adminHeader !== 'kathyseba2020@gmail.com') {
+      res.status(403).json({ error: 'Acción no autorizada: Solo el Super Administrador (kathyseba2020@gmail.com) puede eliminar campañas.' });
+      return;
+    }
+    const { campaignIds } = req.body;
+    if (!Array.isArray(campaignIds) || campaignIds.length === 0) {
+      res.status(400).json({ error: 'Lista de campañas a eliminar vacía o inválida.' });
+      return;
+    }
+    for (const id of campaignIds) {
+      await deleteCampaignAsync(String(id).trim());
+    }
+    res.json({ success: true, count: campaignIds.length, message: `${campaignIds.length} campaña(s) eliminada(s) correctamente.` });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Error en eliminación por lotes', details: err.message });
   }
 });
 
@@ -1218,12 +1289,9 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
     const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const nowIso = new Date().toISOString();
 
-    if (campaign.status === 'active' || campaign.status === 'configuring') {
-      if (campaign.status === 'configuring') {
-        campaign.status = 'active';
-      }
-      // CRITICAL FIX: Un clic orgánico en el enlace puente es TRÁFICO / VISITA.
-      // NUNCA debe computarse como 'currentRegistrations' (que es la cuota contratada de registros/ventas).
+    if (campaign.status === 'active') {
+      // Un clic orgánico en el enlace puente es TRÁFICO / VISITA hacia la campaña activa.
+      // NUNCA debe computarse como 'currentRegistrations' (cuota contratada).
       campaign.clicksCount = (campaign.clicksCount || 0) + 1;
       
       let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
@@ -1278,6 +1346,16 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
+
+      recordAuditLog({
+        id: bridgeLog.id,
+        timestamp: nowIso,
+        level: 'SUCCESS',
+        module: 'ENRUTADOR_PUENTE_CAMPANA',
+        message: `⚡ Visita orgánica interceptada en Enrutador Puente independiente de "${campaign.name}" (/r/${campaign.id}) -> ${campaign.targetUrl}. Clics acumulados: ${campaign.clicksCount}.`,
+        campaign_id: campaign.id,
+        user_id: assignedUserId,
+      });
 
       // Persistencia SQL directa inmediata en Supabase con RPC atómico (sin alterar cuota de registros)
       if (supabase) {
@@ -2644,20 +2722,111 @@ app.post('/api/cron', handleOutboundCronEndpoint);
 app.get('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 app.post('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 
-// Endpoint dedicado para consultar listado de system_audit_logs
+// ENRUTADORES PUENTE Y BITÁCORA GLOBAL (Requerimiento 5)
+app.post('/api/bridge/track-hero', (req: Request, res: Response) => {
+  const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
+  const referrer = (req.body?.referrer || req.headers['referer'] || 'Tráfico Directo Orgánico');
+  const nowIso = new Date().toISOString();
+  const log: BridgeAuditLog = {
+    id: `log_hero_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    timestamp: nowIso,
+    level: 'INFO',
+    module: 'ENRUTADOR_PUENTE_HERO',
+    message: `⚡ Visita orgánica interceptada en Enrutador Puente (Hero Landing). IP: ${ipMasked}. Origen: ${referrer}.`,
+    user_id: 'visitante_anonimo',
+  };
+  recordAuditLog(log);
+  res.json({ success: true, log });
+});
+
+app.post('/api/bridge/track-register', (req: Request, res: Response) => {
+  const { email, name, userId } = req.body || {};
+  const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
+  const nowIso = new Date().toISOString();
+  const log: BridgeAuditLog = {
+    id: `log_reg_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    timestamp: nowIso,
+    level: 'SUCCESS',
+    module: 'ENRUTADOR_PUENTE_REGISTRO',
+    message: `✅ Paso completado por Enrutador Puente de Registro: ${name || 'Usuario'} (${email || 'sin email'}). Sumado a usuarios registrados de la plataforma.`,
+    user_id: userId || email || 'nuevo_usuario',
+  };
+  recordAuditLog(log);
+  res.json({ success: true, log });
+});
+
+app.post('/api/bridge/track-payment', (req: Request, res: Response) => {
+  const { campaignId, campaignName, payerEmail, amount, currency, plan, bridgeRouterUrl } = req.body || {};
+  const nowIso = new Date().toISOString();
+  const log: BridgeAuditLog = {
+    id: `log_pay_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    timestamp: nowIso,
+    level: 'SUCCESS',
+    module: 'ENRUTADOR_PUENTE_PAGO',
+    message: `💳 Pago procesado exitosamente vía Mercado Pago ($${amount || 149} ${currency || 'USD'} - Plan ${String(plan || 'Starter').toUpperCase()}) por ${payerEmail}. Enrutador puente independiente activado: ${bridgeRouterUrl || `/r/${campaignId}`}.`,
+    campaign_id: campaignId,
+    user_id: payerEmail || 'usuario_pago',
+  };
+  recordAuditLog(log);
+  res.json({ success: true, log });
+});
+
+// Endpoint dedicado para consultar listado de system_audit_logs (Bitácora de Tráfico y Enrutadores Puente)
 app.get('/api/system_audit_logs', async (_req: Request, res: Response): Promise<void> => {
   try {
+    let supabaseLogs: any[] = [];
     if (supabase) {
-      const { data, error } = await supabase
-        .from('system_audit_logs')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      res.json({ success: true, count: data?.length || 0, system_audit_logs: data || [] });
-      return;
+      try {
+        const { data, error } = await supabase
+          .from('system_audit_logs')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(100);
+        if (!error && Array.isArray(data)) {
+          supabaseLogs = data;
+        }
+      } catch (e) {
+        console.warn('[Supabase system_audit_logs query warning]:', e);
+      }
     }
-    res.json({ success: true, count: 0, system_audit_logs: [], message: 'Supabase no configurado' });
+
+    const seenIds = new Set<string>();
+    const unified: any[] = [];
+
+    for (const log of inMemoryAuditLogs) {
+      if (!seenIds.has(log.id)) {
+        seenIds.add(log.id);
+        unified.push(log);
+      }
+    }
+
+    for (const log of supabaseLogs) {
+      if (!seenIds.has(log.id)) {
+        seenIds.add(log.id);
+        unified.push(log);
+      }
+    }
+
+    for (const camp of campaigns) {
+      for (const log of (camp.logs || [])) {
+        if (!seenIds.has(log.id)) {
+          seenIds.add(log.id);
+          unified.push({
+            ...log,
+            campaign_id: camp.id,
+            user_id: camp.userId || camp.creatorEmail,
+          });
+        }
+      }
+    }
+
+    unified.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    res.json({
+      success: true,
+      count: unified.length,
+      system_audit_logs: unified.slice(0, 200),
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -3902,50 +4071,11 @@ app.post('/api/campaigns/:id/simulate-burst', async (req: Request, res: Response
   });
 });
 
-// Reset counter to test from scratch
-app.post('/api/campaigns/:id/reset-counter', async (req: Request, res: Response): Promise<void> => {
-  const campaign = await getCampaignByIdAsync(req.params.id);
-  if (!campaign) {
-    res.status(404).json({ error: 'Campaña no encontrada' });
-    return;
-  }
-
-  campaign.currentRegistrations = 0;
-  campaign.clicksCount = 0;
-  campaign.recentConversions = [];
-  campaign.status = 'active';
-  campaign.pausedAt = undefined;
-  campaign.modules = getInitialModules(campaign.plan);
-
-  campaign.logs.unshift({
-    id: `log_rst_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    level: 'SUCCESS',
-    module: 'CORE_ENGINE',
-    message: `🔄 Contador de conversiones y clics reiniciado a 0 para "${campaign.name}". Los 8 motores autónomos están encendidos captando tráfico orgánico enrutado por enlace puente (/r/${campaign.id}).`,
+// Reset counter - DESHABILITADO PERMANENTEMENTE (Requerimiento 3)
+app.post('/api/campaigns/:id/reset-counter', async (_req: Request, res: Response): Promise<void> => {
+  res.status(403).json({
+    error: 'Función de reinicio deshabilitada permanentemente. Las campañas se crean una sola vez y se espera el tráfico orgánico.',
   });
-  if (campaign.logs.length > 50) campaign.logs = campaign.logs.slice(0, 50);
-
-  await saveCampaignAsync(campaign);
-
-  if (supabase) {
-    try {
-      await Promise.allSettled([
-        supabase.from('conversions').delete().eq('campaign_id', campaign.id),
-        supabase.from('campaigns').update({
-          current_registrations: 0,
-          clicks_count: 0,
-          status: 'active',
-          paused_at: null,
-        }).eq('id', campaign.id),
-      ]);
-    } catch (e) {}
-  }
-
-  // Despertar motores de inmediato con pulso activo
-  ejecutarCicloAutonomoParaCampana(campaign, { burstCount: 1 }).catch((e) => console.warn('[CYCLE AFTER RESET ERR]:', e));
-
-  res.json({ success: true, campaign });
 });
 
 // REAL GEMINI ASSET GENERATOR (Server-side @google/genai with resilient fallback)

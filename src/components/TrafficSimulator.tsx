@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Play, 
-  RotateCcw, 
   Zap, 
   ShieldAlert, 
   CheckCircle2, 
@@ -15,14 +14,12 @@ import { Campaign } from '../types/growth';
 interface TrafficSimulatorProps {
   campaign: Campaign;
   onSimulateBurst: (count: number) => void;
-  onResetCounter: () => void;
   isSimulating?: boolean;
 }
 
 export const TrafficSimulator: React.FC<TrafficSimulatorProps> = ({
   campaign,
   onSimulateBurst,
-  onResetCounter,
   isSimulating = false,
 }) => {
   const { currentRegistrations, targetRegistrations, status } = campaign;
@@ -41,16 +38,6 @@ export const TrafficSimulator: React.FC<TrafficSimulatorProps> = ({
           <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
             Herramienta de pruebas de backend para validar en tiempo real cómo KaSe detiene de manera estricta y autónoma sus 8 motores al alcanzar la cuota contratada.
           </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onResetCounter}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-300 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 rounded-md transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reiniciar a 0</span>
-          </button>
         </div>
       </div>
 

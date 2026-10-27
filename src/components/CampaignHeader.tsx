@@ -7,7 +7,6 @@ interface CampaignHeaderProps {
   allCampaigns: Campaign[];
   onSelectCampaign: (id: string) => void;
   onToggleStatus: () => void;
-  onResetCounter?: () => void;
   isActionLoading?: boolean;
 }
 
@@ -16,7 +15,6 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   allCampaigns,
   onSelectCampaign,
   onToggleStatus,
-  onResetCounter,
   isActionLoading = false,
 }) => {
   if (!campaign) return null;
@@ -128,7 +126,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
             disabled={isActionLoading || (isQuotaReached && campaign.currentRegistrations >= campaign.targetRegistrations)}
             title={
               isQuotaReached
-                ? 'Para reanudar, aumente la meta de conversión o reinicie el contador'
+                ? 'Meta de conversión alcanzada. Campaña en pausa tras entrega total.'
                 : isActive
                 ? 'Pausar motores temporalmente'
                 : 'Reanudar motores'

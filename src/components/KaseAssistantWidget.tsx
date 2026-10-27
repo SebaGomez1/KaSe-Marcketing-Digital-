@@ -45,7 +45,6 @@ export interface KaseAssistantWidgetProps {
   activeCampaign?: Campaign | null;
   campaigns?: Campaign[];
   onToggleCampaignStatus?: () => Promise<void> | void;
-  onResetCounter?: () => Promise<void> | void;
   onSimulateBurst?: (count: number) => Promise<void> | void;
   onOpenNewCampaign?: () => void;
   onOpenInstallModal?: () => void;
@@ -162,7 +161,6 @@ export const KaseAssistantWidget: React.FC<KaseAssistantWidgetProps> = ({
   activeCampaign,
   campaigns = [],
   onToggleCampaignStatus,
-  onResetCounter,
   onSimulateBurst,
   onOpenNewCampaign,
   onOpenInstallModal,
@@ -497,8 +495,6 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         onOpenInstallModal();
       } else if (action.type === 'one_dollar_test' && onOpenOneDollarCheckout) {
         onOpenOneDollarCheckout();
-      } else if (action.type === 'reset_counter' && onResetCounter) {
-        await onResetCounter();
       }
 
       // Mark action as executed in message history

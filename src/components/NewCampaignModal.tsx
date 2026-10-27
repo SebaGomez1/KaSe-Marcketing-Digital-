@@ -479,7 +479,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           bridgeVerified: true,
           interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
           geoTargeting: geoData,
-          status: 'active',
+          status: isKathy && !isTestOneDollarMode ? 'active' : 'configuring',
           creatorEmail: currentUser?.email,
           isSuperAdmin: isKathy && !isTestOneDollarMode,
           isOneDollarTestPlan: isTestOneDollarMode,
@@ -493,11 +493,15 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       }
 
       onCreated(data.campaign);
-      if (isTestOneDollarMode && onRequestCheckout) {
-        onRequestCheckout(data.campaign);
-        onClose();
-      } else {
+      if (isKathy && !isTestOneDollarMode) {
+        // Beneficio exclusivo de creación sin pagar para Kathy Seba (kathyseba2020@gmail.com)
         setAdminSuccessCamp(data.campaign);
+      } else {
+        // Obligatorio para todos los demás usuarios: pasar por caja Mercado Pago sí o sí
+        if (onRequestCheckout) {
+          onRequestCheckout(data.campaign);
+        }
+        onClose();
       }
     } catch (err: any) {
       setError(err.message || 'Error de conexión');
@@ -1347,7 +1351,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                     ? '💳 Pagar $1.00 USD con Mercado Pago'
                     : isKathy
                     ? '🚀 Iniciar Campaña Autónoma ($0.00 Super Admin)'
-                    : '🚀 Iniciar Campaña con Tráfico Autónomo'}
+                    : `💳 Pagar $${pricing.totalPrice} USD en Mercado Pago y Activar`}
                 </span>
               </button>
             </div>

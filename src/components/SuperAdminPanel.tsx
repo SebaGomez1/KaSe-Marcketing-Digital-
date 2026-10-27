@@ -55,6 +55,7 @@ import {
   DissatisfactionAlert,
   isUserSuperAdmin
 } from '../types/growth';
+import { deleteCampaignFromVault } from '../lib/campaignVault';
 
 const DEFAULT_FALLBACK_ENGINES: EngineHealthItem[] = [
   {
@@ -263,9 +264,10 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
   const [isResettingRevenue, setIsResettingRevenue] = useState(false);
   const [revenueResetSuccess, setRevenueResetSuccess] = useState(false);
 
-  // Conversions Reset State
-  const [isResettingConversions, setIsResettingConversions] = useState(false);
-  const [conversionsResetSuccess, setConversionsResetSuccess] = useState(false);
+  // Super Admin Campaign Deletion State (Exclusivo Kathy Seba)
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[]>([]);
+  const [isDeletingCampaign, setIsDeletingCampaign] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
   // Mercado Pago Production Credentials State
   const [mpAccessToken, setMpAccessToken] = useState('');
@@ -413,24 +415,76 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     }
   };
 
-  const handleResetAllConversions = async () => {
-    if (!window.confirm('¿Confirmas reiniciar todas las conversiones entregadas y reactivar todas las campañas a 0? Los 8 motores autónomos se encenderán en limpio enrutando tráfico orgánico por cada enlace puente (/r/:id).')) {
+  // Super Admin Campaign Deletion Protocol (Exclusivo Kathy Seba)
+  const handleDeleteCampaign = async (campaignId: string, campaignName: string) => {
+    if (!window.confirm(`¿Confirmas eliminar permanentemente la campaña "${campaignName}" (${campaignId})?\nEsta acción es exclusiva de Super Admin y purgará los registros de la base de datos.`)) {
       return;
     }
-    setIsResettingConversions(true);
+    setIsDeletingCampaign(true);
     try {
-      const res = await fetch('/api/admin/reset-all-conversions', { method: 'POST' });
+      const res = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}?adminEmail=kathyseba2020@gmail.com`, {
+        method: 'DELETE',
+        headers: { 'x-admin-email': 'kathyseba2020@gmail.com' },
+      });
       const data = await res.json();
-      if (data.success) {
-        setConversionsResetSuccess(true);
-        await fetchAdminData();
-        setTimeout(() => setConversionsResetSuccess(false), 4000);
-      }
-    } catch (e) {
-      console.error('Error al resetear conversiones entregadas:', e);
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar campaña');
+
+      deleteCampaignFromVault(campaignId);
+      setSelectedCampaignIds((prev) => prev.filter((id) => id !== campaignId));
+      setDeleteSuccessMessage(`Campaña "${campaignName}" eliminada correctamente.`);
+      setTimeout(() => setDeleteSuccessMessage(null), 4000);
+      onRefreshCampaigns();
+      await fetchAdminData();
+    } catch (err: any) {
+      alert(`Error al eliminar campaña: ${err.message}`);
     } finally {
-      setIsResettingConversions(false);
+      setIsDeletingCampaign(false);
     }
+  };
+
+  const handleDeleteSelectedCampaigns = async () => {
+    if (selectedCampaignIds.length === 0) return;
+    if (!window.confirm(`¿Confirmas eliminar permanentemente las ${selectedCampaignIds.length} campañas seleccionadas?\nEsta acción es exclusiva de Super Admin y no se puede deshacer.`)) {
+      return;
+    }
+    setIsDeletingCampaign(true);
+    try {
+      const res = await fetch('/api/admin/delete-campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: 'kathyseba2020@gmail.com',
+          campaignIds: selectedCampaignIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al eliminar campañas');
+
+      selectedCampaignIds.forEach((id) => deleteCampaignFromVault(id));
+      setSelectedCampaignIds([]);
+      setDeleteSuccessMessage(`${data.count || selectedCampaignIds.length} campañas eliminadas correctamente.`);
+      setTimeout(() => setDeleteSuccessMessage(null), 4000);
+      onRefreshCampaigns();
+      await fetchAdminData();
+    } catch (err: any) {
+      alert(`Error al eliminar campañas seleccionadas: ${err.message}`);
+    } finally {
+      setIsDeletingCampaign(false);
+    }
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedCampaignIds.length === allCampaigns.length) {
+      setSelectedCampaignIds([]);
+    } else {
+      setSelectedCampaignIds(allCampaigns.map((c) => c.id));
+    }
+  };
+
+  const handleToggleSelectCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
   const fetchMarketingData = async () => {
@@ -2164,16 +2218,54 @@ DATABASE_URL=...`}</pre>
             })}
           </div>
 
+          {/* Feedback & Bulk Delete Bar */}
+          {deleteSuccessMessage && (
+            <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{deleteSuccessMessage}</span>
+            </div>
+          )}
+
+          {selectedCampaignIds.length > 0 && (
+            <div className="p-3 bg-rose-950/40 border border-rose-500/40 rounded-xl text-xs flex items-center justify-between gap-3">
+              <div className="text-rose-200 flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>
+                  <strong>{selectedCampaignIds.length}</strong> {selectedCampaignIds.length === 1 ? 'campaña seleccionada' : 'campañas seleccionadas'} para eliminación.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleDeleteSelectedCampaigns}
+                disabled={isDeletingCampaign}
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-lg shadow-rose-900/40"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeletingCampaign ? 'Eliminando...' : `Eliminar ${selectedCampaignIds.length} Seleccionadas`}</span>
+              </button>
+            </div>
+          )}
+
           <div className="overflow-x-auto border border-neutral-800 rounded-xl bg-neutral-900/60">
             <table className="w-full text-left text-xs">
               <thead className="bg-black/60 border-b border-neutral-800 text-neutral-400 font-mono text-[11px]">
                 <tr>
+                  <th className="p-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Seleccionar todas"
+                      checked={allCampaigns.length > 0 && selectedCampaignIds.length === allCampaigns.length}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                    />
+                  </th>
                   <th className="p-3">Campaña / Enrutador Puente</th>
                   <th className="p-3">Tipo de Objetivo</th>
                   <th className="p-3">Avance / Meta</th>
                   <th className="p-3">Segmentación Geo (País / Ciudad)</th>
                   <th className="p-3">Plan KaSe</th>
                   <th className="p-3">Estado Motores</th>
+                  <th className="p-3 text-right">Acción Super Admin</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800 text-neutral-300">
@@ -2201,9 +2293,18 @@ DATABASE_URL=...`}</pre>
                     );
                     const countryFlag = matchedCountry?.flag || (geo?.country?.toLowerCase().includes('uruguay') ? '🇺🇾' : geo?.country?.toLowerCase().includes('argentina') ? '🇦🇷' : geo?.country?.toLowerCase().includes('españa') ? '🇪🇸' : geo?.country?.toLowerCase().includes('méxico') ? '🇲🇽' : geo?.country?.toLowerCase().includes('estados unidos') ? '🇺🇸' : '🌐');
                     const countryName = matchedCountry?.name || geo?.country || 'Global';
+                    const isSelected = selectedCampaignIds.includes(camp.id);
 
                     return (
-                      <tr key={camp.id} className="hover:bg-neutral-800/40">
+                      <tr key={camp.id} className={`hover:bg-neutral-800/40 transition-colors ${isSelected ? 'bg-rose-950/20' : ''}`}>
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectCampaign(camp.id)}
+                            className="w-4 h-4 accent-rose-500 rounded cursor-pointer"
+                          />
+                        </td>
                         <td className="p-3">
                           <div className="font-bold text-white flex items-center gap-2">
                             <span>{camp.name}</span>
@@ -2282,10 +2383,22 @@ DATABASE_URL=...`}</pre>
                             PENDIENTE PAGO
                           </span>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCampaign(camp.id, camp.name)}
+                            disabled={isDeletingCampaign}
+                            title="Eliminar campaña permanentemente (Exclusivo Super Admin Kathy Seba)"
+                            className="px-2.5 py-1 rounded bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 hover:text-white text-[11px] font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Eliminar</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

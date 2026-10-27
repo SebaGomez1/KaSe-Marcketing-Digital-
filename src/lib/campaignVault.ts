@@ -176,16 +176,19 @@ export function getVaultCampaigns(userEmail?: string, userId?: string, isSuperAd
   // Helper para evaluar si la campaña pertenece al usuario
   const belongsToUser = (c: Campaign): boolean => {
     if (!c || !c.id || isFakeCampaign(c)) return false;
-    if (isSuperAdmin) return true; // Super admin ve todas las campañas reales
+    if (isSuperAdmin) return true; // Super admin (kathyseba2020@gmail.com) ve todas las campañas reales
     const cEmail = (c.creatorEmail || '').toLowerCase().trim();
-    const cUser = (c.userId || '').trim();
+    const cUser = (c.userId || '').trim().toLowerCase();
 
-    if (cleanEmail && (cEmail === cleanEmail || cUser.toLowerCase() === cleanEmail)) return true;
-    if (cleanUserId && (cUser === cleanUserId || cEmail === cleanUserId)) return true;
-    // Si la campaña no tiene creador asignado pero se creó en este mismo navegador
-    if (!cEmail && !cUser) return true;
+    if (cleanEmail && (cEmail === cleanEmail || cUser === cleanEmail)) return true;
+    if (cleanUserId && (cUser === cleanUserId.toLowerCase() || cEmail === cleanUserId.toLowerCase())) return true;
     return false;
   };
+
+  // Si no es Super Admin y no hay usuario autenticado, privacidad estricta: cero campañas
+  if (!isSuperAdmin && !cleanEmail && !cleanUserId) {
+    return [];
+  }
 
   const addIfValid = (c: any) => {
     if (!c || typeof c !== 'object' || !c.id || isFakeCampaign(c)) return;
@@ -307,3 +310,54 @@ export async function syncCampaignToBackend(campaign: Campaign): Promise<boolean
     return false;
   }
 }
+
+/**
+ * Eliminación permanente de campaña en todas las capas del baúl local (Exclusivo Super Admin)
+ */
+export function deleteCampaignFromVault(id: string): void {
+  if (!isBrowser() || !id) return;
+  try {
+    // 1. Eliminar de Master Vault
+    const masterRaw = window.localStorage.getItem(VAULT_MASTER_KEY);
+    if (masterRaw) {
+      try {
+        const list = JSON.parse(masterRaw);
+        if (Array.isArray(list)) {
+          window.localStorage.setItem(VAULT_MASTER_KEY, JSON.stringify(list.filter((c: any) => c.id !== id)));
+        }
+      } catch {}
+    }
+    // 2. Eliminar de Cache Activo
+    const cacheRaw = window.localStorage.getItem(VAULT_CACHE_KEY);
+    if (cacheRaw) {
+      try {
+        const list = JSON.parse(cacheRaw);
+        if (Array.isArray(list)) {
+          window.localStorage.setItem(VAULT_CACHE_KEY, JSON.stringify(list.filter((c: any) => c.id !== id)));
+        }
+      } catch {}
+    }
+    // 3. Eliminar de cualquier clave de usuario
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && (k.startsWith('kase_user_campaigns_') || k.startsWith('kase_campaigns_'))) {
+        try {
+          const val = window.localStorage.getItem(k);
+          if (val) {
+            const arr = JSON.parse(val);
+            if (Array.isArray(arr)) {
+              window.localStorage.setItem(k, JSON.stringify(arr.filter((c: any) => c.id !== id)));
+            }
+          }
+        } catch {}
+      }
+    }
+    // 4. Si era la campaña activa seleccionada, removerla
+    if (window.localStorage.getItem('kase_active_campaign_id') === id) {
+      window.localStorage.removeItem('kase_active_campaign_id');
+    }
+  } catch (err) {
+    console.error('[Error deleting campaign from vault]:', err);
+  }
+}
+

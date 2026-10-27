@@ -137,6 +137,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (authUser) {
+        if (mode === 'register') {
+          // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados (Requerimiento 5)
+          fetch('/api/bridge/track-register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
+          }).catch(() => {});
+        }
         localStorage.setItem('kase_device_account', JSON.stringify({ email: authUser.email, name: authUser.name, role: authUser.role }));
         localStorage.setItem('kase_current_user', JSON.stringify(authUser));
         onAuthSuccess(authUser);
