@@ -94,7 +94,6 @@ export async function POST(req: NextRequest) {
         supabase.from('system_audit_logs').insert({
           id: `log_mp_wh_${Date.now()}`,
           campaign_id: campaignId,
-          user_id: campaignRow?.user_id || campaignRow?.creator_email || null,
           timestamp: nowIso,
           level: 'SUCCESS',
           module: 'MERCADO_PAGO_IPN',

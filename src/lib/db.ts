@@ -20,8 +20,8 @@ const rawSupabaseUrl = (
   ''
 ).trim();
 const rawAnonKey = (
-  process.env.SUPABASE_ANON_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) ||
@@ -449,7 +449,6 @@ export async function handleBridgeInterceptionDirectSupabase(
       supabase.from('system_audit_logs').insert({
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         campaign_id: campaign.id,
-        user_id: assignedUserId,
         timestamp: nowIso,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',

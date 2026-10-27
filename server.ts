@@ -383,7 +383,6 @@ export function recordAuditLog(log: BridgeAuditLog): void {
         module: log.module,
         message: log.message,
         campaign_id: log.campaign_id || null,
-        user_id: log.user_id || null,
       })
       .then(() => {})
       .catch(() => {});
@@ -735,18 +734,22 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       if (Array.isArray(campaign.recentConversions) && campaign.recentConversions.length > 0) {
         const c = campaign.recentConversions[0];
         if (c && c.id) {
-          const { error: convError } = await supabase.from('conversions').upsert({
-            id: c.id,
-            campaign_id: campaign.id,
-            user_id: assignedUserId,
-            timestamp: c.timestamp || new Date().toISOString(),
-            method: c.method || 'organic_click',
-            user_tag: c.userTag || (c as any).user_tag || 'web_lead',
-            ip_masked: c.ipMasked || (c as any).ip_masked || '194.22.***.***',
-            referrer: c.referrer || 'Direct',
-          });
-          if (convError) {
-            console.warn('[DB Error Supabase saveCampaignAsync conversions]:', convError.message, convError.details || '');
+          try {
+            const { error: convError } = await supabase.from('conversions').insert({
+              id: c.id,
+              campaign_id: campaign.id,
+              user_id: assignedUserId,
+              timestamp: c.timestamp || new Date().toISOString(),
+              method: c.method || 'organic_click',
+              user_tag: c.userTag || (c as any).user_tag || 'web_lead',
+              ip_masked: c.ipMasked || (c as any).ip_masked || '194.22.***.***',
+              referrer: c.referrer || 'Direct',
+            });
+            if (convError && !convError.message?.includes('duplicate key') && convError.code !== '23505') {
+              console.warn('[DB Error Supabase saveCampaignAsync conversions]:', convError.message, convError.details || '');
+            }
+          } catch {
+            // Silently ignore duplicate conversion record
           }
         }
       }
@@ -754,17 +757,20 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
       if (Array.isArray(campaign.logs) && campaign.logs.length > 0) {
         const l = campaign.logs[0];
         if (l && l.id) {
-          const { error: logError } = await supabase.from('system_audit_logs').upsert({
-            id: l.id,
-            campaign_id: campaign.id,
-            user_id: assignedUserId,
-            timestamp: l.timestamp || new Date().toISOString(),
-            level: l.level || 'INFO',
-            module: l.module || 'CORE',
-            message: l.message || '',
-          });
-          if (logError) {
-            console.warn('[DB Error Supabase saveCampaignAsync logs]:', logError.message, logError.details || '');
+          try {
+            const { error: logError } = await supabase.from('system_audit_logs').insert({
+              id: l.id,
+              campaign_id: campaign.id,
+              timestamp: l.timestamp || new Date().toISOString(),
+              level: l.level || 'INFO',
+              module: l.module || 'CORE',
+              message: l.message || '',
+            });
+            if (logError && !logError.message?.includes('duplicate key') && logError.code !== '23505') {
+              console.warn('[DB Error Supabase saveCampaignAsync logs]:', logError.message, logError.details || '');
+            }
+          } catch {
+            // Silently ignore duplicate audit log
           }
         }
       }
@@ -1413,7 +1419,6 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
             supabase.from('system_audit_logs').insert({
               id: bridgeLog.id,
               campaign_id: campaign.id,
-              user_id: assignedUserId,
               timestamp: nowIso,
               level: 'SUCCESS',
               module: 'ENRUTADOR_PUENTE',
@@ -2615,7 +2620,6 @@ const mpWebhookHandler = async (req: Request, res: Response): Promise<void> => {
           supabase.from('system_audit_logs').insert({
             id: logRecord.id,
             campaign_id: targetCamp.id,
-            user_id: targetCamp.userId || targetCamp.creatorEmail || null,
             timestamp: nowIso,
             level: 'SUCCESS',
             module: 'MERCADO_PAGO_IPN',
@@ -2704,7 +2708,6 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
               await supabase.from('system_audit_logs').insert({
                 id: successLog.id,
                 campaign_id: campaign.id,
-                user_id: campaign.userId || campaign.creatorEmail || null,
                 timestamp: successLog.timestamp,
                 level: 'SUCCESS',
                 module: 'AUTOMATED_OUTBOUND',

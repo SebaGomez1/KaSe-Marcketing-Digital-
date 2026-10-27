@@ -115,6 +115,9 @@ CREATE TABLE IF NOT EXISTS system_audit_logs (
     message TEXT NOT NULL
 );
 
+-- Migración retrocompatible para tabla de bitácora
+ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
+
 -- Indexación de bitácora
 CREATE INDEX IF NOT EXISTS idx_audit_logs_campaign_id ON system_audit_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON system_audit_logs(timestamp DESC);
