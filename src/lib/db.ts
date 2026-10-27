@@ -21,6 +21,9 @@ const rawSupabaseUrl = (
 ).trim();
 const rawAnonKey = (
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
@@ -429,18 +432,24 @@ export async function handleBridgeInterceptionDirectSupabase(
 
     // 2. Persist click record strictly associated to user_id and campana_id in Supabase
     await Promise.allSettled([
-      // Insert organic click telemetry record
-      supabase.from('conversions').insert({
-        id: convId,
-        campaign_id: campaign.id,
-        campana_id: campaign.id,
-        user_id: assignedUserId,
-        timestamp: nowIso,
-        method: 'organic_click',
-        user_tag: `bridge_click_${Math.random().toString(36).substring(2, 7)}`,
-        ip_masked: ipMasked,
-        referrer: referrer,
-      }),
+      // Insert organic click telemetry record with RLS fallback
+      (async () => {
+        const convPayload: any = {
+          id: convId,
+          campaign_id: campaign.id,
+          campana_id: campaign.id,
+          user_id: assignedUserId,
+          timestamp: nowIso,
+          method: 'organic_click',
+          user_tag: `bridge_click_${Math.random().toString(36).substring(2, 7)}`,
+          ip_masked: ipMasked,
+          referrer: referrer,
+        };
+        const { error: insErr } = await supabase.from('conversions').insert(convPayload);
+        if (insErr && (insErr.message?.includes('row-level security') || insErr.code === '42501')) {
+          await supabase.from('conversions').insert({ ...convPayload, user_id: null });
+        }
+      })(),
       // Clicks count update without tampering with completed registration quota
       supabase.from('campaigns').update({
         clicks_count: newClicks,

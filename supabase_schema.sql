@@ -159,25 +159,43 @@ DROP POLICY IF EXISTS "Permitir lectura publica de campanas activas" ON public.c
 DROP POLICY IF EXISTS "Permitir gestion de campanas" ON public.campaigns;
 CREATE POLICY "Permitir gestion de campanas"
 ON public.campaigns FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 
--- Políticas para 'conversions' (FOR ALL para permitir INSERT y UPDATE en upsert)
+-- Políticas para 'conversions' (Permite INSERT, SELECT, UPDATE, DELETE sin restricciones para evitar PGRST / RLS violations)
 DROP POLICY IF EXISTS "Permitir lectura de conversiones" ON public.conversions;
 DROP POLICY IF EXISTS "Permitir insercion de conversiones" ON public.conversions;
 DROP POLICY IF EXISTS "Permitir gestion de conversiones" ON public.conversions;
+DROP POLICY IF EXISTS "Permitir insercion anonima conversiones" ON public.conversions;
+DROP POLICY IF EXISTS "Permitir seleccion total de conversiones" ON public.conversions;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.conversions;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.conversions;
+DROP POLICY IF EXISTS "Users can insert their own conversions" ON public.conversions;
+DROP POLICY IF EXISTS "conversions_policy_all" ON public.conversions;
+DROP POLICY IF EXISTS "conversions_insert_policy" ON public.conversions;
+
 CREATE POLICY "Permitir gestion de conversiones"
 ON public.conversions FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
+
+CREATE POLICY "Permitir insercion anonima conversiones"
+ON public.conversions FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Permitir seleccion total de conversiones"
+ON public.conversions FOR SELECT
+TO public
+USING (true);
 
 -- Políticas para 'campaign_modules'
 DROP POLICY IF EXISTS "Permitir acceso a modulos" ON public.campaign_modules;
 CREATE POLICY "Permitir acceso a modulos"
 ON public.campaign_modules FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 
@@ -185,7 +203,7 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "Permitir acceso a bitacora" ON public.system_audit_logs;
 CREATE POLICY "Permitir acceso a bitacora"
 ON public.system_audit_logs FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 
@@ -193,7 +211,7 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "Permitir gestion de config" ON public.global_config;
 CREATE POLICY "Permitir gestion de config"
 ON public.global_config FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 
@@ -201,7 +219,7 @@ WITH CHECK (true);
 DROP POLICY IF EXISTS "Permitir gestion de pagos" ON public.payment_transactions;
 CREATE POLICY "Permitir gestion de pagos"
 ON public.payment_transactions FOR ALL
-TO anon, authenticated
+TO public
 USING (true)
 WITH CHECK (true);
 

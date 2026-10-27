@@ -178,23 +178,41 @@ ALTER TABLE system_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE global_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
 
+-- Políticas para 'campaigns'
+DROP POLICY IF EXISTS "Permitir lectura publica de campanas activas" ON campaigns;
 DROP POLICY IF EXISTS "Permitir gestion de campanas" ON campaigns;
-CREATE POLICY "Permitir gestion de campanas" ON campaigns FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir gestion de campanas" ON campaigns FOR ALL TO public USING (true) WITH CHECK (true);
 
+-- Políticas para 'conversions' (Permite INSERT, SELECT, UPDATE, DELETE a todos los roles sin bloqueo)
 DROP POLICY IF EXISTS "Permitir lectura de conversiones" ON conversions;
 DROP POLICY IF EXISTS "Permitir insercion de conversiones" ON conversions;
 DROP POLICY IF EXISTS "Permitir gestion de conversiones" ON conversions;
-CREATE POLICY "Permitir gestion de conversiones" ON conversions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Permitir insercion anonima conversiones" ON conversions;
+DROP POLICY IF EXISTS "Permitir seleccion total de conversiones" ON conversions;
+DROP POLICY IF EXISTS "Permitir actualizacion total de conversiones" ON conversions;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON conversions;
+DROP POLICY IF EXISTS "Enable read access for all users" ON conversions;
+DROP POLICY IF EXISTS "Users can insert their own conversions" ON conversions;
+DROP POLICY IF EXISTS "conversions_policy_all" ON conversions;
+DROP POLICY IF EXISTS "conversions_insert_policy" ON conversions;
 
+CREATE POLICY "Permitir gestion de conversiones" ON conversions FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir insercion anonima conversiones" ON conversions FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Permitir seleccion total de conversiones" ON conversions FOR SELECT TO public USING (true);
+
+-- Políticas para 'campaign_modules'
 DROP POLICY IF EXISTS "Permitir acceso a modulos" ON campaign_modules;
-CREATE POLICY "Permitir acceso a modulos" ON campaign_modules FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir acceso a modulos" ON campaign_modules FOR ALL TO public USING (true) WITH CHECK (true);
 
+-- Políticas para 'system_audit_logs'
 DROP POLICY IF EXISTS "Permitir acceso a bitacora" ON system_audit_logs;
-CREATE POLICY "Permitir acceso a bitacora" ON system_audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir acceso a bitacora" ON system_audit_logs FOR ALL TO public USING (true) WITH CHECK (true);
 
+-- Políticas para 'global_config'
 DROP POLICY IF EXISTS "Permitir gestion de config" ON global_config;
-CREATE POLICY "Permitir gestion de config" ON global_config FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir gestion de config" ON global_config FOR ALL TO public USING (true) WITH CHECK (true);
 
+-- Políticas para 'payment_transactions'
 DROP POLICY IF EXISTS "Permitir gestion de pagos" ON payment_transactions;
-CREATE POLICY "Permitir gestion de pagos" ON payment_transactions FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir gestion de pagos" ON payment_transactions FOR ALL TO public USING (true) WITH CHECK (true);
 

@@ -324,16 +324,7 @@ export default function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [activeTab, activeCampaignId]);
 
-  // Bitácora Requerimiento 5: Si el usuario solo llega al Hero: Registrar visita del enrutador puente
-  useEffect(() => {
-    if (activeTab === 'landing') {
-      fetch('/api/bridge/track-hero', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referrer: typeof document !== 'undefined' ? (document.referrer || 'Tráfico Orgánico Directo') : 'Orgánico' }),
-      }).catch(() => {});
-    }
-  }, [activeTab]);
+
 
   const activeCampaign = campaigns.find((c) => c.id === activeCampaignId) || campaigns[0];
 

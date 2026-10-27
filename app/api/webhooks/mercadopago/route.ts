@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
             mpPaymentId: paymentId,
             plan: 'growth',
             salesBlock: 50,
-          }).eq('id', campaignId),
+          },
+        }).eq('id', campaignId),
 
         // Registro de auditoría
         supabase.from('system_audit_logs').insert({
