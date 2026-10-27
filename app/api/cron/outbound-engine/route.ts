@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { crypto } from 'crypto';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -30,15 +29,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // Solución: Generamos un ID único aleatorio para cumplir con la columna obligatoria 'id'
+    // Corrección crítica: Tomamos el ID de la primera campaña disponible en la lista de forma segura [0].id
+    const firstCampaignId = campaigns[0].id;
     const uniqueId = `log_${Math.random().toString(36).substr(2, 9)}`;
-    const referenceCampaignId = campaigns[0]?.id || 'unknown';
 
     await supabase
       .from('system_audit_logs')
       .insert({
-        id: uniqueId, // Se asigna el ID requerido
-        campaign_id: referenceCampaignId,
+        id: uniqueId,
+        campaign_id: firstCampaignId,
         timestamp: new Date().toISOString(),
         level: 'info',
         module: 'cron_outbound'
