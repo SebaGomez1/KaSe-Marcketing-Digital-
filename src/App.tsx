@@ -312,9 +312,9 @@ export default function App() {
     };
   }, [currentUser?.id, currentUser?.email]);
 
-  // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?) or reviews (Reseñas)
+  // Route Guard: Unauthenticated visitors can ONLY view landing (Hero), guide (¿Cómo funciona?), modules (Módulos 8) or reviews (Reseñas)
   useEffect(() => {
-    if (!currentUser && activeTab !== 'landing' && activeTab !== 'guide' && activeTab !== 'reviews') {
+    if (!currentUser && activeTab !== 'landing' && activeTab !== 'guide' && activeTab !== 'reviews' && activeTab !== 'modules') {
       setActiveTab('landing');
     }
   }, [currentUser, activeTab]);

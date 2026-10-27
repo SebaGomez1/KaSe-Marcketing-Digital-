@@ -427,6 +427,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     return getDynamicPricing(selectedType, qty).totalPrice;
   };
 
+  // Safe pricing calculation available throughout the entire modal component
+  const currentPricing = getDynamicPricing(selectedType, Number(targetQuantity) || defaultInitialQty);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -1351,7 +1354,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                     ? '💳 Pagar $1.00 USD con Mercado Pago'
                     : isKathy
                     ? '🚀 Iniciar Campaña Autónoma ($0.00 Super Admin)'
-                    : `💳 Pagar $${pricing.totalPrice} USD en Mercado Pago y Activar`}
+                    : `💳 Pagar $${(currentPricing?.totalPrice || 490).toLocaleString()} USD en Mercado Pago y Activar`}
                 </span>
               </button>
             </div>

@@ -245,8 +245,8 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
     : [
         '📝 Crear cuenta gratuita',
         '🚀 ¿Cómo funciona KaSe?',
-        '💰 Ver planes y precios',
-        '🛡️ ¿Tengo que configurar APIs?'
+        '⚙️ Módulos 8',
+        '⭐ Reseñas de clientes'
       ];
 
   const [messages, setMessages] = useState<ChatMessage[]>([

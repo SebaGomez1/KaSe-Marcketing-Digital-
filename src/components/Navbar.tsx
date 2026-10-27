@@ -27,12 +27,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const isSuperAdmin = isUserSuperAdmin(currentUser);
 
-  // Unauthenticated visitors can see Inicio, ¿Cómo funciona?, Módulos (8), Planes y Precios, and Reseñas
+  // Unauthenticated visitors can see Inicio, ¿Cómo funciona?, Módulos 8, and Reseñas (no planes y precios before login)
   const publicNavItems = [
     { id: 'landing', label: '🏠 Inicio' },
     { id: 'guide', label: '¿Cómo funciona?' },
-    { id: 'modules', label: '⚙️ Módulos (8)' },
-    { id: 'plans', label: '💎 Planes y Precios' },
+    { id: 'modules', label: 'Módulos 8' },
     { id: 'reviews', label: '⭐ Reseñas' },
   ];
 

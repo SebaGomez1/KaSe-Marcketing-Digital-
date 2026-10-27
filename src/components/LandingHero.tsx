@@ -338,7 +338,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/80 text-neutral-300 hover:text-white text-xs transition-colors cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="font-semibold">Módulos (8)</span>
+                  <span className="font-semibold">Módulos 8</span>
                   <span className="text-emerald-400 font-semibold ml-0.5">→</span>
                 </button>
               )}

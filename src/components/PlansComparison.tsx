@@ -86,25 +86,33 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
 
   const customQuote = getCustomTier(customUsers);
 
+  const [updatedPlanNotice, setUpdatedPlanNotice] = useState<string | null>(null);
+
   const handleApplyCustom = () => {
-    if (campaign && onUpdatePlan) {
+    if (!currentUser && onOpenAuthModal) {
+      onOpenAuthModal();
+      return;
+    }
+    if (onOpenNewCampaignWithPlan) {
+      onOpenNewCampaignWithPlan(customQuote.plan);
+    } else if (campaign && onUpdatePlan) {
       onUpdatePlan(customQuote.plan, customUsers);
       setIsAppliedNotice(true);
       setTimeout(() => setIsAppliedNotice(false), 3000);
-    } else if (onOpenNewCampaignWithPlan) {
-      onOpenNewCampaignWithPlan(customQuote.plan);
-    } else if (!currentUser && onOpenAuthModal) {
-      onOpenAuthModal();
     }
   };
 
   const handlePlanAction = (planId: 'basic' | 'starter' | 'growth' | 'enterprise', target: number) => {
-    if (campaign && onUpdatePlan) {
-      onUpdatePlan(planId, target);
-    } else if (onOpenNewCampaignWithPlan) {
-      onOpenNewCampaignWithPlan(planId);
-    } else if (!currentUser && onOpenAuthModal) {
+    if (!currentUser && onOpenAuthModal) {
       onOpenAuthModal();
+      return;
+    }
+    if (onOpenNewCampaignWithPlan) {
+      onOpenNewCampaignWithPlan(planId);
+    } else if (campaign && onUpdatePlan) {
+      onUpdatePlan(planId, target);
+      setUpdatedPlanNotice(`¡Plan ${planId.toUpperCase()} asignado a tu campaña!`);
+      setTimeout(() => setUpdatedPlanNotice(null), 3000);
     }
   };
 
@@ -507,25 +515,34 @@ export const PlansComparison: React.FC<PlansComparisonProps> = ({
                 </div>
 
                 {/* Bottom Action Button */}
-                <div className="pt-6 mt-6 border-t border-neutral-800">
+                <div className="pt-6 mt-6 border-t border-neutral-800 space-y-2">
                   <button
                     onClick={() => handlePlanAction(p.id, p.target)}
-                    disabled={isCurrent}
                     className={`w-full py-2.5 px-4 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
-                      isCurrent
-                        ? 'bg-neutral-800 text-neutral-500 cursor-default shadow-none'
-                        : p.accentBtn
+                      p.accentBtn
                     }`}
                   >
                     <span>
                       {isCurrent
-                        ? 'Plan Actualmente Activo'
-                        : campaign
-                        ? `Seleccionar ${p.name}`
-                        : `⚡ Contratar Ahora (${p.price})`}
+                        ? `Configurar Nueva Campaña con ${p.name}`
+                        : `Seleccionar y Contratar ${p.name} (${p.price})`}
                     </span>
-                    {!isCurrent && <ArrowRight className="w-3.5 h-3.5" />}
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
+
+                  {campaign && !isCurrent && onUpdatePlan && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdatePlan(p.id, p.target);
+                        setUpdatedPlanNotice(`¡Plan ${p.name} asignado a tu campaña actual!`);
+                        setTimeout(() => setUpdatedPlanNotice(null), 3000);
+                      }}
+                      className="w-full py-1.5 px-2 text-[11px] font-medium text-neutral-400 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-lg transition-colors cursor-pointer text-center"
+                    >
+                      {updatedPlanNotice?.includes(p.name) ? '✓ Asignado a Campaña Actual' : 'Asignar a mi campaña actual'}
+                    </button>
+                  )}
                 </div>
               </div>
             );
