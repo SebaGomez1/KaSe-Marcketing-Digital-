@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
     if (fetchError) throw fetchError;
 
     if (!campaigns || campaigns.length === 0) {
-      return NextResponse.json({ success: true, message: 'No hay campañas activas para procesar.' });
+      return Response.json({ success: true, message: 'No hay campañas activas para procesar.' });
     }
 
     for (const campaign of campaigns) {
@@ -39,14 +38,14 @@ export async function GET(request: Request) {
         created_at: new Date().toISOString()
       });
 
-    return NextResponse.json({ 
+    return Response.json({ 
       success: true, 
       message: `Motores sincronizados correctamente de forma nativa. Procesadas ${campaigns.length} campañas.` 
     });
 
   } catch (error: any) {
     console.error('Error crítico en el motor de captación:', error);
-    return NextResponse.json(
+    return Response.json(
       { success: false, error: error.message || 'Error interno del servidor en los motores.' },
       { status: 500 }
     );

@@ -2641,6 +2641,8 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
   }
 };
 
+app.get('/api/cron', handleOutboundCronEndpoint);
+app.post('/api/cron', handleOutboundCronEndpoint);
 app.get('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 app.post('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 

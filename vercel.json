@@ -3,7 +3,23 @@
   "rewrites": [
     {
       "source": "/api/cron",
-      "destination": "/app/api/cron/outbound-engine/route.ts"
+      "destination": "/api/cron"
+    },
+    {
+      "source": "/api/cron/outbound-engine",
+      "destination": "/api/cron"
+    },
+    {
+      "source": "/r/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
