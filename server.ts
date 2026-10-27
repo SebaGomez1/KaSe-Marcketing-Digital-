@@ -1031,13 +1031,22 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
 
 // Endpoint de sincronización y blindaje de baúl local con la base de datos
 app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<void> => {
+  const syncStartTime = Date.now();
+  console.log(`\n========================================`);
+  console.log(`[SYNC PASO 1/4] 📥 /api/campaigns/sync recibido | IP: ${req.ip} | Hora: ${new Date().toISOString()}`);
+  console.log(`========================================`);
+
   try {
     const { campaign, campaigns: incomingList } = req.body || {};
     const toSync = Array.isArray(incomingList) ? incomingList : (campaign ? [campaign] : []);
+    console.log(`[SYNC PASO 2/4] 📦 Campañas recibidas en payload: ${toSync.length}`);
     const synced: Campaign[] = [];
 
+    let idx = 0;
     for (const camp of toSync) {
       if (camp && camp.id && !FAKE_CAMPAIGN_IDS.includes(camp.id)) {
+        idx++;
+        console.log(`[SYNC PASO 3/4] 💾 Guardando campaña ${idx}/${toSync.length} ("${camp.name || camp.id}")...`);
         try {
           await saveCampaignAsync(camp);
           synced.push(camp);
@@ -1047,9 +1056,11 @@ app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<voi
       }
     }
 
-    res.status(200).json({ success: true, count: synced.length, campaigns: synced });
+    const duration = Date.now() - syncStartTime;
+    console.log(`[SYNC PASO 4/4] ✅ Sincronización completada (${synced.length} campañas) en ${duration}ms. Enviando Status 200.`);
+    res.status(200).json({ success: true, count: synced.length, campaigns: synced, durationMs: duration });
   } catch (err: any) {
-    console.error('[Error in /api/campaigns/sync]:', err?.message || err);
+    console.error('[SYNC ERROR CRÍTICO]:', err?.message || err);
     res.status(200).json({ success: false, error: 'Sync partially completed', details: err?.message || String(err), count: 0, campaigns: [] });
   }
 });
@@ -2699,13 +2710,21 @@ app.get('/api/webhooks/mercadopago', mpWebhookHandler);
 const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<void> => {
   const executionTimestamp = new Date().toISOString();
   const summary: any[] = [];
+  console.log(`\n========================================`);
+  console.log(`[CRON SERVER PASO 1/5] ⏰ Disparo recibido en server.ts | Método: ${req.method} | IP: ${req.ip}`);
+  console.log(`========================================`);
 
   try {
     const origin = req.headers.origin || process.env.APP_URL || 'https://kase-marketing.vercel.app';
+    console.log(`[CRON SERVER PASO 2/5] 📡 Obteniendo campañas activas desde base de datos / memoria...`);
     const activeCamps = await getCampaignsAsync();
+    console.log(`[CRON SERVER PASO 3/5] ⚙️ ${activeCamps.length} campañas detectadas en total. Iniciando ejecución de ciclos...`);
 
+    let processedCount = 0;
     for (const campaign of activeCamps) {
       if (campaign.status !== 'active') continue;
+      processedCount++;
+      console.log(`[CRON SERVER CAMP-${processedCount}] 🚀 Procesando campaña: "${campaign.name}" (${campaign.id})...`);
 
       try {
         // Despertar de forma robusta los 8 motores autónomos orgánicos ante el freeze serverless
@@ -2785,9 +2804,11 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
         summary.push({ campaignId: campaign.id, status: 'ISOLATED_RECOVERY', error: campLoopErr?.message });
       }
     }
-
+    console.log(`[CRON SERVER PASO 4/5] 📝 ${summary.length} campañas sincronizadas. Resumen listo.`);
+    console.log(`[CRON SERVER PASO 5/5] ✅ Ejecución completada exitosamente. Enviando Status 200 OK.`);
     res.json({ success: true, timestamp: executionTimestamp, details: summary });
   } catch (globalErr: any) {
+    console.error('[CRON SERVER ERROR CRÍTICO]:', globalErr?.message || globalErr);
     res.status(500).json({ success: false, error: globalErr.message });
   }
 };
