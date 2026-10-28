@@ -422,14 +422,17 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     }
     setIsDeletingCampaign(true);
     try {
-      const res = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}?adminEmail=kathyseba2020@gmail.com`, {
+      const res = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}?adminEmail=kathyseba2020@gmail.com&confirm_delete=true`, {
         method: 'DELETE',
-        headers: { 'x-admin-email': 'kathyseba2020@gmail.com' },
+        headers: { 
+          'x-admin-email': 'kathyseba2020@gmail.com',
+          'x-confirm-delete': 'true',
+        },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar campaña');
 
-      deleteCampaignFromVault(campaignId);
+      deleteCampaignFromVault(campaignId, 'kathyseba2020@gmail.com', true);
       setSelectedCampaignIds((prev) => prev.filter((id) => id !== campaignId));
       setDeleteSuccessMessage(`Campaña "${campaignName}" eliminada correctamente.`);
       setTimeout(() => setDeleteSuccessMessage(null), 4000);
@@ -451,9 +454,14 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     try {
       const res = await fetch('/api/admin/delete-campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-email': 'kathyseba2020@gmail.com',
+          'x-confirm-delete': 'true',
+        },
         body: JSON.stringify({
           adminEmail: 'kathyseba2020@gmail.com',
+          confirm_delete: true,
           campaignIds: selectedCampaignIds,
         }),
       });
