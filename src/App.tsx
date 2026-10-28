@@ -464,7 +464,7 @@ export default function App() {
       ...(baseCamp || {
         id: `kase_test_1usd_${Date.now()}`,
         name: 'Autoprueba Mercado Pago ($1.00 USD)',
-        targetUrl: 'https://kase-marketing.vercel.app',
+        targetUrl: 'https://ka-se-marcketing-digital.vercel.app',
         niche: 'Fintech & SaaS',
         description: 'Prueba de cobro de $1.00 USD en pasarela de producción Mercado Pago Uruguay',
         campaignType: 'user_registrations',

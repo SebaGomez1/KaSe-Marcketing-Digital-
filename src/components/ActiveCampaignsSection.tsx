@@ -416,7 +416,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://vercel.app';
+                                  const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
                                   const bridgeUrl = `${origin}/r/${camp.id}`;
                                   navigator.clipboard.writeText(bridgeUrl);
                                   setCopiedBridgeId(camp.id);
@@ -439,7 +439,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                               </button>
                             </div>
                             <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-1 rounded border border-neutral-800 block truncate select-all">
-                              {typeof window !== 'undefined' ? `${window.location.origin}/r/${camp.id}` : `https://vercel.app/r/${camp.id}`}
+                              {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${camp.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${camp.id}`}
                             </code>
                           </div>
 

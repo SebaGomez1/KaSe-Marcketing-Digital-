@@ -33,7 +33,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [webhookResult, setWebhookResult] = useState<any>(null);
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const baseUrl = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
   const bridgeUrl = `${baseUrl}/r/${campaign.id}`;
   const webhookUrl = `${baseUrl}/api/webhook/conversion/${campaign.id}`;
 

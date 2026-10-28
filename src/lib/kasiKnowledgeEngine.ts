@@ -594,14 +594,17 @@ export function generateKaSiReply(userMessage: string, ctx: KaSiEngineContext): 
         source: 'kasi_bridge_guest'
       };
     } else if (camp) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://kase-marketing.vercel.app';
+      const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
       const bridgeUrl = `${origin}/r/${camp.id}`;
+      const safeDest = (!camp.targetUrl || camp.targetUrl === '/' || camp.targetUrl.includes('kase2020') || camp.targetUrl.toLowerCase().includes('kathyseba'))
+        ? 'https://ka-se-marcketing-digital.vercel.app/'
+        : camp.targetUrl;
       return {
         reply: `🔌 **TU ENLACE PUENTE INTELIGENTE · CAMPAÑA "${camp.name}"**\n\n` +
           `Aquí tienes el enlace inteligente de cero código de tu campaña activa:\n\n` +
           `🔗 **URL Puente Oficial**:\n` +
           `\`${bridgeUrl}\`\n\n` +
-          `• **Destino Configurado**: ${camp.targetUrl}\n` +
+          `• **Destino Configurado**: ${safeDest}\n` +
           `• **Mapeo Atómico**: Redirige al instante (HTTP 307) a tu web y suma +1 en tu tacómetro.\n` +
           `• **Zero-Install**: No requiere scripts ni instalar nada en tu servidor.\n\n` +
           `Puedes copiarlo directamente o ir a la sección "Integración Segura" para revisarlo en tu app:`,

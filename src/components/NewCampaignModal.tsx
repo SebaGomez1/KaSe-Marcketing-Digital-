@@ -193,7 +193,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://vercel.app';
+                    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
                     const bridgeUrl = `${origin}/r/${adminSuccessCamp.id}`;
                     navigator.clipboard.writeText(bridgeUrl);
                     setCopiedSuccessBridge(true);
@@ -216,7 +216,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 </button>
               </div>
               <code className="block font-mono text-[11px] text-emerald-300 bg-neutral-950 px-2.5 py-1.5 rounded border border-neutral-800 truncate select-all">
-                {typeof window !== 'undefined' ? `${window.location.origin}/r/${adminSuccessCamp.id}` : `https://vercel.app/r/${adminSuccessCamp.id}`}
+                {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${adminSuccessCamp.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${adminSuccessCamp.id}`}
               </code>
             </div>
           </div>
@@ -1076,12 +1076,12 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   {campaign?.id && (
                     <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between gap-2">
                       <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-1 rounded border border-neutral-800 truncate select-all flex-1">
-                        {typeof window !== 'undefined' ? `${window.location.origin}/r/${campaign.id}` : `https://vercel.app/r/${campaign.id}`}
+                        {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${campaign.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${campaign.id}`}
                       </code>
                       <button
                         type="button"
                         onClick={() => {
-                          const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://vercel.app';
+                          const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
                           const bridgeUrl = `${origin}/r/${campaign.id}`;
                           navigator.clipboard.writeText(bridgeUrl);
                           setCopiedFormBridge(true);
