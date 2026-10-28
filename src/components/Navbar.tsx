@@ -44,13 +44,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'plans', label: 'Planes y Precios' },
     { id: 'reviews', label: '⭐ Reseñas' },
     { id: 'integration', label: 'Integración Segura' },
-    { id: 'logs', label: 'Bitácora' },
+  ];
+
+  const adminNavItems = [
+    ...authenticatedClientNavItems,
+    { id: 'logs', label: '📋 Bitácora' },
+    { id: 'admin_global', label: '👑 Admin Global KaSe' },
   ];
 
   const navItems = !currentUser
     ? publicNavItems
     : isSuperAdmin
-    ? [...authenticatedClientNavItems, { id: 'admin_global', label: '👑 Admin Global KaSe' }]
+    ? adminNavItems
     : authenticatedClientNavItems;
 
   return (

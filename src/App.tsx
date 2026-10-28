@@ -328,6 +328,10 @@ export default function App() {
     if (!currentUser && activeTab !== 'landing' && activeTab !== 'guide' && activeTab !== 'reviews' && activeTab !== 'modules') {
       setActiveTab('landing');
     }
+    // Route Guard: Bitácora ('logs') y Admin Global ('admin_global') son EXCLUSIVOS de la cuenta del Administrador
+    if ((activeTab === 'logs' || activeTab === 'admin_global') && !isUserSuperAdmin(currentUser)) {
+      setActiveTab(currentUser ? 'dashboard' : 'landing');
+    }
   }, [currentUser, activeTab]);
 
   // Fix: Immediately scroll viewport to the top on every tab or campaign change
@@ -644,8 +648,8 @@ export default function App() {
             }}
             currentUser={currentUser}
           />
-        ) : activeTab === 'logs' ? (
-          <SystemAuditLogs campaign={activeCampaign || null} allCampaigns={campaigns} />
+        ) : activeTab === 'logs' && isUserSuperAdmin(currentUser) ? (
+          <SystemAuditLogs campaign={activeCampaign || null} allCampaigns={campaigns} currentUser={currentUser} />
         ) : activeCampaign ? (
           <>
             {activeTab === 'dashboard' && (

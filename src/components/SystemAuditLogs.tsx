@@ -13,14 +13,15 @@ import {
   UserPlus, 
   Globe 
 } from 'lucide-react';
-import { Campaign, CampaignLog } from '../types/growth';
+import { Campaign, CampaignLog, User, isUserSuperAdmin } from '../types/growth';
 
 interface SystemAuditLogsProps {
   campaign?: Campaign | null;
   allCampaigns?: Campaign[];
+  currentUser?: User | null;
 }
 
-export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allCampaigns = [] }) => {
+export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allCampaigns = [], currentUser = null }) => {
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [serverLogs, setServerLogs] = useState<CampaignLog[]>([]);
@@ -29,7 +30,12 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
   const fetchServerLogs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/system_audit_logs');
+      const adminEmail = currentUser?.email || '';
+      const res = await fetch(`/api/system_audit_logs?email=${encodeURIComponent(adminEmail)}`, {
+        headers: {
+          'x-admin-email': adminEmail,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.system_audit_logs)) {
@@ -266,6 +272,18 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
       </span>
     );
   };
+
+  if (!isUserSuperAdmin(currentUser)) {
+    return (
+      <div className="p-8 text-center bg-[#161616] border border-neutral-800 rounded-2xl max-w-xl mx-auto my-12 space-y-3">
+        <ShieldAlert className="w-10 h-10 text-rose-500 mx-auto" />
+        <h3 className="text-lg font-bold text-white">Acceso Restringido</h3>
+        <p className="text-xs text-neutral-400">
+          La bitácora de auditoría y tráfico es de acceso exclusivo para la cuenta del Administrador.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

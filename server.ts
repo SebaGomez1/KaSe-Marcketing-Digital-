@@ -3109,10 +3109,32 @@ app.post('/api/bridge/track-payment', (req: Request, res: Response) => {
 });
 
 // Endpoint dedicado para consultar listado de system_audit_logs (Bitácora de Tráfico y Enrutadores Puente)
+// REQUERIMIENTO: Acceso EXCLUSIVO para la cuenta del Administrador (kathyseba2020@gmail.com)
 // REQUERIMIENTO 2: Filtra estrictamente cualquier residuo de 127.0.0.1 o simulación de tráfico interno
 // REQUERIMIENTO 3: Entrega la estructura con origen_motor, plataforma_atraccion, fecha_acceso
-app.get('/api/system_audit_logs', async (_req: Request, res: Response): Promise<void> => {
+app.get('/api/system_audit_logs', async (req: Request, res: Response): Promise<void> => {
   try {
+    const adminHeader = (
+      (req.headers['x-admin-email'] as string) ||
+      (req.query.adminEmail as string) ||
+      (req.query.email as string) ||
+      ''
+    ).toLowerCase().trim();
+
+    const isSuper =
+      adminHeader === 'kathyseba2020@gmail.com' ||
+      adminHeader === 'kathy_super_admin' ||
+      adminHeader === 'kase_super_admin';
+
+    if (!isSuper) {
+      res.status(403).json({
+        success: false,
+        error: 'Acceso restringido: La bitácora es de acceso exclusivo para la cuenta del Administrador (kathyseba2020@gmail.com).',
+        system_audit_logs: [],
+      });
+      return;
+    }
+
     let supabaseLogs: any[] = [];
     if (supabase) {
       try {
