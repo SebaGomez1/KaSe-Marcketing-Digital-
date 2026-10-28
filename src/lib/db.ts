@@ -438,7 +438,11 @@ export async function handleBridgeInterceptionDirectSupabase(
     // Si la petición proviene de IP local, no registrar en bitácora ni computar simulación
     if (isLocal) {
       const { data: c } = await supabase.from('campaigns').select('target_url, name').eq('id', campaignId).maybeSingle();
-      return { redirectUrl: c?.target_url || '/', success: true, campaignName: c?.name || 'Campaña KaSe' };
+      const rawUrl = c?.target_url || '';
+      const safeUrl = (!rawUrl || rawUrl === '/' || rawUrl.includes('kase2020') || rawUrl.toLowerCase().includes('kathyseba')) 
+        ? 'https://ka-se-marcketing-digital.vercel.app/' 
+        : rawUrl;
+      return { redirectUrl: safeUrl, success: true, campaignName: c?.name || 'Campaña KaSe' };
     }
 
     // 1. Operación atómica nativa vía .rpc('increment_clicks') para evitar condiciones de carrera
@@ -523,14 +527,19 @@ export async function handleBridgeInterceptionDirectSupabase(
       })
     ]);
 
+    const rawTarget = campaign.target_url || '';
+    const safeTarget = (!rawTarget || rawTarget === '/' || rawTarget.includes('kase2020') || rawTarget.toLowerCase().includes('kathyseba') || !rawTarget.startsWith('http'))
+      ? 'https://ka-se-marcketing-digital.vercel.app/'
+      : rawTarget;
+
     return { 
-      redirectUrl: campaign.target_url || '/', 
+      redirectUrl: safeTarget, 
       success: true, 
       campaignName: campaign.name 
     };
   } catch (e) {
     console.error('[Error handleBridgeInterceptionDirectSupabase]:', e);
-    return { redirectUrl: '/', success: false };
+    return { redirectUrl: 'https://ka-se-marcketing-digital.vercel.app/', success: false };
   }
 }
 

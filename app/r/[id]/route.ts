@@ -3,10 +3,23 @@ import { supabase } from '../../../src/lib/db';
 
 export const runtime = 'edge';
 
+// ====================================================================
+// URL BASE FIJA: ÚNICA Y EXCLUSIVAMENTE LA URL OFICIAL DE VERCEL
+// ====================================================================
+export const BASE_URL = 'https://ka-se-marcketing-digital.vercel.app';
+
 // Caché en memoria de borde para mitigar bloqueos y consultas repetidas
 const targetUrlCache = new Map<string, { url: string; cachedAt: number }>();
 const CACHE_TTL_MS = 60000; // 60 segundos de caché por campaña
 
+/**
+ * Función central de enrutamiento del puente inteligente.
+ * Cumple estrictamente:
+ * 1. URL base fija: https://ka-se-marcketing-digital.vercel.app/
+ * 2. Destino final garantizado a la URL oficial de Vercel.
+ * 3. Prohibido extraer partes del correo 'Kathyseba2020@gmail.com' o inventar dominios como 'kase2020.com'.
+ * 4. Preserva el registro atómico y la no-alteración de los 8 motores en Supabase.
+ */
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
@@ -16,7 +29,7 @@ export async function GET(
     const campaignId = (resolvedParams?.id || '').trim();
 
     if (!campaignId) {
-      return NextResponse.redirect(new URL('/', req.url), 302);
+      return NextResponse.redirect(`${BASE_URL}/`, 302);
     }
 
     // ====================================================================
@@ -24,9 +37,8 @@ export async function GET(
     // ====================================================================
     const reqHost = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
     const reqReferer = req.headers.get('referer') || '';
-    const userAgent = req.headers.get('user-agent') || '';
     const isPrefetch = req.headers.get('purpose') === 'prefetch' || req.headers.get('x-purpose') === 'preview';
-    const isLoopDetected = reqReferer.includes(`/r/${campaignId}`);
+    const isLoopDetected = reqReferer.includes(`/r/${campaignId}`) || reqReferer.includes(`/puente/${campaignId}`);
 
     // Detección de IP en Edge
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
@@ -74,13 +86,13 @@ export async function GET(
     // ====================================================================
     // OBTENCIÓN RÁPIDA DE LA URL DE DESTINO (CACHÉ EDGE FIRST)
     // ====================================================================
-    let destinationUrl = '/';
+    // URL BASE FIJA: Destino final a este mismo enlace oficial de Vercel
+    let destinationUrl = `${BASE_URL}/`;
     const cached = targetUrlCache.get(campaignId);
 
     if (cached && (Date.now() - cached.cachedAt) < CACHE_TTL_MS) {
       destinationUrl = cached.url;
     } else if (supabase) {
-      // Búsqueda rápida para el redirect
       const { data: cRow } = await supabase
         .from('campaigns')
         .select('target_url')
@@ -88,17 +100,51 @@ export async function GET(
         .maybeSingle();
 
       if (cRow?.target_url) {
-        destinationUrl = cRow.target_url;
+        const rawTarget = cRow.target_url.trim();
+        // REGLAS ESTRICTAS DE SANITIZACIÓN:
+        // 1. Elimina cualquier intento de parsear 'Kathyseba2020@gmail.com' a dominios inventados como 'kase2020.com'.
+        // 2. Destino final limpio hacia la URL oficial de Vercel.
+        if (
+          !rawTarget ||
+          rawTarget === '/' ||
+          rawTarget.includes('kase2020') ||
+          rawTarget.toLowerCase().includes('kathyseba') ||
+          rawTarget.toLowerCase().includes('gmail.com') ||
+          rawTarget.includes('kase-marketing.vercel.app') ||
+          !rawTarget.startsWith('http')
+        ) {
+          destinationUrl = `${BASE_URL}/`;
+        } else {
+          destinationUrl = rawTarget;
+        }
       }
 
-      if (destinationUrl !== '/') {
+      if (destinationUrl !== `${BASE_URL}/`) {
         targetUrlCache.set(campaignId, { url: destinationUrl, cachedAt: Date.now() });
       }
     }
 
-    // Romper bucles si la URL de destino apunta a la misma ruta
-    if (destinationUrl.includes(`/r/${campaignId}`) || (reqHost && destinationUrl.includes(reqHost) && destinationUrl.includes('/r/'))) {
-      destinationUrl = '/';
+    // Romper bucles si la URL de destino apunta a la misma ruta puente
+    if (
+      destinationUrl.includes(`/r/${campaignId}`) ||
+      destinationUrl.includes(`/puente/${campaignId}`) ||
+      destinationUrl.includes('kase2020') ||
+      (reqHost && destinationUrl.includes(reqHost) && (destinationUrl.includes('/r/') || destinationUrl.includes('/puente/')))
+    ) {
+      destinationUrl = `${BASE_URL}/`;
+    }
+
+    // Preservar UTMs y parámetros de seguimiento hacia el destino final de Vercel
+    try {
+      const destObj = new URL(destinationUrl);
+      urlObj.searchParams.forEach((value, key) => {
+        if (!destObj.searchParams.has(key)) {
+          destObj.searchParams.set(key, value);
+        }
+      });
+      destinationUrl = destObj.toString();
+    } catch {
+      destinationUrl = `${BASE_URL}/`;
     }
 
     // ====================================================================
@@ -125,12 +171,13 @@ export async function GET(
           plataforma_atraccion,
           level: 'SUCCESS',
           module: 'ENRUTADOR_PUENTE_EDGE',
-          message: `⚡ Enlace Puente Edge: +1 clic orgánico derivado al destino. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. IP: ${ipMasked}.`,
+          message: `⚡ Enlace Puente Edge: +1 clic orgánico derivado al destino oficial (${BASE_URL}). Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. IP: ${ipMasked}.`,
           metadata: {
             origen_motor,
             plataforma_atraccion,
             fecha_acceso,
             client_ip: ipMasked,
+            base_url: BASE_URL,
           },
         };
 
@@ -173,6 +220,7 @@ export async function GET(
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
         'X-KaSe-Bridge': 'Edge-Optimized-v2',
+        'X-KaSe-Base-Url': BASE_URL,
       },
     });
 
@@ -187,6 +235,13 @@ export async function GET(
 
     return redirectResponse;
   } catch (error) {
-    return NextResponse.redirect(new URL('/', req.url), 302);
+    return NextResponse.redirect(`${BASE_URL}/`, 302);
   }
+}
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) {
+  return GET(req, context);
 }

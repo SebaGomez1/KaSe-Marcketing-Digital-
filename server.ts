@@ -1715,8 +1715,13 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       await saveCampaignAsync(campaign);
     }
 
+    const VERCEL_BASE_URL = 'https://ka-se-marcketing-digital.vercel.app';
     try {
-      const targetUrlObj = new URL(campaign.targetUrl);
+      const rawUrl = campaign.targetUrl?.trim() || '';
+      const safeTarget = (!rawUrl || rawUrl === '/' || rawUrl.includes('kase2020') || rawUrl.toLowerCase().includes('kathyseba') || !rawUrl.startsWith('http'))
+        ? `${VERCEL_BASE_URL}/`
+        : rawUrl;
+      const targetUrlObj = new URL(safeTarget);
       Object.entries(req.query).forEach(([k, v]) => {
         if (k !== 'track_conversion' && typeof v === 'string') {
           targetUrlObj.searchParams.set(k, v);
@@ -1724,15 +1729,17 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       });
       res.redirect(307, targetUrlObj.toString());
     } catch {
-      res.redirect(307, campaign.targetUrl);
+      res.redirect(307, `${VERCEL_BASE_URL}/`);
     }
   } catch (err) {
-    res.redirect(302, '/');
+    res.redirect(302, 'https://ka-se-marcketing-digital.vercel.app/');
   }
 };
 
 app.get('/r/:campaignId', handleBridgeRoute);
 app.get('/r/:id', handleBridgeRoute);
+app.get('/puente/:campaignId', handleBridgeRoute);
+app.get('/puente/:id', handleBridgeRoute);
 
 // WEBHOOK DE CONVERSIÓN BLINDADO CRIPTOGRÁFICAMENTE (ORDEN DE TRABAJO 2)
 app.post('/api/webhook/conversion/:campaignId', async (req: Request, res: Response): Promise<void> => {
@@ -2932,7 +2939,9 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
   console.log(`========================================`);
 
   try {
-    const origin = req.headers.origin || process.env.APP_URL || 'https://kase-marketing.vercel.app';
+    // URL BASE FIJA: Única y exclusivamente la URL oficial de Vercel (https://ka-se-marcketing-digital.vercel.app/)
+    const BASE_URL = 'https://ka-se-marcketing-digital.vercel.app';
+    const origin = BASE_URL;
     console.log(`[CRON SERVER PASO 2/5] 📡 Obteniendo campañas activas desde base de datos / memoria...`);
     const activeCamps = await getCampaignsAsync();
     console.log(`[CRON SERVER PASO 3/5] ⚙️ ${activeCamps.length} campañas detectadas en total. Iniciando ejecución de ciclos...`);
@@ -2961,7 +2970,8 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
             'software',
           ].map(k => k.trim().toLowerCase()).filter(k => k.length > 3).slice(0, 6);
 
-          const bridgeTrackingUrl = `${origin}/r/${campaign.id}?ref=outbound_cron&campaign_id=${campaign.id}`;
+          // Inyección de enlace puente limpio y validado hacia la URL oficial de Vercel
+          const bridgeTrackingUrl = `${BASE_URL}/r/${campaign.id}?ref=outbound_cron&campaign_id=${campaign.id}`;
           const replyTemplate = `Hemos automatizado este flujo con ${campaign.name}: ${bridgeTrackingUrl}`;
 
           try {

@@ -6,6 +6,8 @@ interface BridgePageProps {
   campaignId: string;
 }
 
+export const BASE_URL = 'https://ka-se-marcketing-digital.vercel.app';
+
 export const getServerSideProps: GetServerSideProps<BridgePageProps> = async (context) => {
   const { id } = context.params || {};
   const campaignId = (Array.isArray(id) ? id[0] : id) || '';
@@ -13,7 +15,7 @@ export const getServerSideProps: GetServerSideProps<BridgePageProps> = async (co
   if (!campaignId) {
     return {
       redirect: {
-        destination: '/',
+        destination: `${BASE_URL}/`,
         permanent: false,
       },
     };
@@ -35,9 +37,20 @@ export const getServerSideProps: GetServerSideProps<BridgePageProps> = async (co
   const result = await handleBridgeInterceptionDirectSupabase(campaignId, referrer, ipMasked, utmParams);
 
   if (result.success && result.redirectUrl) {
+    let target = result.redirectUrl.trim();
+    if (
+      !target ||
+      target === '/' ||
+      target.includes('kase2020') ||
+      target.toLowerCase().includes('kathyseba') ||
+      target.toLowerCase().includes('gmail.com') ||
+      !target.startsWith('http')
+    ) {
+      target = `${BASE_URL}/`;
+    }
     return {
       redirect: {
-        destination: result.redirectUrl,
+        destination: target,
         statusCode: 307,
       },
     };
@@ -45,7 +58,7 @@ export const getServerSideProps: GetServerSideProps<BridgePageProps> = async (co
 
   return {
     redirect: {
-      destination: '/',
+      destination: `${BASE_URL}/`,
       permanent: false,
     },
   };
