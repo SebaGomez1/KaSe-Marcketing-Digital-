@@ -385,13 +385,58 @@ export async function fetchUserCampaignsFromSupabase(userId: string): Promise<Ca
 export async function handleBridgeInterceptionDirectSupabase(
   campaignId: string, 
   referrer: string = 'Enlace Puente KaSe', 
-  ipMasked: string = '185.12.***.***'
+  ipMasked: string = '185.12.***.***',
+  utmParams?: { utm_source?: string; utm_medium?: string; utm_campaign?: string }
 ): Promise<{ redirectUrl: string; success: boolean; campaignName?: string }> {
   if (!supabase) {
     return { redirectUrl: '/', success: false };
   }
 
+  // REQUERIMIENTO 2: Eliminar cualquier simulación interna de tráfico orgánico (como 127.0.0.1)
+  const cleanIp = ipMasked.toLowerCase().replace(/^::ffff:/, '').trim();
+  const isLocal = cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost' || cleanIp.startsWith('127.') || cleanIp === '0.0.0.0';
+
+  // REQUERIMIENTO 3: Identificar motor de búsqueda mediante HTTP Referer y plataforma / UTMs
+  const refLower = referrer.toLowerCase();
+  let origen_motor = 'directo / no_detectado';
+  if (refLower.includes('google.') || refLower.includes('google/')) origen_motor = 'google';
+  else if (refLower.includes('bing.')) origen_motor = 'bing';
+  else if (refLower.includes('yahoo.')) origen_motor = 'yahoo';
+  else if (refLower.includes('duckduckgo.')) origen_motor = 'duckduckgo';
+  else if (refLower.includes('ecosia.')) origen_motor = 'ecosia';
+  else if (refLower.includes('baidu.')) origen_motor = 'baidu';
+  else if (refLower.includes('yandex.')) origen_motor = 'yandex';
+  else if (refLower.includes('ask.com')) origen_motor = 'ask';
+  else origen_motor = 'no_motor';
+
+  const parts: string[] = [];
+  if (utmParams?.utm_source) parts.push(`utm_source=${utmParams.utm_source}`);
+  if (utmParams?.utm_medium) parts.push(`utm_medium=${utmParams.utm_medium}`);
+  if (utmParams?.utm_campaign) parts.push(`utm_campaign=${utmParams.utm_campaign}`);
+
+  let plataforma_atraccion = parts.length > 0 ? parts.join('&') : 'organico_directo';
+  if (parts.length === 0) {
+    if (refLower.includes('facebook.') || refLower.includes('fb.me') || refLower.includes('fb.com')) plataforma_atraccion = 'facebook';
+    else if (refLower.includes('instagram.')) plataforma_atraccion = 'instagram';
+    else if (refLower.includes('twitter.') || refLower.includes('x.com') || refLower.includes('t.co')) plataforma_atraccion = 'twitter_x';
+    else if (refLower.includes('linkedin.') || refLower.includes('lnkd.in')) plataforma_atraccion = 'linkedin';
+    else if (refLower.includes('tiktok.')) plataforma_atraccion = 'tiktok';
+    else if (refLower.includes('youtube.') || refLower.includes('youtu.be')) plataforma_atraccion = 'youtube';
+    else if (refLower.includes('reddit.')) plataforma_atraccion = 'reddit';
+    else if (refLower.includes('quora.')) plataforma_atraccion = 'quora';
+    else if (refLower.includes('whatsapp.')) plataforma_atraccion = 'whatsapp';
+    else if (refLower.includes('telegram.')) plataforma_atraccion = 'telegram';
+  }
+
+  const fecha_acceso = new Date().toISOString();
+
   try {
+    // Si la petición proviene de IP local, no registrar en bitácora ni computar simulación
+    if (isLocal) {
+      const { data: c } = await supabase.from('campaigns').select('target_url, name').eq('id', campaignId).maybeSingle();
+      return { redirectUrl: c?.target_url || '/', success: true, campaignName: c?.name || 'Campaña KaSe' };
+    }
+
     // 1. Operación atómica nativa vía .rpc('increment_clicks') para evitar condiciones de carrera
     try {
       const { data: rpcData, error: rpcErr } = await supabase.rpc('increment_clicks', {
@@ -428,7 +473,7 @@ export async function handleBridgeInterceptionDirectSupabase(
     const targetRegs = Number(campaign.target_registrations || 2000);
 
     const convId = `click_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const nowIso = new Date().toISOString();
+    const nowIso = fecha_acceso;
 
     // 2. Persist click record strictly associated to user_id and campana_id in Supabase
     await Promise.allSettled([
@@ -454,14 +499,23 @@ export async function handleBridgeInterceptionDirectSupabase(
       supabase.from('campaigns').update({
         clicks_count: newClicks,
       }).eq('id', campaign.id),
-      // System audit log directly to Supabase
+      // System audit log directly to Supabase con estructura exacta: origen_motor, plataforma_atraccion, fecha_acceso
       supabase.from('system_audit_logs').insert({
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         campaign_id: campaign.id,
         timestamp: nowIso,
+        fecha_acceso: nowIso,
+        origen_motor,
+        plataforma_atraccion,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',
-        message: `⚡ Enlace Puente interceptado: +1 clic orgánico derivado al destino (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Clics totales: ${newClicks}. Registros contratados: ${currentRegs}/${targetRegs}.`,
+        message: `⚡ Enlace Puente interceptado: +1 clic orgánico derivado al destino (campana_id: ${campaign.id}, user_id: ${assignedUserId}). Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. Clics totales: ${newClicks}. Registros contratados: ${currentRegs}/${targetRegs}.`,
+        metadata: {
+          origen_motor,
+          plataforma_atraccion,
+          fecha_acceso: nowIso,
+          ip_masked: ipMasked,
+        },
       })
     ]);
 

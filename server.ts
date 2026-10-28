@@ -357,20 +357,113 @@ function logSystemError(
   return errItem;
 }
 
+export function isLocalOrInternalIp(ip?: string | null): boolean {
+  if (!ip) return false;
+  const clean = ip.trim().toLowerCase().replace(/^::ffff:/, '');
+  return (
+    clean === '127.0.0.1' ||
+    clean === '::1' ||
+    clean === 'localhost' ||
+    clean.startsWith('127.') ||
+    clean === '0.0.0.0' ||
+    clean === '::'
+  );
+}
+
+export function identifySearchEngine(referer?: string | null): string {
+  if (!referer) return 'directo / no_detectado';
+  const ref = referer.toLowerCase();
+  if (ref.includes('google.') || ref.includes('google/')) return 'google';
+  if (ref.includes('bing.')) return 'bing';
+  if (ref.includes('yahoo.')) return 'yahoo';
+  if (ref.includes('duckduckgo.')) return 'duckduckgo';
+  if (ref.includes('ecosia.')) return 'ecosia';
+  if (ref.includes('baidu.')) return 'baidu';
+  if (ref.includes('yandex.')) return 'yandex';
+  if (ref.includes('ask.com')) return 'ask';
+  return 'no_motor';
+}
+
+export function identifyTrafficPlatform(
+  referer?: string | null,
+  utmParams?: { utm_source?: string; utm_medium?: string; utm_campaign?: string } | null
+): string {
+  const parts: string[] = [];
+  if (utmParams?.utm_source) parts.push(`utm_source=${utmParams.utm_source}`);
+  if (utmParams?.utm_medium) parts.push(`utm_medium=${utmParams.utm_medium}`);
+  if (utmParams?.utm_campaign) parts.push(`utm_campaign=${utmParams.utm_campaign}`);
+
+  if (parts.length > 0) {
+    return parts.join('&');
+  }
+
+  if (!referer) return 'organico_directo';
+  const ref = referer.toLowerCase();
+  if (ref.includes('facebook.') || ref.includes('fb.me') || ref.includes('fb.com')) return 'facebook';
+  if (ref.includes('instagram.')) return 'instagram';
+  if (ref.includes('twitter.') || ref.includes('x.com') || ref.includes('t.co')) return 'twitter_x';
+  if (ref.includes('linkedin.') || ref.includes('lnkd.in')) return 'linkedin';
+  if (ref.includes('tiktok.')) return 'tiktok';
+  if (ref.includes('youtube.') || ref.includes('youtu.be')) return 'youtube';
+  if (ref.includes('reddit.')) return 'reddit';
+  if (ref.includes('quora.')) return 'quora';
+  if (ref.includes('pinterest.')) return 'pinterest';
+  if (ref.includes('threads.net')) return 'threads';
+  if (ref.includes('whatsapp.') || ref.includes('wa.me')) return 'whatsapp';
+  if (ref.includes('telegram.') || ref.includes('t.me')) return 'telegram';
+  if (ref.includes('substack.')) return 'substack';
+  if (ref.includes('producthunt.')) return 'producthunt';
+  if (ref.includes('betalist.')) return 'betalist';
+  if (ref.includes('saashub.')) return 'saashub';
+
+  try {
+    const urlObj = new URL(referer.startsWith('http') ? referer : `https://${referer}`);
+    return urlObj.hostname.replace(/^www\./, '');
+  } catch {
+    return referer.length > 60 ? referer.substring(0, 60) : referer;
+  }
+}
+
 export interface BridgeAuditLog {
   id: string;
   timestamp: string;
+  fecha_acceso: string;
+  origen_motor: string;
+  plataforma_atraccion: string;
   level: string;
   module: string;
   message: string;
   campaign_id?: string;
   user_id?: string;
+  client_ip?: string;
+  metadata?: Record<string, any>;
 }
 
 const inMemoryAuditLogs: BridgeAuditLog[] = [];
 
 export function recordAuditLog(log: BridgeAuditLog): void {
-  inMemoryAuditLogs.unshift(log);
+  // REQUERIMIENTO 2: Eliminar cualquier simulación interna de tráfico orgánico (como 127.0.0.1)
+  // El sistema de bitácora solo debe registrar usuarios reales.
+  if (
+    isLocalOrInternalIp(log.client_ip) ||
+    isLocalOrInternalIp(log.user_id) ||
+    log.module === 'TRAFFIC_SIMULATOR' ||
+    log.level === 'SIMULATION' ||
+    (log.message && log.message.includes('127.0.0.1'))
+  ) {
+    return; // Rechazar y omitir peticiones locales o simuladas
+  }
+
+  const exactNow = log.fecha_acceso || log.timestamp || new Date().toISOString();
+  const normalizedLog: BridgeAuditLog = {
+    ...log,
+    fecha_acceso: exactNow,
+    timestamp: exactNow,
+    origen_motor: log.origen_motor || identifySearchEngine(log.metadata?.referrer || ''),
+    plataforma_atraccion: log.plataforma_atraccion || identifyTrafficPlatform(log.metadata?.referrer || ''),
+  };
+
+  inMemoryAuditLogs.unshift(normalizedLog);
   if (inMemoryAuditLogs.length > 500) {
     inMemoryAuditLogs.pop();
   }
@@ -378,12 +471,22 @@ export function recordAuditLog(log: BridgeAuditLog): void {
     supabase
       .from('system_audit_logs')
       .insert({
-        id: log.id,
-        timestamp: log.timestamp,
-        level: log.level,
-        module: log.module,
-        message: log.message,
-        campaign_id: log.campaign_id || null,
+        id: normalizedLog.id,
+        timestamp: normalizedLog.fecha_acceso,
+        fecha_acceso: normalizedLog.fecha_acceso,
+        origen_motor: normalizedLog.origen_motor,
+        plataforma_atraccion: normalizedLog.plataforma_atraccion,
+        level: normalizedLog.level,
+        module: normalizedLog.module,
+        message: normalizedLog.message,
+        campaign_id: normalizedLog.campaign_id || null,
+        metadata: {
+          origen_motor: normalizedLog.origen_motor,
+          plataforma_atraccion: normalizedLog.plataforma_atraccion,
+          fecha_acceso: normalizedLog.fecha_acceso,
+          client_ip: normalizedLog.client_ip || null,
+          ...(normalizedLog.metadata || {}),
+        },
       })
       .then(() => {})
       .catch(() => {});
@@ -1338,8 +1441,9 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const referrer = (req.query.ref as string) || req.headers['referer'] || 'Enrutador Puente KaSe (Orgánico)';
-    const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '';
+    const referrer = (req.query.ref as string) || (req.headers['referer'] as string) || 'Enrutador Puente KaSe (Orgánico)';
+    const ipMasked = clientIp ? clientIp.replace(/:\d+$/, ':***') : '185.12.***.***';
 
     // 1. Interceptar campaña directamente desde Supabase sin dependencias en fs
     let campaign: Campaign | null = null;
@@ -1374,9 +1478,40 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // REQUERIMIENTO 2: Eliminar cualquier simulación interna de tráfico orgánico (como 127.0.0.1).
+    // El sistema de bitácora solo debe registrar usuarios reales.
+    if (isLocalOrInternalIp(clientIp)) {
+      try {
+        const targetUrlObj = new URL(campaign.targetUrl);
+        Object.entries(req.query).forEach(([k, v]) => {
+          if (k !== 'track_conversion' && typeof v === 'string') {
+            targetUrlObj.searchParams.set(k, v);
+          }
+        });
+        res.redirect(307, targetUrlObj.toString());
+      } catch {
+        res.redirect(307, campaign.targetUrl || '/');
+      }
+      return;
+    }
+
+    // REQUERIMIENTO 3: Estructura de datos real en cada registro:
+    // origen_motor (Google, Bing, etc. vía HTTP Referer)
+    // plataforma_atraccion (Facebook, Instagram, o parámetros UTM)
+    // fecha_acceso (Timestamp exacto de la entrada)
+    const rawReferer = (req.headers['referer'] || req.query.ref as string || '') as string;
+    const origen_motor = identifySearchEngine(rawReferer);
+    const utmParams = {
+      utm_source: (req.query.utm_source as string) || undefined,
+      utm_medium: (req.query.utm_medium as string) || undefined,
+      utm_campaign: (req.query.utm_campaign as string) || undefined,
+    };
+    const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
+    const fecha_acceso = new Date().toISOString();
+
     // 2. Interceptación y guardado estricto asociándolo a 'user_id' y 'campana_id' en Supabase
     const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    const nowIso = new Date().toISOString();
+    const nowIso = fecha_acceso;
 
     if (campaign.status === 'active') {
       // Un clic orgánico en el enlace puente es TRÁFICO / VISITA hacia la campaña activa.
@@ -1429,9 +1564,12 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       const bridgeLog: CampaignLog = {
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         timestamp: nowIso,
+        fecha_acceso,
+        origen_motor,
+        plataforma_atraccion,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE',
-        message: `⚡ Visita orgánica interceptada hacia ${campaign.targetUrl}. Clics acumulados: ${campaign.clicksCount}. (Registros reales: ${campaign.currentRegistrations}/${campaign.targetRegistrations}).`,
+        message: `⚡ Visita orgánica interceptada hacia ${campaign.targetUrl}. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. Clics acumulados: ${campaign.clicksCount}. (Registros reales: ${campaign.currentRegistrations}/${campaign.targetRegistrations}).`,
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
@@ -1439,11 +1577,22 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       recordAuditLog({
         id: bridgeLog.id,
         timestamp: nowIso,
+        fecha_acceso,
+        origen_motor,
+        plataforma_atraccion,
         level: 'SUCCESS',
         module: 'ENRUTADOR_PUENTE_CAMPANA',
-        message: `⚡ Visita orgánica interceptada en Enrutador Puente independiente de "${campaign.name}" (/r/${campaign.id}) -> ${campaign.targetUrl}. Clics acumulados: ${campaign.clicksCount}.`,
+        message: `⚡ Visita orgánica interceptada en Enrutador Puente independiente de "${campaign.name}" (/r/${campaign.id}) -> ${campaign.targetUrl}. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. Clics acumulados: ${campaign.clicksCount}.`,
         campaign_id: campaign.id,
         user_id: assignedUserId,
+        client_ip: clientIp,
+        metadata: {
+          origen_motor,
+          plataforma_atraccion,
+          fecha_acceso,
+          referrer: rawReferer || referrer,
+          utmParams,
+        },
       });
 
       // Persistencia SQL directa inmediata en Supabase con RPC atómico (sin alterar cuota de registros)
@@ -1474,9 +1623,18 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
               id: bridgeLog.id,
               campaign_id: campaign.id,
               timestamp: nowIso,
+              fecha_acceso,
+              origen_motor,
+              plataforma_atraccion,
               level: 'SUCCESS',
               module: 'ENRUTADOR_PUENTE',
               message: bridgeLog.message,
+              metadata: {
+                origen_motor,
+                plataforma_atraccion,
+                fecha_acceso,
+                client_ip: ipMasked,
+              },
             }),
           ]);
         } catch (dbErr) {
@@ -1489,9 +1647,12 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
       const bridgeLog: CampaignLog = {
         id: `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         timestamp: nowIso,
+        fecha_acceso,
+        origen_motor,
+        plataforma_atraccion,
         level: 'INFO',
         module: 'ENRUTADOR_PUENTE',
-        message: `Visita canalizada hacia "${campaign.name}" vía Enlace Puente (/r/${campaign.id}). Campaña pausada o en cuota completada.`,
+        message: `Visita canalizada hacia "${campaign.name}" vía Enlace Puente (/r/${campaign.id}). Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. Campaña pausada o en cuota completada.`,
       };
       campaign.logs.unshift(bridgeLog);
       if (campaign.logs.length > 50) campaign.logs.pop();
@@ -2818,56 +2979,138 @@ app.post('/api/cron', handleOutboundCronEndpoint);
 app.get('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 app.post('/api/cron/outbound-engine', handleOutboundCronEndpoint);
 
-// ENRUTADORES PUENTE Y BITÁCORA GLOBAL (Requerimiento 5)
+// ENRUTADORES PUENTE Y BITÁCORA GLOBAL
+// REQUERIMIENTO 2: Eliminar cualquier simulación interna de tráfico orgánico (como las peticiones desde la IP local 127.0.0.1).
+// La bitácora solo debe registrar usuarios reales.
+// REQUERIMIENTO 3: Estructura de datos: origen_motor, plataforma_atraccion, fecha_acceso.
 app.post('/api/bridge/track-hero', (req: Request, res: Response) => {
-  const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
-  const referrer = (req.body?.referrer || req.headers['referer'] || 'Tráfico Directo Orgánico');
-  const nowIso = new Date().toISOString();
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '';
+  if (isLocalOrInternalIp(clientIp)) {
+    res.json({ success: true, ignored: true, reason: 'Petición local 127.0.0.1 excluida de la bitácora de usuarios reales.' });
+    return;
+  }
+
+  const ipMasked = clientIp.replace(/:\d+$/, ':***');
+  const rawReferer = (req.body?.referrer || req.headers['referer'] || '') as string;
+  const utmParams = {
+    utm_source: (req.body?.utm_source || req.query.utm_source) as string | undefined,
+    utm_medium: (req.body?.utm_medium || req.query.utm_medium) as string | undefined,
+    utm_campaign: (req.body?.utm_campaign || req.query.utm_campaign) as string | undefined,
+  };
+  const origen_motor = identifySearchEngine(rawReferer);
+  const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
+  const fecha_acceso = new Date().toISOString();
+
   const log: BridgeAuditLog = {
     id: `log_hero_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    timestamp: nowIso,
+    timestamp: fecha_acceso,
+    fecha_acceso,
+    origen_motor,
+    plataforma_atraccion,
     level: 'INFO',
     module: 'ENRUTADOR_PUENTE_HERO',
-    message: `⚡ Visita orgánica interceptada en Enrutador Puente (Hero Landing). IP: ${ipMasked}. Origen: ${referrer}.`,
+    message: `⚡ Visita orgánica real interceptada en Enrutador Puente (Hero Landing). IP: ${ipMasked}. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}.`,
     user_id: 'visitante_anonimo',
+    client_ip: clientIp,
+    metadata: {
+      origen_motor,
+      plataforma_atraccion,
+      fecha_acceso,
+      referrer: rawReferer,
+      utmParams,
+    },
   };
   recordAuditLog(log);
   res.json({ success: true, log });
 });
 
 app.post('/api/bridge/track-register', (req: Request, res: Response) => {
-  const { email, name, userId } = req.body || {};
-  const ipMasked = req.ip ? req.ip.replace(/:\d+$/, ':***') : '185.12.***.***';
-  const nowIso = new Date().toISOString();
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '';
+  if (isLocalOrInternalIp(clientIp)) {
+    res.json({ success: true, ignored: true, reason: 'Petición local 127.0.0.1 excluida de la bitácora de usuarios reales.' });
+    return;
+  }
+
+  const { email, name, userId, referrer: bodyReferrer, utm_source, utm_medium, utm_campaign } = req.body || {};
+  const ipMasked = clientIp.replace(/:\d+$/, ':***');
+  const rawReferer = (bodyReferrer || req.headers['referer'] || '') as string;
+  const utmParams = {
+    utm_source: (utm_source || req.query.utm_source) as string | undefined,
+    utm_medium: (utm_medium || req.query.utm_medium) as string | undefined,
+    utm_campaign: (utm_campaign || req.query.utm_campaign) as string | undefined,
+  };
+  const origen_motor = identifySearchEngine(rawReferer);
+  const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
+  const fecha_acceso = new Date().toISOString();
+
   const log: BridgeAuditLog = {
     id: `log_reg_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    timestamp: nowIso,
+    timestamp: fecha_acceso,
+    fecha_acceso,
+    origen_motor,
+    plataforma_atraccion,
     level: 'SUCCESS',
     module: 'ENRUTADOR_PUENTE_REGISTRO',
-    message: `✅ Paso completado por Enrutador Puente de Registro: ${name || 'Usuario'} (${email || 'sin email'}). Sumado a usuarios registrados de la plataforma.`,
+    message: `✅ Paso completado por Enrutador Puente de Registro: ${name || 'Usuario'} (${email || 'sin email'}). Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}.`,
     user_id: userId || email || 'nuevo_usuario',
+    client_ip: clientIp,
+    metadata: {
+      origen_motor,
+      plataforma_atraccion,
+      fecha_acceso,
+      referrer: rawReferer,
+      utmParams,
+    },
   };
   recordAuditLog(log);
   res.json({ success: true, log });
 });
 
 app.post('/api/bridge/track-payment', (req: Request, res: Response) => {
-  const { campaignId, campaignName, payerEmail, amount, currency, plan, bridgeRouterUrl } = req.body || {};
-  const nowIso = new Date().toISOString();
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || req.socket.remoteAddress || '';
+  if (isLocalOrInternalIp(clientIp)) {
+    res.json({ success: true, ignored: true, reason: 'Petición local 127.0.0.1 excluida de la bitácora de usuarios reales.' });
+    return;
+  }
+
+  const { campaignId, campaignName, payerEmail, amount, currency, plan, bridgeRouterUrl, referrer: bodyReferrer, utm_source, utm_medium, utm_campaign } = req.body || {};
+  const rawReferer = (bodyReferrer || req.headers['referer'] || '') as string;
+  const utmParams = {
+    utm_source: (utm_source || req.query.utm_source) as string | undefined,
+    utm_medium: (utm_medium || req.query.utm_medium) as string | undefined,
+    utm_campaign: (utm_campaign || req.query.utm_campaign) as string | undefined,
+  };
+  const origen_motor = identifySearchEngine(rawReferer);
+  const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
+  const fecha_acceso = new Date().toISOString();
+
   const log: BridgeAuditLog = {
     id: `log_pay_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    timestamp: nowIso,
+    timestamp: fecha_acceso,
+    fecha_acceso,
+    origen_motor,
+    plataforma_atraccion,
     level: 'SUCCESS',
     module: 'ENRUTADOR_PUENTE_PAGO',
-    message: `💳 Pago procesado exitosamente vía Mercado Pago ($${amount || 149} ${currency || 'USD'} - Plan ${String(plan || 'Starter').toUpperCase()}) por ${payerEmail}. Enrutador puente independiente activado: ${bridgeRouterUrl || `/r/${campaignId}`}.`,
+    message: `💳 Pago procesado exitosamente vía Mercado Pago ($${amount || 149} ${currency || 'USD'} - Plan ${String(plan || 'Starter').toUpperCase()}) por ${payerEmail}. Enrutador puente independiente activado: ${bridgeRouterUrl || `/r/${campaignId}`}. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}.`,
     campaign_id: campaignId,
     user_id: payerEmail || 'usuario_pago',
+    client_ip: clientIp,
+    metadata: {
+      origen_motor,
+      plataforma_atraccion,
+      fecha_acceso,
+      referrer: rawReferer,
+      utmParams,
+    },
   };
   recordAuditLog(log);
   res.json({ success: true, log });
 });
 
 // Endpoint dedicado para consultar listado de system_audit_logs (Bitácora de Tráfico y Enrutadores Puente)
+// REQUERIMIENTO 2: Filtra estrictamente cualquier residuo de 127.0.0.1 o simulación de tráfico interno
+// REQUERIMIENTO 3: Entrega la estructura con origen_motor, plataforma_atraccion, fecha_acceso
 app.get('/api/system_audit_logs', async (_req: Request, res: Response): Promise<void> => {
   try {
     let supabaseLogs: any[] = [];
@@ -2889,34 +3132,64 @@ app.get('/api/system_audit_logs', async (_req: Request, res: Response): Promise<
     const seenIds = new Set<string>();
     const unified: any[] = [];
 
+    const isSimulatedOrLocal = (item: any): boolean => {
+      const msg = (item.message || '').toLowerCase();
+      const mod = (item.module || '').toLowerCase();
+      const ip = (item.client_ip || item.metadata?.client_ip || '').toLowerCase();
+      const lvl = (item.level || '').toUpperCase();
+      return (
+        isLocalOrInternalIp(ip) ||
+        msg.includes('127.0.0.1') ||
+        mod.includes('traffic_simulator') ||
+        mod.includes('simulator') ||
+        lvl === 'SIMULATION'
+      );
+    };
+
+    const normalizeAuditLog = (raw: any): any => {
+      const fecha = raw.fecha_acceso || raw.metadata?.fecha_acceso || raw.timestamp || new Date().toISOString();
+      const ref = raw.metadata?.referrer || raw.referrer || '';
+      const utmObj = raw.metadata?.utmParams || null;
+      const origen = raw.origen_motor || raw.metadata?.origen_motor || identifySearchEngine(ref);
+      const plataforma = raw.plataforma_atraccion || raw.metadata?.plataforma_atraccion || identifyTrafficPlatform(ref, utmObj);
+
+      return {
+        ...raw,
+        fecha_acceso: fecha,
+        timestamp: fecha,
+        origen_motor: origen,
+        plataforma_atraccion: plataforma,
+      };
+    };
+
     for (const log of inMemoryAuditLogs) {
-      if (!seenIds.has(log.id)) {
+      if (!isSimulatedOrLocal(log) && !seenIds.has(log.id)) {
         seenIds.add(log.id);
-        unified.push(log);
+        unified.push(normalizeAuditLog(log));
       }
     }
 
     for (const log of supabaseLogs) {
-      if (!seenIds.has(log.id)) {
+      if (!isSimulatedOrLocal(log) && !seenIds.has(log.id)) {
         seenIds.add(log.id);
-        unified.push(log);
+        unified.push(normalizeAuditLog(log));
       }
     }
 
     for (const camp of campaigns) {
       for (const log of (camp.logs || [])) {
-        if (!seenIds.has(log.id)) {
+        if (!isSimulatedOrLocal(log) && !seenIds.has(log.id)) {
           seenIds.add(log.id);
-          unified.push({
+          unified.push(normalizeAuditLog({
             ...log,
             campaign_id: camp.id,
             user_id: camp.userId || camp.creatorEmail,
-          });
+          }));
         }
       }
     }
 
-    unified.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    unified.sort((a, b) => new Date(b.fecha_acceso || b.timestamp).getTime() - new Date(a.fecha_acceso || a.timestamp).getTime());
 
     res.json({
       success: true,
@@ -4122,48 +4395,12 @@ app.post('/api/system/log-client-error', (req: Request, res: Response): void => 
 });
 
 
-// SIMULATION & TESTING ENDPOINT (Direct verification of the automatic pause engine)
-app.post('/api/campaigns/:id/simulate-burst', async (req: Request, res: Response): Promise<void> => {
-  const campaign = await getCampaignByIdAsync(req.params.id);
-  if (!campaign) {
-    res.status(404).json({ error: 'Campaña no encontrada' });
-    return;
-  }
-
-  const count = parseInt(req.body.count || 25, 10);
-  const remaining = Math.max(0, campaign.targetRegistrations - campaign.currentRegistrations);
-  const toAdd = Math.min(count, remaining + 1); // allows hitting the target
-
-  campaign.currentRegistrations += toAdd;
-
-  for (let i = 0; i < Math.min(toAdd, 5); i++) {
-    campaign.recentConversions.unshift({
-      id: `sim_${Date.now()}_${i}`,
-      timestamp: new Date(Date.now() - i * 1000 * 30).toISOString(),
-      method: 'simulator',
-      userTag: `simulated_lead_${Math.floor(Math.random() * 9000 + 1000)}@growth.test`,
-      ipMasked: '10.0.***.***',
-      referrer: 'KaSe Autonomous Traffic Simulator',
-    });
-  }
-
-  campaign.logs.unshift({
-    id: `log_sim_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    level: 'INFO',
-    module: 'TRAFFIC_SIMULATOR',
-    message: `Ráfaga de tráfico procesada: +${toAdd} usuarios registrados. Contador actual: ${campaign.currentRegistrations}/${campaign.targetRegistrations}.`,
-  });
-
-  const didAutoPause = evaluateQuotaAndEnforce(campaign, 'Traffic simulator burst');
-  await saveCampaignAsync(campaign);
-
-  res.json({
-    success: true,
-    currentRegistrations: campaign.currentRegistrations,
-    targetRegistrations: campaign.targetRegistrations,
-    autoPaused: didAutoPause,
-    status: campaign.status,
+// SIMULATION & TESTING ENDPOINT - DESHABILITADO PERMANENTEMENTE
+// REQUERIMIENTO 2: Elimina cualquier simulación interna de tráfico orgánico. El sistema de bitácora solo debe registrar usuarios reales.
+app.post('/api/campaigns/:id/simulate-burst', async (_req: Request, res: Response): Promise<void> => {
+  res.status(403).json({
+    success: false,
+    error: 'Simulación interna de tráfico deshabilitada permanentemente. KaSe opera en modo 100% orgánico real y la bitácora solo admite usuarios reales.',
   });
 });
 

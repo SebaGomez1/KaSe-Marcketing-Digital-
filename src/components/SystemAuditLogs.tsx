@@ -168,6 +168,105 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
     );
   };
 
+  const getSearchEngineBadge = (engine?: string) => {
+    const eng = (engine || 'no_motor').toLowerCase();
+    if (eng.includes('google')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-sky-400 bg-sky-950/40 border border-sky-800/60 px-1.5 py-0.5 rounded">
+          <Search className="w-2.5 h-2.5" />
+          <span>Google</span>
+        </span>
+      );
+    }
+    if (eng.includes('bing')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-teal-400 bg-teal-950/40 border border-teal-800/60 px-1.5 py-0.5 rounded">
+          <Search className="w-2.5 h-2.5" />
+          <span>Bing</span>
+        </span>
+      );
+    }
+    if (eng.includes('yahoo')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-purple-400 bg-purple-950/40 border border-purple-800/60 px-1.5 py-0.5 rounded">
+          <Search className="w-2.5 h-2.5" />
+          <span>Yahoo</span>
+        </span>
+      );
+    }
+    if (eng.includes('duckduckgo')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-800/60 px-1.5 py-0.5 rounded">
+          <Search className="w-2.5 h-2.5" />
+          <span>DuckDuckGo</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded">
+        <span>{engine || 'no_motor'}</span>
+      </span>
+    );
+  };
+
+  const getPlatformBadge = (platform?: string) => {
+    const plat = (platform || 'organico_directo').toLowerCase();
+    if (plat.includes('facebook')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-blue-400 bg-blue-950/40 border border-blue-800/60 px-1.5 py-0.5 rounded">
+          <span>Facebook</span>
+        </span>
+      );
+    }
+    if (plat.includes('instagram')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-pink-400 bg-pink-950/40 border border-pink-800/60 px-1.5 py-0.5 rounded">
+          <span>Instagram</span>
+        </span>
+      );
+    }
+    if (plat.includes('twitter') || plat.includes('x.com')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-neutral-200 bg-neutral-800 border border-neutral-700 px-1.5 py-0.5 rounded">
+          <span>X / Twitter</span>
+        </span>
+      );
+    }
+    if (plat.includes('linkedin')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-800/60 px-1.5 py-0.5 rounded">
+          <span>LinkedIn</span>
+        </span>
+      );
+    }
+    if (plat.includes('tiktok')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-rose-400 bg-rose-950/40 border border-rose-800/60 px-1.5 py-0.5 rounded">
+          <span>TikTok</span>
+        </span>
+      );
+    }
+    if (plat.includes('youtube')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-red-400 bg-red-950/40 border border-red-800/60 px-1.5 py-0.5 rounded">
+          <span>YouTube</span>
+        </span>
+      );
+    }
+    if (plat.includes('utm_')) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-1.5 py-0.5 rounded max-w-[140px] truncate" title={platform}>
+          <span>{platform}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800 px-1.5 py-0.5 rounded max-w-[140px] truncate" title={platform}>
+        {platform || 'organico_directo'}
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -178,11 +277,11 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
               Bitácora de Tráfico y Enrutadores Puente
             </h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              HTTP 307 + Clics Orgánicos
+              HTTP 307 + Clics Orgánicos Reales
             </span>
           </div>
           <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
-            Registro cronológico inmutable de todo el tráfico orgánico que pasa por los enrutadores puente: visitas al Hero, pasos de registro (+1 usuario registrado) y pagos de campañas independientes (/r/:id).
+            Registro cronológico inmutable de todo el tráfico orgánico real. Captura automática de <strong>origen_motor</strong> (Google, Bing), <strong>plataforma_atraccion</strong> (Facebook, Instagram, UTMs) y <strong>fecha_acceso</strong> exacta sin simulaciones ni bots.
           </p>
         </div>
 
@@ -264,7 +363,9 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-neutral-800 bg-neutral-900/60 text-neutral-400 font-mono text-[11px]">
-                <th className="py-3 px-4 font-semibold">HORA (UTC)</th>
+                <th className="py-3 px-4 font-semibold">FECHA ACCESO</th>
+                <th className="py-3 px-4 font-semibold">ORIGEN MOTOR</th>
+                <th className="py-3 px-4 font-semibold">PLATAFORMA ATRACCIÓN</th>
                 <th className="py-3 px-4 font-semibold">NIVEL</th>
                 <th className="py-3 px-4 font-semibold">CANAL / ENRUTADOR</th>
                 <th className="py-3 px-4 font-semibold">REGISTRO DE EVENTO EN BITÁCORA</th>
@@ -273,11 +374,11 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
             <tbody className="divide-y divide-neutral-800/80 font-mono">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center text-neutral-500">
+                  <td colSpan={6} className="py-10 text-center text-neutral-500">
                     <div className="space-y-1">
                       <Route className="w-6 h-6 mx-auto text-neutral-600 mb-2" />
                       <p className="text-neutral-400 font-medium">No hay eventos en la bitácora que coincidan con el filtro.</p>
-                      <p className="text-[11px] text-neutral-500">Todo el tráfico de enlaces puente (/r/:id), visitas a Hero y registros se registra automáticamente aquí.</p>
+                      <p className="text-[11px] text-neutral-500">Todo el tráfico real de enlaces puente (/r/:id), visitas a Hero y registros se registra automáticamente aquí.</p>
                     </div>
                   </td>
                 </tr>
@@ -290,11 +391,20 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
                     }`}
                   >
                     <td className="py-3 px-4 text-neutral-400 whitespace-nowrap text-[11px]">
-                      {new Date(log.timestamp).toLocaleTimeString([], {
+                      {new Date(log.fecha_acceso || log.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
                       })}
+                      <span className="block text-[9px] text-neutral-600 font-mono">
+                        {new Date(log.fecha_acceso || log.timestamp).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {getSearchEngineBadge(log.origen_motor)}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {getPlatformBadge(log.plataforma_atraccion)}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       {getLevelBadge(log.level)}

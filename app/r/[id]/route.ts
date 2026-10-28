@@ -32,7 +32,44 @@ export async function GET(
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
                req.headers.get('x-real-ip') || 
                '185.12.***.***';
+    const cleanIp = ip.toLowerCase().replace(/^::ffff:/, '').trim();
+    const isLocal = cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost' || cleanIp.startsWith('127.') || cleanIp === '0.0.0.0';
     const ipMasked = ip.replace(/:\d+$/, ':***');
+
+    // REQUERIMIENTO 3: Identificar motor de búsqueda y plataforma de procedencia / UTMs
+    const urlObj = new URL(req.url);
+    const utmSource = urlObj.searchParams.get('utm_source') || '';
+    const utmMedium = urlObj.searchParams.get('utm_medium') || '';
+    const utmCampaign = urlObj.searchParams.get('utm_campaign') || '';
+
+    const refLower = reqReferer.toLowerCase();
+    let origen_motor = 'directo / no_detectado';
+    if (refLower.includes('google.') || refLower.includes('google/')) origen_motor = 'google';
+    else if (refLower.includes('bing.')) origen_motor = 'bing';
+    else if (refLower.includes('yahoo.')) origen_motor = 'yahoo';
+    else if (refLower.includes('duckduckgo.')) origen_motor = 'duckduckgo';
+    else if (refLower.includes('ecosia.')) origen_motor = 'ecosia';
+    else if (refLower.includes('baidu.')) origen_motor = 'baidu';
+    else if (refLower.includes('yandex.')) origen_motor = 'yandex';
+    else origen_motor = 'no_motor';
+
+    const utmParts = [];
+    if (utmSource) utmParts.push(`utm_source=${utmSource}`);
+    if (utmMedium) utmParts.push(`utm_medium=${utmMedium}`);
+    if (utmCampaign) utmParts.push(`utm_campaign=${utmCampaign}`);
+
+    let plataforma_atraccion = utmParts.length > 0 ? utmParts.join('&') : 'organico_directo';
+    if (utmParts.length === 0) {
+      if (refLower.includes('facebook.') || refLower.includes('fb.me')) plataforma_atraccion = 'facebook';
+      else if (refLower.includes('instagram.')) plataforma_atraccion = 'instagram';
+      else if (refLower.includes('twitter.') || refLower.includes('x.com') || refLower.includes('t.co')) plataforma_atraccion = 'twitter_x';
+      else if (refLower.includes('linkedin.')) plataforma_atraccion = 'linkedin';
+      else if (refLower.includes('tiktok.')) plataforma_atraccion = 'tiktok';
+      else if (refLower.includes('youtube.')) plataforma_atraccion = 'youtube';
+      else if (refLower.includes('reddit.')) plataforma_atraccion = 'reddit';
+    }
+
+    const fecha_acceso = new Date().toISOString();
 
     // ====================================================================
     // OBTENCIÓN RÁPIDA DE LA URL DE DESTINO (CACHÉ EDGE FIRST)
@@ -68,8 +105,8 @@ export async function GET(
     // INSTRUCCIÓN 1: OPERACIÓN ATÓMICA CON .rpc('increment_clicks')
     // ====================================================================
     const executeAtomicClickIncrement = async () => {
-      // Omitir incremento si es un prefetch automático del navegador o bucle de recarga inmediata
-      if (isPrefetch || isLoopDetected || !supabase) return;
+      // Omitir incremento si es un prefetch, bucle o IP local 127.0.0.1 (Requerimiento 2)
+      if (isPrefetch || isLoopDetected || isLocal || !supabase) return;
 
       try {
         // Llamada RPC atómica nativa que actualiza contadores en un solo round-trip
@@ -79,6 +116,24 @@ export async function GET(
           client_referrer: reqReferer || 'Enlace Puente KaSe (Edge Runtime)',
         });
 
+        const auditLogPayload = {
+          id: `log_edge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          campaign_id: campaignId,
+          timestamp: fecha_acceso,
+          fecha_acceso,
+          origen_motor,
+          plataforma_atraccion,
+          level: 'SUCCESS',
+          module: 'ENRUTADOR_PUENTE_EDGE',
+          message: `⚡ Enlace Puente Edge: +1 clic orgánico derivado al destino. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. IP: ${ipMasked}.`,
+          metadata: {
+            origen_motor,
+            plataforma_atraccion,
+            fecha_acceso,
+            client_ip: ipMasked,
+          },
+        };
+
         if (error) {
           // Fallback resiliente si la función RPC aún no fue creada en el editor SQL
           await Promise.allSettled([
@@ -86,7 +141,7 @@ export async function GET(
               id: `conv_edge_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
               campaign_id: campaignId,
               campana_id: campaignId,
-              timestamp: new Date().toISOString(),
+              timestamp: fecha_acceso,
               method: 'organic_click',
               referrer: reqReferer || 'Enlace Puente KaSe (Edge)',
               ip_masked: ipMasked,
@@ -94,13 +149,16 @@ export async function GET(
             supabase.from('metricas_clicks').upsert({
               campana_id: campaignId,
               clics_contador: 1,
-              fecha_actualizacion: new Date().toISOString(),
+              fecha_actualizacion: fecha_acceso,
             }, { onConflict: 'campana_id' }),
             supabase.from('campaigns').update({
               status: 'active',
               paused_at: null,
-            }).eq('id', campaignId)
+            }).eq('id', campaignId),
+            supabase.from('system_audit_logs').insert(auditLogPayload),
           ]);
+        } else {
+          await supabase.from('system_audit_logs').insert(auditLogPayload);
         }
       } catch (err) {
         console.warn('[Edge waitUntil Background Error]:', err);

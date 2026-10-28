@@ -117,6 +117,9 @@ CREATE TABLE IF NOT EXISTS system_audit_logs (
 
 -- Migración retrocompatible para tabla de bitácora
 ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);
+ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS origen_motor VARCHAR(100);
+ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS plataforma_atraccion VARCHAR(150);
+ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS fecha_acceso TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
 -- Indexación de bitácora
 CREATE INDEX IF NOT EXISTS idx_audit_logs_campaign_id ON system_audit_logs(campaign_id);

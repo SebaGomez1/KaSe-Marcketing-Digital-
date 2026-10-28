@@ -203,15 +203,26 @@ export default function App() {
     }
   }, []);
 
-  // 5. Registrar visita del Enrutador Puente en Hero al iniciar la aplicación
+  // 5. Registrar visita del Enrutador Puente en Hero al iniciar la aplicación (Captura de origen real)
   useEffect(() => {
-    fetch('/api/bridge/track-hero', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        referrer: typeof document !== 'undefined' ? document.referrer || 'Tráfico Orgánico Directo' : 'Hero',
-      }),
-    }).catch(() => {});
+    try {
+      const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const utm_source = searchParams.get('utm_source') || '';
+      const utm_medium = searchParams.get('utm_medium') || '';
+      const utm_campaign = searchParams.get('utm_campaign') || '';
+      const referrer = typeof document !== 'undefined' ? document.referrer || '' : '';
+
+      fetch('/api/bridge/track-hero', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          referrer,
+          utm_source,
+          utm_medium,
+          utm_campaign,
+        }),
+      }).catch(() => {});
+    } catch {}
   }, []);
 
   const [isLoading, setIsLoading] = useState(false);

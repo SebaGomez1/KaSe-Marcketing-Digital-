@@ -91,11 +91,17 @@ CREATE TABLE IF NOT EXISTS public.system_audit_logs (
     campaign_id VARCHAR(100),
     user_id VARCHAR(100),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    fecha_acceso TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    origen_motor VARCHAR(100),
+    plataforma_atraccion VARCHAR(150),
     level VARCHAR(20) DEFAULT 'INFO',
     module VARCHAR(100) NOT NULL,
     message TEXT NOT NULL,
     metadata JSONB
 );
+ALTER TABLE public.system_audit_logs ADD COLUMN IF NOT EXISTS origen_motor VARCHAR(100);
+ALTER TABLE public.system_audit_logs ADD COLUMN IF NOT EXISTS plataforma_atraccion VARCHAR(150);
+ALTER TABLE public.system_audit_logs ADD COLUMN IF NOT EXISTS fecha_acceso TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS idx_audit_logs_campaign_id ON public.system_audit_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON public.system_audit_logs(timestamp DESC);
 

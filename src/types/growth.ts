@@ -19,6 +19,9 @@ export interface CampaignLog {
   level: 'INFO' | 'SUCCESS' | 'WARNING' | 'ALERT';
   module: string;
   message: string;
+  origen_motor?: string;
+  plataforma_atraccion?: string;
+  fecha_acceso?: string;
 }
 
 export interface ConversionRecord {

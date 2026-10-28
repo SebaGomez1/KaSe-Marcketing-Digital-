@@ -483,14 +483,8 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
           onOpenNewCampaign();
         }
       } else if (action.type === 'simulate_burst') {
-        // Only SuperAdmin or local dev
-        if (currentUser?.role === 'super_admin' && activeCampaign) {
-          await fetch(`/api/campaigns/${activeCampaign.id}/simulate-burst`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ count: action.count || 25 }),
-          });
-        }
+        // Simulación interna deshabilitada: el sistema opera únicamente con tráfico orgánico real
+        console.info('[KaSi Agent]: Simulación interna desactivada permanentemente. Modo 100% orgánico real.');
       } else if (action.type === 'install_app' && onOpenInstallModal) {
         onOpenInstallModal();
       } else if (action.type === 'one_dollar_test' && onOpenOneDollarCheckout) {

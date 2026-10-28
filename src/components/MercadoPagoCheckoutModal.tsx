@@ -318,24 +318,6 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                         : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
                     </span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSimulatePaymentApproval}
-                    disabled={loading || redirecting || checkingGateway || !engineValidation || !engineValidation.canProceed}
-                    className="w-full py-2 px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-mono text-[11px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>
-                      {loading
-                        ? 'Simulando...'
-                        : checkingGateway
-                        ? '⏳ Verificando motores...'
-                        : !engineValidation || !engineValidation.canProceed
-                        ? '⛔ Simulación Bloqueada: APIs Faltantes'
-                        : 'Ejecutar simulación técnica de prueba ($0.00)'}
-                    </span>
-                  </button>
                 </>
               ) : (
                 <>

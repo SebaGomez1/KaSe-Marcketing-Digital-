@@ -24,9 +24,15 @@ export const getServerSideProps: GetServerSideProps<BridgePageProps> = async (co
   const ip = (context.req.headers['x-forwarded-for'] as string) || context.req.socket?.remoteAddress || '185.12.***.***';
   const ipMasked = ip ? ip.split(',')[0].trim().replace(/:\d+$/, ':***') : '185.12.***.***';
 
+  const utmParams = {
+    utm_source: (context.query.utm_source as string) || undefined,
+    utm_medium: (context.query.utm_medium as string) || undefined,
+    utm_campaign: (context.query.utm_campaign as string) || undefined,
+  };
+
   // 1. Reemplazo de JSON fs por consulta SQL directa en Supabase
   // 2. Intercepta el parámetro de campaña y guarda el registro asociándolo estrictamente a 'user_id' o 'campana_id'
-  const result = await handleBridgeInterceptionDirectSupabase(campaignId, referrer, ipMasked);
+  const result = await handleBridgeInterceptionDirectSupabase(campaignId, referrer, ipMasked, utmParams);
 
   if (result.success && result.redirectUrl) {
     return {
