@@ -110,11 +110,12 @@ export const ModulesGrid: React.FC<ModulesGridProps> = ({
             {campaign ? (
               <div className="p-3.5 rounded-xl bg-black/60 border border-neutral-700 space-y-1 text-xs">
                 <div className="text-neutral-400 font-mono text-[11px]">Campaña Activa:</div>
-                <div className="text-white font-bold truncate max-w-[200px]">{campaign.name}</div>
                 <div className="flex items-center gap-2 text-emerald-400 font-mono text-[11px] pt-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>{Object.values(campaign.modules).filter((m) => m.active).length} / 8 Operando</span>
+                  <span className="text-cyan-400">· Cron 15m</span>
                 </div>
+
               </div>
             ) : (
               <div className="p-3.5 rounded-xl bg-black/60 border border-emerald-500/30 space-y-1 text-xs">

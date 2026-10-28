@@ -105,6 +105,28 @@ ALTER TABLE public.system_audit_logs ADD COLUMN IF NOT EXISTS fecha_acceso TIMES
 CREATE INDEX IF NOT EXISTS idx_audit_logs_campaign_id ON public.system_audit_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON public.system_audit_logs(timestamp DESC);
 
+-- 5.1. TABLA: campaign_sync_logs (Bitácora de Sincronización Automática de los 8 Motores y Cron 15m)
+CREATE TABLE IF NOT EXISTS public.campaign_sync_logs (
+    id VARCHAR(100) PRIMARY KEY,
+    campaign_id VARCHAR(100) REFERENCES public.campaigns(id) ON DELETE CASCADE,
+    user_id VARCHAR(100),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    trigger_type VARCHAR(50) DEFAULT 'cron_15m', -- 'cron_15m' | 'initial_activation' | 'manual_sync'
+    engine_id VARCHAR(50) NOT NULL,
+    engine_name VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL, -- 'operational' | 'executing' | 'synced' | 'error'
+    status_code INT DEFAULT 200,
+    latency_ms INT DEFAULT 0,
+    action_executed TEXT NOT NULL,
+    data_updated JSONB,
+    error_message TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_campaign_id ON public.campaign_sync_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_timestamp ON public.campaign_sync_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_engine_id ON public.campaign_sync_logs(engine_id);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_user_id ON public.campaign_sync_logs(user_id);
+
+
 -- 6. TABLA: payment_transactions (Registro de cobros de Mercado Pago)
 CREATE TABLE IF NOT EXISTS public.payment_transactions (
     id VARCHAR(100) PRIMARY KEY,

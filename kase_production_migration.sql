@@ -125,6 +125,28 @@ ALTER TABLE system_audit_logs ADD COLUMN IF NOT EXISTS fecha_acceso TIMESTAMP WI
 CREATE INDEX IF NOT EXISTS idx_audit_logs_campaign_id ON system_audit_logs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON system_audit_logs(timestamp DESC);
 
+-- 6.1. TABLA DE LOGS DE SINCRONIZACIÓN DE MOTORES (campaign_sync_logs - CRON 15M Y ACTIVACIÓN INICIAL)
+CREATE TABLE IF NOT EXISTS campaign_sync_logs (
+    id VARCHAR(100) PRIMARY KEY,
+    campaign_id VARCHAR(100) REFERENCES campaigns(id) ON DELETE CASCADE,
+    user_id VARCHAR(100),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    trigger_type VARCHAR(50) DEFAULT 'cron_15m',
+    engine_id VARCHAR(50) NOT NULL,
+    engine_name VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    status_code INT DEFAULT 200,
+    latency_ms INT DEFAULT 0,
+    action_executed TEXT NOT NULL,
+    data_updated JSONB,
+    error_message TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_campaign_id ON campaign_sync_logs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_timestamp ON campaign_sync_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_engine_id ON campaign_sync_logs(engine_id);
+CREATE INDEX IF NOT EXISTS idx_sync_logs_user_id ON campaign_sync_logs(user_id);
+
+
 -- 7. TABLA DE CONFIGURACIÓN GLOBAL KASE Y PREFERENCIAS DEL SISTEMA
 CREATE TABLE IF NOT EXISTS global_config (
     id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1), -- Garantiza fila única

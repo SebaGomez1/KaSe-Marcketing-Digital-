@@ -155,13 +155,13 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           </div>
           <div className="space-y-2">
             <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500 text-black uppercase tracking-wider">
-              Super Administrador: Activación Directa
+              ⚡ Certeza de Activación Inicial (Primer Momento)
             </span>
             <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-              ¡Campaña Activada 100% Gratis!
+              ¡Campaña Activada al Instante!
             </h2>
             <p className="text-xs text-neutral-300 leading-relaxed max-w-md mx-auto">
-              Tu campaña <strong className="text-white">"{adminSuccessCamp.name}"</strong> está en marcha. Se han encendido los motores autónomos en segundo plano sin pasar por pasarela de pago.
+              Tu campaña <strong className="text-white">"{adminSuccessCamp.name}"</strong> ya está activa. El sistema ha disparado el flujo prioritario inicial conectando los 8 motores en paralelo sin esperar al ciclo de 15 minutos.
             </p>
           </div>
 
@@ -171,13 +171,18 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               <span className="text-white font-bold">{adminSuccessCamp.targetRegistrations.toLocaleString()} {adminSuccessCamp.targetUnitLabel}</span>
             </div>
             <div className="flex justify-between border-t border-neutral-800 pt-1 text-emerald-400 font-bold">
-              <span>Costo para Kathy Seba:</span>
-              <span>$0.00 USD (Exención Vitalicia)</span>
+              <span>Activación Inmediata:</span>
+              <span>Confirmada (8 Motores en Paralelo)</span>
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-400">Estado de Motores:</span>
-              <span className="text-emerald-400">🟢 100% OPERANDO</span>
+              <span className="text-emerald-400">🟢 100% OPERANDO (Sincronizado)</span>
             </div>
+            <div className="flex justify-between text-[11px] text-neutral-400">
+              <span>Próxima Sincronización:</span>
+              <span className="text-neutral-300">Cron-Job Global cada 15 min</span>
+            </div>
+
 
             <div className="border-t border-neutral-800 pt-2 space-y-1.5 font-sans">
               <div className="flex items-center justify-between">
@@ -502,18 +507,12 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         throw new Error(data.error || 'Error al dar de alta la campaña');
       }
 
-      if (isKathy && !isTestOneDollarMode) {
-        // Beneficio exclusivo de creación sin pagar para Kathy Seba (kathyseba2020@gmail.com)
-        onCreated(data.campaign);
-        setAdminSuccessCamp(data.campaign);
-      } else {
-        // Obligatorio para todos los demás usuarios: pasar por caja Mercado Pago sí o sí.
-        // La campaña NO se agrega al estado ni al baúl hasta que el pago sea aprobado en Mercado Pago.
-        if (onRequestCheckout) {
-          onRequestCheckout(data.campaign);
-        }
-        onClose();
-      }
+      // REQUERIMIENTO: Certeza de Activación Inicial (Primer Momento)
+      // Al momento exacto en que "cualquier" usuario cree una campaña, se añade al estado inmediatamente
+      // y se muestra la confirmación visual de que la campaña ya está activa y ejecutándose con los 8 motores
+      onCreated(data.campaign);
+      setAdminSuccessCamp(data.campaign);
+
     } catch (err: any) {
       setError(err.message || 'Error de conexión');
     } finally {

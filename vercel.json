@@ -1,6 +1,16 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/cron/sync-campaigns",
+      "destination": "/api/cron"
+    },
     {
       "source": "/api/cron",
       "destination": "/api/cron"

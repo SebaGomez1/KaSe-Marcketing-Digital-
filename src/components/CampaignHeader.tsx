@@ -46,11 +46,17 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
 
             {/* Status indicator */}
             {isActive && (
-              <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Motores Operando
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  8 Motores Sincronizados
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-800/50 px-2 py-0.5 rounded hidden sm:inline-flex items-center gap-1" title="Disparador global programado cada 15 minutos en segundo plano">
+                  <span>Cron 15m Activo</span>
+                </span>
+              </div>
             )}
+
             {isQuotaReached && (
               <span className="text-xs font-semibold text-amber-400 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-amber-400"></span>

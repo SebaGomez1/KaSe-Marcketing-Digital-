@@ -1,12 +1,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
 import { 
   Campaign, 
   CampaignModuleState, 
   CampaignLog, 
+  CampaignSyncLog,
   ConversionRecord, 
   User 
 } from '../types/growth';
+
 
 const { Pool } = pg;
 
@@ -529,3 +533,239 @@ export async function handleBridgeInterceptionDirectSupabase(
     return { redirectUrl: '/', success: false };
   }
 }
+
+// ====================================================================
+// PERSISTENCIA Y AUDITORÍA: CAMPAIGN_SYNC_LOGS (CRON 15M & ACTIVACIÓN INICIAL)
+// ====================================================================
+const LOCAL_SYNC_LOGS_PATH = path.join(process.cwd(), 'data', 'campaign_sync_logs.json');
+
+function ensureLocalSyncLogsDir(): void {
+  try {
+    const dir = path.dirname(LOCAL_SYNC_LOGS_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    // Ignore in read-only environments
+  }
+}
+
+export async function ensureCampaignSyncLogsTable(): Promise<void> {
+  if (isPostgresConfigured && pgPool) {
+    try {
+      const client = await pgPool.connect();
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS campaign_sync_logs (
+          id VARCHAR(100) PRIMARY KEY,
+          campaign_id VARCHAR(100) REFERENCES campaigns(id) ON DELETE CASCADE,
+          user_id VARCHAR(100),
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          trigger_type VARCHAR(50) DEFAULT 'cron_15m',
+          engine_id VARCHAR(50) NOT NULL,
+          engine_name VARCHAR(255) NOT NULL,
+          status VARCHAR(50) NOT NULL,
+          status_code INT DEFAULT 200,
+          latency_ms INT DEFAULT 0,
+          action_executed TEXT NOT NULL,
+          data_updated JSONB,
+          error_message TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sync_logs_campaign_id ON campaign_sync_logs(campaign_id);
+        CREATE INDEX IF NOT EXISTS idx_sync_logs_timestamp ON campaign_sync_logs(timestamp DESC);
+        CREATE INDEX IF NOT EXISTS idx_sync_logs_engine_id ON campaign_sync_logs(engine_id);
+      `);
+      client.release();
+    } catch (e: any) {
+      console.warn('[Postgres ensureCampaignSyncLogsTable Warning]:', e?.message || e);
+    }
+  }
+}
+
+// Guarda un lote de logs de sincronización inmediatamente en la base de datos asociada
+export async function saveCampaignSyncLogs(logs: CampaignSyncLog[]): Promise<void> {
+  if (!logs || logs.length === 0) return;
+
+  // 1. Guardar en PostgreSQL directo si está configurado
+  if (isPostgresConfigured && pgPool) {
+    try {
+      await ensureCampaignSyncLogsTable();
+      const client = await pgPool.connect();
+      for (const log of logs) {
+        await client.query(`
+          INSERT INTO campaign_sync_logs 
+          (id, campaign_id, user_id, timestamp, trigger_type, engine_id, engine_name, status, status_code, latency_ms, action_executed, data_updated, error_message)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          ON CONFLICT (id) DO NOTHING
+        `, [
+          log.id,
+          log.campaignId,
+          log.userId || null,
+          log.timestamp,
+          log.triggerType,
+          log.engineId,
+          log.engineName,
+          log.status,
+          log.statusCode || 200,
+          log.latencyMs || 0,
+          log.actionExecuted,
+          log.dataUpdated ? JSON.stringify(log.dataUpdated) : null,
+          log.errorMessage || null,
+        ]);
+      }
+      client.release();
+    } catch (pgErr: any) {
+      console.warn('[DB Error saveCampaignSyncLogs PostgreSQL]:', pgErr?.message || pgErr);
+    }
+  }
+
+  // 2. Guardar en Supabase si está disponible
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const records = logs.map((l) => ({
+        id: l.id,
+        campaign_id: l.campaignId,
+        user_id: l.userId || null,
+        timestamp: l.timestamp,
+        trigger_type: l.triggerType,
+        engine_id: l.engineId,
+        engine_name: l.engineName,
+        status: l.status,
+        status_code: l.statusCode || 200,
+        latency_ms: l.latencyMs || 0,
+        action_executed: l.actionExecuted,
+        data_updated: l.dataUpdated || null,
+        error_message: l.errorMessage || null,
+      }));
+
+      const { error: sbErr } = await supabase.from('campaign_sync_logs').insert(records);
+      if (sbErr) {
+        // Fallback a system_audit_logs si campaign_sync_logs aún no ha sido corrida en Supabase RLS
+        const auditEntries = logs.map((l) => ({
+          id: l.id,
+          campaign_id: l.campaignId,
+          user_id: l.userId || null,
+          timestamp: l.timestamp,
+          fecha_acceso: l.timestamp,
+          origen_motor: l.engineId,
+          plataforma_atraccion: l.triggerType,
+          level: l.status === 'error' ? 'WARNING' : 'SUCCESS',
+          module: `SYNC_${l.engineId.toUpperCase()}`,
+          message: `[${l.triggerType.toUpperCase()} - ${l.engineName}] ${l.actionExecuted} (${l.latencyMs}ms)`,
+          metadata: {
+            statusCode: l.statusCode,
+            latencyMs: l.latencyMs,
+            dataUpdated: l.dataUpdated,
+          },
+        }));
+        await supabase.from('system_audit_logs').insert(auditEntries);
+      }
+    } catch (sbEx: any) {
+      console.warn('[DB Error saveCampaignSyncLogs Supabase]:', sbEx?.message || sbEx);
+    }
+  }
+
+  // 3. Respaldo local de seguridad en disco (data/campaign_sync_logs.json)
+  try {
+    ensureLocalSyncLogsDir();
+    let existing: CampaignSyncLog[] = [];
+    if (fs.existsSync(LOCAL_SYNC_LOGS_PATH)) {
+      try {
+        const raw = fs.readFileSync(LOCAL_SYNC_LOGS_PATH, 'utf-8');
+        existing = JSON.parse(raw);
+        if (!Array.isArray(existing)) existing = [];
+      } catch {
+        existing = [];
+      }
+    }
+    const combined = [...logs, ...existing].slice(0, 500); // Conservar últimos 500 logs
+    fs.writeFileSync(LOCAL_SYNC_LOGS_PATH, JSON.stringify(combined, null, 2), 'utf-8');
+  } catch (fsErr) {
+    // Non-blocking in serverless/read-only mode
+  }
+}
+
+// Consulta el historial de auditoría de sincronización para una campaña
+export async function fetchCampaignSyncLogs(campaignId: string, limit: number = 50): Promise<CampaignSyncLog[]> {
+  // 1. Intentar desde PostgreSQL
+  if (isPostgresConfigured && pgPool) {
+    try {
+      await ensureCampaignSyncLogsTable();
+      const client = await pgPool.connect();
+      const res = await client.query(
+        'SELECT * FROM campaign_sync_logs WHERE campaign_id = $1 ORDER BY timestamp DESC LIMIT $2',
+        [campaignId, limit]
+      );
+      client.release();
+      if (res.rows && res.rows.length > 0) {
+        return res.rows.map((r: any) => ({
+          id: r.id,
+          campaignId: r.campaign_id,
+          userId: r.user_id,
+          timestamp: r.timestamp,
+          triggerType: r.trigger_type || 'cron_15m',
+          engineId: r.engine_id,
+          engineName: r.engine_name,
+          status: r.status,
+          statusCode: Number(r.status_code || 200),
+          latencyMs: Number(r.latency_ms || 0),
+          actionExecuted: r.action_executed,
+          dataUpdated: typeof r.data_updated === 'string' ? JSON.parse(r.data_updated) : r.data_updated,
+          errorMessage: r.error_message,
+        }));
+      }
+    } catch (e: any) {
+      console.warn('[Postgres fetchCampaignSyncLogs Warning]:', e?.message || e);
+    }
+  }
+
+  // 2. Intentar desde Supabase
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('campaign_sync_logs')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+
+      if (!error && data && data.length > 0) {
+        return data.map((r: any) => ({
+          id: r.id,
+          campaignId: r.campaign_id,
+          userId: r.user_id,
+          timestamp: r.timestamp,
+          triggerType: r.trigger_type || 'cron_15m',
+          engineId: r.engine_id,
+          engineName: r.engine_name,
+          status: r.status,
+          statusCode: Number(r.status_code || 200),
+          latencyMs: Number(r.latency_ms || 0),
+          actionExecuted: r.action_executed,
+          dataUpdated: r.data_updated,
+          errorMessage: r.error_message,
+        }));
+      }
+    } catch (sbErr) {
+      console.warn('[Supabase fetchCampaignSyncLogs Warning]:', sbErr);
+    }
+  }
+
+  // 3. Fallback a archivo local data/campaign_sync_logs.json
+  try {
+    if (fs.existsSync(LOCAL_SYNC_LOGS_PATH)) {
+      const raw = fs.readFileSync(LOCAL_SYNC_LOGS_PATH, 'utf-8');
+      const all: CampaignSyncLog[] = JSON.parse(raw);
+      if (Array.isArray(all)) {
+        return all
+          .filter((l) => l.campaignId === campaignId)
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, limit);
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  return [];
+}
+

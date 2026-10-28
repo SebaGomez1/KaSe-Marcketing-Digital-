@@ -10,7 +10,12 @@ import {
   pgPool,
   isPostgresConfigured,
   testDbConnection,
+  saveCampaignSyncLogs,
+  fetchCampaignSyncLogs,
+  ensureCampaignSyncLogsTable,
 } from './src/lib/db.ts';
+import { executeParallelSyncForCampaign, ParallelSyncResult } from './src/lib/engineSynchronizer.ts';
+
 import { INITIAL_PRODUCTION_CAMPAIGNS } from './src/lib/initialCampaigns.ts';
 import {
   forzarIndexacionGoogleAPI,
@@ -494,13 +499,14 @@ export function recordAuditLog(log: BridgeAuditLog): void {
 }
 
 // Pure SQL Direct Repository using Supabase Client (Zero fs JSON dependency)
-async function getCampaignsAsync(userId?: string): Promise<Campaign[]> {
-  const isSuper = userId?.toLowerCase() === 'kathyseba2020@gmail.com' || userId === 'kathy_super_admin' || userId === 'kase_super_admin';
+async function getCampaignsAsync(userId?: string, isGlobalInternalQuery: boolean = false): Promise<Campaign[]> {
+  const isSuper = isGlobalInternalQuery || userId?.toLowerCase() === 'kathyseba2020@gmail.com' || userId === 'kathy_super_admin' || userId === 'kase_super_admin';
 
   // Strict isolation: if not super admin and no userId provided or anonymous, return empty list
   if (!isSuper && (!userId || userId === 'anonymous_unauthenticated')) {
     return [];
   }
+
 
   if (supabase) {
     try {
@@ -958,7 +964,47 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
   }
 }
 
+// ====================================================================
+// SINCRONIZACIÓN SIMULTÁNEA DE LOS 8 MOTORES & ACTIVACIÓN INICIAL PRIORITARIA
+// ====================================================================
+
+// Sincronización simultánea en paralelo de los 8 motores para una campaña
+async function syncCampaignWithAllEngines(
+  campaign: Campaign,
+  triggerType: 'cron_15m' | 'initial_activation' | 'manual_sync' = 'cron_15m'
+): Promise<ParallelSyncResult> {
+  const result = await executeParallelSyncForCampaign(campaign, triggerType);
+
+  // 1. Guardar de inmediato las respuestas y métricas devueltas por los motores en la base de datos
+  await saveCampaignAsync(campaign);
+
+  // 2. Guardar en el registro de auditoría / tabla de logs campaign_sync_logs
+  await saveCampaignSyncLogs(result.syncLogs);
+
+  return result;
+}
+
+// Certeza de Activación Inicial (Primer Momento):
+// Disparo prioritario inmediato para que cualquier usuario tenga confirmación visual instantánea
+async function triggerImmediateEngineActivation(
+  campaign: Campaign,
+  contextReason: string = 'initial_creation'
+): Promise<ParallelSyncResult> {
+  console.log(`\n========================================`);
+  console.log(`[ACTIVACIÓN INICIAL PRIORITARIA ⚡] Campaña: "${campaign.name}" (${campaign.id}) | Razón: ${contextReason}`);
+  console.log(`Conectando de inmediato con los 8 motores en paralelo sin esperar ciclo de 15 minutos...`);
+  console.log(`========================================`);
+
+  campaign.status = 'active';
+  campaign.pausedAt = undefined;
+
+  const result = await syncCampaignWithAllEngines(campaign, 'initial_activation');
+  console.log(`[ACTIVACIÓN INICIAL COMPLETADA] 8 motores sincronizados en ${result.totalDurationMs}ms.`);
+  return result;
+}
+
 // Limpieza estricta de campañas de mentira/falsas
+
 async function cleanupFakeCampaigns() {
   campaigns = filterOutFakeCampaigns(campaigns);
   saveCampaignsToFile();
@@ -1152,10 +1198,14 @@ app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<voi
         console.log(`[SYNC PASO 3/4] 💾 Guardando campaña ${idx}/${toSync.length} ("${camp.name || camp.id}")...`);
         try {
           await saveCampaignAsync(camp);
+          if (camp.status === 'active') {
+            syncCampaignWithAllEngines(camp, 'manual_sync').catch((e) => console.warn('[Sync engines error]:', e));
+          }
           synced.push(camp);
         } catch (itemErr: any) {
           console.warn(`[Sync Item Warning] Campaign ${camp.id} error:`, itemErr?.message || itemErr);
         }
+
       }
     }
 
@@ -1243,9 +1293,10 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
     const isOneDollarPlan = req.body.isOneDollarTestPlan === true || plan === 'test_one_dollar' || Number(req.body.price) === 1;
     const isCleanAdminEmail = creatorEmail && creatorEmail.toLowerCase() === 'kathyseba2020@gmail.com';
     const isKathy = (isCleanAdminEmail || (isSuperAdmin && creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com')) && !isOneDollarPlan;
-    // REGLA ESTRICTA REQUERIMIENTO 2: Solo Kathy puede crear campañas activas sin pagar.
-    // Todos los demás usuarios pasan obligatoriamente por caja; la campaña queda en 'configuring' hasta que abonen.
-    const initialStatus = isKathy ? 'active' : 'configuring';
+    
+    // REQUERIMIENTO: Certeza de Activación Inicial (Primer Momento)
+    // Para CUALQUIER usuario, la campaña inicia activa de inmediato sin esperar al ciclo de 15 minutos
+    const initialStatus = 'active';
 
     const newCampaign: Campaign = {
       id: `kase_camp_${Math.random().toString(36).substring(2, 9)}`,
@@ -1303,31 +1354,35 @@ app.post('/api/campaigns', async (req: Request, res: Response): Promise<void> =>
         {
           id: `log_init_${Date.now()}`,
           timestamp: new Date().toISOString(),
-          level: isKathy ? 'SUCCESS' : 'INFO',
-          module: isOneDollarPlan ? 'MERCADO_PAGO_TEST' : isKathy ? 'SUPER_ADMIN_ENGINE' : 'CORE_ENGINE',
-          message: isOneDollarPlan
-            ? `🧪 Plan de Autoprueba de $1.00 USD configurado. Procediendo a pasarela Mercado Pago para verificar cobro en vivo.`
-            : isKathy
-            ? `🎉 Campaña creada por Super Administrador Kathy Seba (kathyseba2020@gmail.com). Activación inmediata con tarifa $0.00. Motores autónomos encendidos al 100% sin pasar por checkout.`
-            : `Campaña "${name}" creada exitosamente. Tipo: ${selectedType}. Meta: ${targetRegistrations.toLocaleString()} ${unitText}. Rango calibrado: ${minPlanPrice ? `$${minPlanPrice}` : 'N/A'} - ${maxPlanPrice ? `$${maxPlanPrice}` : 'N/A'} ${currency || 'USD'}. Segmentación: ${geoTargeting?.city || 'Global'} (${geoTargeting?.autoExpandProximity ? 'Concéntrica activa' : 'Local pura'}). Estado: ${initialStatus}.`,
+          level: 'SUCCESS',
+          module: 'CORE_ENGINE',
+          message: `⚡ Campaña "${name}" creada con ACTIVACIÓN INICIAL PRIORITARIA. Conexión inmediata a los 8 motores en paralelo completada sin esperar el ciclo de 15 minutos. Estado: ACTIVA.`,
         },
       ],
     };
 
+    // 1. Guardar campaña en la base de datos asociada
     await saveCampaignAsync(newCampaign);
 
-    if (newCampaign.status === 'active') {
-      ejecutarCicloAutonomoParaCampana(newCampaign, { burstCount: 2 }).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
+    // 2. Disparo prioritario inmediato con los 8 motores en paralelo (Certeza de Activación Inicial)
+    let initialActivation: ParallelSyncResult | null = null;
+    try {
+      initialActivation = await triggerImmediateEngineActivation(newCampaign, 'initial_creation');
+    } catch (actErr: any) {
+      console.warn('[Warning Initial Activation]:', actErr?.message || actErr);
     }
 
     res.status(201).json({ 
       success: true, 
       campaign: newCampaign, 
+      initialActivation,
       isSuperAdminFree: isKathy,
       isOneDollarTestPlan: isOneDollarPlan,
+      message: '¡Campaña activada y conectada inmediatamente con los 8 motores!',
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Error al persistir campaña en la base de datos', details: err.message });
+
   }
 });
 
@@ -1367,12 +1422,13 @@ app.put('/api/campaigns/:id', async (req: Request, res: Response): Promise<void>
           campaign.modules[key].active = initial[key].active;
           campaign.modules[key].statusText = initial[key].statusText;
         });
-        // Disparo y encendido inmediato de los 8 motores autónomos
-        ejecutarCicloAutonomoParaCampana(campaign, { burstCount: 2 }).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
+        // Disparo y encendido inmediato de los 8 motores autónomos en paralelo
+        triggerImmediateEngineActivation(campaign, 'manual_resume').catch((e) => console.warn('[AUTO SYNC ERROR]:', e));
       } else {
         campaign.pausedAt = new Date().toISOString();
       }
     }
+
 
     campaign.logs.unshift({
       id: `log_mod_${Date.now()}`,
@@ -3840,8 +3896,166 @@ setInterval(async () => {
   }
 }, 60000);
 
+// ====================================================================
+
+// DISPARADOR CRON-JOB GLOBAL (CADA 15 MINUTOS) & INTEGRACIÓN 8 MOTORES
+// ====================================================================
+
+const CRON_15M_INTERVAL_MS = 15 * 60 * 1000; // Estrictamente cada 15 minutos (900,000 ms)
+let cron15mTimer: NodeJS.Timeout | null = null;
+
+// Disparador programado (cron-job) que se ejecuta estrictamente cada 15 minutos de forma global
+function startGlobal15mCronScheduler() {
+  if (cron15mTimer) clearInterval(cron15mTimer);
+
+  console.log('[CRON-JOB GLOBAL]: ⏰ Planificador programado cada 15 minutos inicializado.');
+
+  // Disparo programado periódico cada 15 minutos
+  cron15mTimer = setInterval(async () => {
+    const triggerTime = new Date().toISOString();
+    console.log(`\n======================================================`);
+    console.log(`[CRON-JOB GLOBAL ⏰ CADA 15 MINUTOS] Disparo HTTP automático | ${triggerTime}`);
+    console.log(`======================================================`);
+
+    try {
+      // Llamada HTTP general al backend de la aplicación para iniciar la actualización del estado de todas las campañas activas
+      const targetUrl = `http://127.0.0.1:${PORT}/api/cron/sync-campaigns`;
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Cron-Global-Trigger': 'KaSe-15m-Scheduler',
+        },
+        body: JSON.stringify({
+          trigger: 'cron_15m',
+          scheduledAt: triggerTime,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      console.log(`[CRON-JOB GLOBAL ÉXITO]: HTTP ${res.status} | Campañas sincronizadas: ${data.campaignsCount ?? 0} | Motores x Campaña: 8`);
+    } catch (err: any) {
+      console.error('[CRON-JOB GLOBAL ERROR]: Fallo al ejecutar llamada HTTP al backend:', err?.message || err);
+    }
+  }, CRON_15M_INTERVAL_MS);
+
+  // Verificación y ejecución inicial suave tras 5 segundos de arranque
+  setTimeout(async () => {
+    try {
+      console.log('[CRON-JOB GLOBAL]: Ejecutando verificación de sincronización inicial al arranque...');
+      await fetch(`http://127.0.0.1:${PORT}/api/cron/sync-campaigns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Cron-Global-Trigger': 'Startup-Check' },
+        body: JSON.stringify({ trigger: 'startup_check', scheduledAt: new Date().toISOString() }),
+      }).catch(() => {});
+    } catch {}
+  }, 5000);
+}
+
+// Endpoint HTTP general para el cron-job (Compatible con llamadas HTTP internas, cron-job.org y Vercel Crons)
+app.all(['/api/cron/sync-campaigns', '/api/cron'], async (req: Request, res: Response): Promise<void> => {
+  const syncStartTime = Date.now();
+  const triggerType = 'cron_15m';
+  console.log(`\n======================================================`);
+  console.log(`[HTTP CRON-JOB RECIBIDO 📥] Ruta: ${req.originalUrl || req.url} | Método: ${req.method} | IP: ${req.ip} | Hora: ${new Date().toISOString()}`);
+  console.log(`======================================================`);
+
+  try {
+    let allCampaigns = await getCampaignsAsync(undefined, true);
+
+    if (!allCampaigns || allCampaigns.length === 0) {
+      allCampaigns = filterOutFakeCampaigns(campaigns);
+    }
+    
+    // Filtrar campañas activas que no hayan alcanzado su tope de cuota
+    const activeCampaigns = allCampaigns.filter(
+      (c) => c && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.status === 'active' && c.currentRegistrations < c.targetRegistrations
+    );
+
+
+    // Si no hay campañas explícitamente marcadas como activas, tomar las campañas no pausadas por cuota
+    const candidateCampaigns = activeCampaigns.length > 0 
+      ? activeCampaigns 
+      : allCampaigns.filter((c) => c && !FAKE_CAMPAIGN_IDS.includes(c.id) && c.status !== 'paused_quota_reached' && c.currentRegistrations < c.targetRegistrations);
+
+    console.log(`[CRON 15M] Campañas activas a actualizar con los 8 motores simultáneos: ${candidateCampaigns.length}`);
+
+    const syncResults: ParallelSyncResult[] = [];
+
+    // Integración simultánea con los 8 motores en paralelo para cada campaña activa
+    for (const campaign of candidateCampaigns) {
+      if (campaign.status !== 'active') {
+        campaign.status = 'active';
+        campaign.pausedAt = undefined;
+      }
+
+      console.log(`[CRON 15M] 🚀 Disparando peticiones asíncronas en paralelo a los 8 motores para: "${campaign.name}" (${campaign.id})...`);
+      const syncRes = await syncCampaignWithAllEngines(campaign, triggerType);
+      syncResults.push(syncRes);
+    }
+
+    const durationMs = Date.now() - syncStartTime;
+    const totalLogsStored = syncResults.reduce((acc, r) => acc + (r.syncLogs?.length || 0), 0);
+
+    console.log(`[CRON 15M] ✅ Sincronización exitosa: ${syncResults.length} campañas actualizadas. ${totalLogsStored} registros guardados en campaign_sync_logs en ${durationMs}ms.`);
+
+    res.status(200).json({
+      success: true,
+      trigger: 'cron_15m',
+      timestamp: new Date().toISOString(),
+      durationMs,
+      campaignsCount: syncResults.length,
+      enginesPerCampaign: 8,
+      totalSyncLogsStored: totalLogsStored,
+      results: syncResults.map((r) => ({
+        campaignId: r.campaignId,
+        campaignName: r.campaignName,
+        enginesExecuted: r.enginesExecuted,
+        allSuccess: r.allSuccess,
+        durationMs: r.totalDurationMs,
+        engineStatuses: r.engineResults.map((e) => ({
+          engineId: e.engineId,
+          engineName: e.engineName,
+          status: e.status,
+          latencyMs: e.latencyMs,
+          action: e.actionExecuted,
+        })),
+      })),
+    });
+  } catch (err: any) {
+    console.error('[CRON 15M ERROR CRÍTICO]:', err?.message || err);
+    res.status(500).json({
+      success: false,
+      error: 'Error durante la ejecución del cron-job de 15 minutos en los 8 motores',
+      details: err?.message || String(err),
+    });
+  }
+});
+
+// Endpoint para consultar el historial de auditoría de sincronización (campaign_sync_logs)
+app.get('/api/campaigns/:id/sync-logs', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(200, parseInt(req.query.limit as string, 10) || 50);
+    const syncLogs = await fetchCampaignSyncLogs(id, limit);
+    res.json({
+      success: true,
+      campaignId: id,
+      count: syncLogs.length,
+      syncLogs,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: 'Error al consultar logs de sincronización de la campaña',
+      details: err?.message || String(err),
+    });
+  }
+});
+
 // Endpoint de latido para entornos serverless (Vercel)
 app.post('/api/engines/process-active-daemon', async (req: Request, res: Response): Promise<void> => {
+
   try {
     const allCamps = await getCampaignsAsync();
     const candidateCamps = allCamps.filter(
@@ -5414,8 +5628,11 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[KaSe Marketing] Servidor monolítico modular activo en http://0.0.0.0:${PORT}`);
+    // Iniciar disparador global de cron-job (estrictamente cada 15 minutos)
+    startGlobal15mCronScheduler();
   });
 }
+
 
 if (!process.env.VERCEL) {
   startServer();

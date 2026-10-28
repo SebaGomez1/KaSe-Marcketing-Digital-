@@ -31,23 +31,47 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
     setIsLoading(true);
     try {
       const adminEmail = currentUser?.email || '';
-      const res = await fetch(`/api/system_audit_logs?email=${encodeURIComponent(adminEmail)}`, {
-        headers: {
-          'x-admin-email': adminEmail,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const [resLogs, resSync] = await Promise.allSettled([
+        fetch(`/api/system_audit_logs?email=${encodeURIComponent(adminEmail)}`, {
+          headers: { 'x-admin-email': adminEmail },
+        }),
+        campaign?.id ? fetch(`/api/campaigns/${encodeURIComponent(campaign.id)}/sync-logs?limit=100`) : Promise.resolve(null),
+      ]);
+
+      const loadedLogs: CampaignLog[] = [];
+
+      if (resLogs.status === 'fulfilled' && resLogs.value && resLogs.value.ok) {
+        const data = await resLogs.value.json();
         if (Array.isArray(data.system_audit_logs)) {
-          setServerLogs(data.system_audit_logs);
+          loadedLogs.push(...data.system_audit_logs);
         }
       }
+
+      if (resSync.status === 'fulfilled' && resSync.value && resSync.value.ok) {
+        const data = await resSync.value.json();
+        if (Array.isArray(data.syncLogs)) {
+          const mappedSyncLogs: CampaignLog[] = data.syncLogs.map((s: any) => ({
+            id: s.id,
+            timestamp: s.timestamp,
+            level: s.status === 'error' ? 'ALERT' : 'SUCCESS',
+            module: `8_MOTORES_${(s.engineId || 'SYNC').toUpperCase()}`,
+            message: `[${(s.triggerType || 'cron_15m').toUpperCase()} - ${s.engineName}]: ${s.actionExecuted} (${s.latencyMs}ms)`,
+            origen_motor: s.engineId,
+            plataforma_atraccion: s.triggerType,
+            fecha_acceso: s.timestamp,
+          }));
+          loadedLogs.push(...mappedSyncLogs);
+        }
+      }
+
+      setServerLogs(loadedLogs);
     } catch (e) {
       console.warn('[Bitácora] Error al cargar logs globales:', e);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchServerLogs();
@@ -84,6 +108,8 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
 
     if (filterLevel === 'PUENTES') {
       if (!text.includes('puente') && !text.includes('/r/')) return false;
+    } else if (filterLevel === 'CRON_15M') {
+      if (!text.includes('cron') && !text.includes('15m') && !text.includes('motores') && !text.includes('sync') && !text.includes('sincroniz') && !text.includes('activacion_inicial')) return false;
     } else if (filterLevel === 'HERO') {
       if (!text.includes('hero')) return false;
     } else if (filterLevel === 'REGISTROS') {
@@ -93,6 +119,7 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
     } else if (filterLevel !== 'all' && log.level !== filterLevel) {
       return false;
     }
+
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -327,6 +354,7 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
           <div className="flex items-center gap-1 p-1 bg-neutral-900 border border-neutral-800 rounded-md overflow-x-auto">
             {[
               { id: 'all', label: 'TODOS' },
+              { id: 'CRON_15M', label: 'CRON 15M (8 MOTORES)' },
               { id: 'PUENTES', label: 'PUENTES' },
               { id: 'HERO', label: 'HERO' },
               { id: 'REGISTROS', label: 'REGISTROS' },
@@ -334,6 +362,7 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
               { id: 'SUCCESS', label: 'ÉXITO' },
               { id: 'ALERT', label: 'ALERTAS' },
             ].map((f) => (
+
               <button
                 key={f.id}
                 onClick={() => setFilterLevel(f.id)}

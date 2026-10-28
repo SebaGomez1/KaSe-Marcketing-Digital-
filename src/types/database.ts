@@ -56,6 +56,22 @@ export interface CampaignModuleRow {
   status_text?: string;
 }
 
+export interface CampaignSyncLogRow {
+  id: string;
+  campaign_id: string;
+  user_id?: string | null;
+  timestamp: string;
+  trigger_type: string;
+  engine_id: string;
+  engine_name: string;
+  status: string;
+  status_code: number;
+  latency_ms: number;
+  action_executed: string;
+  data_updated?: any;
+  error_message?: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -74,6 +90,12 @@ export interface Database {
         Insert: Omit<CampaignModuleRow, 'id'> & { id?: number };
         Update: Partial<CampaignModuleRow>;
       };
+      campaign_sync_logs: {
+        Row: CampaignSyncLogRow;
+        Insert: CampaignSyncLogRow;
+        Update: Partial<CampaignSyncLogRow>;
+      };
     };
   };
 }
+

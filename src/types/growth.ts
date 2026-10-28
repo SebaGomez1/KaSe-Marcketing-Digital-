@@ -24,6 +24,23 @@ export interface CampaignLog {
   fecha_acceso?: string;
 }
 
+export interface CampaignSyncLog {
+  id: string;
+  campaignId: string;
+  userId?: string;
+  timestamp: string;
+  triggerType: 'cron_15m' | 'initial_activation' | 'manual_sync';
+  engineId: string;
+  engineName: string;
+  status: 'operational' | 'executing' | 'synced' | 'error';
+  statusCode: number;
+  latencyMs: number;
+  actionExecuted: string;
+  dataUpdated?: Record<string, any>;
+  errorMessage?: string;
+}
+
+
 export interface ConversionRecord {
   id: string;
   timestamp: string;
