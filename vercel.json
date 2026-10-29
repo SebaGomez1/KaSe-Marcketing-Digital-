@@ -22,6 +22,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/api/campaigns/sync",
+      "destination": "/api/index"
+    },
+    {
       "source": "/api/campaigns",
       "destination": "/api/campaigns"
     },

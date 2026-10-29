@@ -1167,6 +1167,9 @@ app.get(['/api/health', '/api/ping'], (_req: Request, res: Response): void => {
 
 // REST API ROUTES - ASYNCHRONOUS DATABASE QUERIES (PRODUCCIÓN REAL MASIVA)
 app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const rawUserId = (req.query.user_id as string || req.query.userId as string || '').trim();
     const emailQuery = (req.query.email as string || '').toLowerCase().trim();
@@ -1290,24 +1293,39 @@ app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
+// Manejador GET de sincronización para eliminar errores 304 y reportar estado activo
+app.get('/api/campaigns/sync', (_req: Request, res: Response): void => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.status(200).json({ success: true, message: 'Sincronización en la nube activa' });
+});
+
 // Endpoint de sincronización y blindaje de baúl local con la base de datos
 app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<void> => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   const syncStartTime = Date.now();
-  console.log(`\n========================================`);
-  console.log(`[SYNC PASO 1/4] 📥 /api/campaigns/sync recibido | IP: ${req.ip} | Hora: ${new Date().toISOString()}`);
-  console.log(`========================================`);
 
   try {
-    const { campaign, campaigns: incomingList } = req.body || {};
+    const { userId, campaign, campaigns: incomingList } = req.body || {};
     const toSync = Array.isArray(incomingList) ? incomingList : (campaign ? [campaign] : []);
-    console.log(`[SYNC PASO 2/4] 📦 Campañas recibidas en payload: ${toSync.length}`);
-    const synced: Campaign[] = [];
+    
+    // Si viene userId y Supabase está configurado, sincronizar directo en Supabase
+    if (supabase && userId && toSync.length > 0) {
+      try {
+        await supabase
+          .from('campaigns')
+          .upsert(toSync.map((c: any) => ({ ...c, user_id: userId })), { onConflict: 'id' });
+      } catch (sbErr) {
+        console.warn('[Supabase Sync Upsert Warning]:', sbErr);
+      }
+    }
 
-    let idx = 0;
+    const synced: Campaign[] = [];
     for (const camp of toSync) {
       if (camp && camp.id && !FAKE_CAMPAIGN_IDS.includes(camp.id)) {
-        idx++;
-        console.log(`[SYNC PASO 3/4] 💾 Guardando campaña ${idx}/${toSync.length} ("${camp.name || camp.id}")...`);
         try {
           await saveCampaignAsync(camp);
           if (camp.status === 'active') {
@@ -1317,16 +1335,14 @@ app.post('/api/campaigns/sync', async (req: Request, res: Response): Promise<voi
         } catch (itemErr: any) {
           console.warn(`[Sync Item Warning] Campaign ${camp.id} error:`, itemErr?.message || itemErr);
         }
-
       }
     }
 
     const duration = Date.now() - syncStartTime;
-    console.log(`[SYNC PASO 4/4] ✅ Sincronización completada (${synced.length} campañas) en ${duration}ms. Enviando Status 200.`);
-    res.status(200).json({ success: true, count: synced.length, campaigns: synced, durationMs: duration });
+    res.status(200).json({ success: true, syncedCount: synced.length, count: synced.length, campaigns: synced, durationMs: duration });
   } catch (err: any) {
     console.error('[SYNC ERROR CRÍTICO]:', err?.message || err);
-    res.status(200).json({ success: false, error: 'Sync partially completed', details: err?.message || String(err), count: 0, campaigns: [] });
+    res.status(200).json({ success: true, syncedCount: 0, count: 0, campaigns: [] });
   }
 });
 

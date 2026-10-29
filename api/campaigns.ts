@@ -23,7 +23,9 @@ const NextResponse = {
       status: init?.status ?? 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, max-age=0',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        Pragma: 'no-cache',
+        Expires: '0',
         ...(init?.headers || {}),
       },
     });
@@ -34,6 +36,9 @@ export async function GET(request: Request | any, response?: any) {
   try {
     // Soporte para entorno Node.js Serverless de Vercel (req, res)
     if (response && typeof response.status === 'function') {
+      response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      response.setHeader('Pragma', 'no-cache');
+      response.setHeader('Expires', '0');
       const userId = request.query?.userId || request.query?.user_id;
 
       let query = supabase.from('campaigns').select('*');
