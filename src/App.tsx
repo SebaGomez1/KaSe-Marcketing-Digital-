@@ -567,7 +567,7 @@ export default function App() {
   // Si no hay internet, no renderizar la interfaz y saltar al bloqueo
   if (!isOnline) {
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', backgroundColor: '#0B0B0B', color: '#ffffff', textAlign: 'center', padding: '20px' }}>
         <h2>Se requiere conexión a internet para usar Kase Marketing Digital.</h2>
       </div>
     );
@@ -575,7 +575,7 @@ export default function App() {
 
   if (!sessionChecked) {
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B0B0B', color: '#10b981', fontFamily: 'sans-serif' }}>
         <p>Cargando aplicación de forma segura...</p>
       </div>
     );

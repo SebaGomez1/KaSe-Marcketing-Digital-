@@ -6,9 +6,6 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import pg from 'pg';
-import fs from 'fs';
-import path from 'path';
 import { 
   Campaign, 
   CampaignModuleState, 
@@ -17,9 +14,6 @@ import {
   ConversionRecord, 
   User 
 } from '../types/growth';
-
-
-const { Pool } = pg;
 
 // Supabase / PostgreSQL configuration from Environment Variables (Universal Support: Node, Next.js, Vite)
 const rawDbUrl = (process.env.DATABASE_URL || '').trim();
@@ -86,22 +80,8 @@ export const supabase: SupabaseClient | any = isSupabaseConfigured
       { auth: { persistSession: false } }
     );
 
-// Initialize PostgreSQL Pool if connection string is configured
-let initializedPool: pg.Pool | null = null;
-if (isPostgresConfigured) {
-  try {
-    initializedPool = new Pool({
-      connectionString: rawDbUrl,
-      ssl: rawDbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-      connectionTimeoutMillis: 5000,
-      max: 10,
-    });
-  } catch (err) {
-    console.warn('[DB Error Postgres Pool init]:', err);
-    initializedPool = null;
-  }
-}
-export const pgPool: pg.Pool | null = initializedPool;
+// PostgreSQL Pool reference (client-safe)
+export const pgPool: any = null;
 
 export interface DbStatusInfo {
   isConfigured: boolean;
@@ -557,19 +537,6 @@ export async function handleBridgeInterceptionDirectSupabase(
 // ====================================================================
 // PERSISTENCIA Y AUDITORÍA: CAMPAIGN_SYNC_LOGS (CRON 15M & ACTIVACIÓN INICIAL)
 // ====================================================================
-const LOCAL_SYNC_LOGS_PATH = path.join(process.cwd(), 'data', 'campaign_sync_logs.json');
-
-function ensureLocalSyncLogsDir(): void {
-  try {
-    const dir = path.dirname(LOCAL_SYNC_LOGS_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  } catch (err) {
-    // Ignore in read-only environments
-  }
-}
-
 export async function ensureCampaignSyncLogsTable(): Promise<void> {
   if (isPostgresConfigured && pgPool) {
     try {
@@ -683,25 +650,6 @@ export async function saveCampaignSyncLogs(logs: CampaignSyncLog[]): Promise<voi
       console.warn('[DB Error saveCampaignSyncLogs Supabase]:', sbEx?.message || sbEx);
     }
   }
-
-  // 3. Respaldo local de seguridad en disco (data/campaign_sync_logs.json)
-  try {
-    ensureLocalSyncLogsDir();
-    let existing: CampaignSyncLog[] = [];
-    if (fs.existsSync(LOCAL_SYNC_LOGS_PATH)) {
-      try {
-        const raw = fs.readFileSync(LOCAL_SYNC_LOGS_PATH, 'utf-8');
-        existing = JSON.parse(raw);
-        if (!Array.isArray(existing)) existing = [];
-      } catch {
-        existing = [];
-      }
-    }
-    const combined = [...logs, ...existing].slice(0, 500); // Conservar últimos 500 logs
-    fs.writeFileSync(LOCAL_SYNC_LOGS_PATH, JSON.stringify(combined, null, 2), 'utf-8');
-  } catch (fsErr) {
-    // Non-blocking in serverless/read-only mode
-  }
 }
 
 // Consulta el historial de auditoría de sincronización para una campaña
@@ -768,22 +716,6 @@ export async function fetchCampaignSyncLogs(campaignId: string, limit: number = 
     } catch (sbErr) {
       console.warn('[Supabase fetchCampaignSyncLogs Warning]:', sbErr);
     }
-  }
-
-  // 3. Fallback a archivo local data/campaign_sync_logs.json
-  try {
-    if (fs.existsSync(LOCAL_SYNC_LOGS_PATH)) {
-      const raw = fs.readFileSync(LOCAL_SYNC_LOGS_PATH, 'utf-8');
-      const all: CampaignSyncLog[] = JSON.parse(raw);
-      if (Array.isArray(all)) {
-        return all
-          .filter((l) => l.campaignId === campaignId)
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, limit);
-      }
-    }
-  } catch {
-    // Ignore
   }
 
   return [];
