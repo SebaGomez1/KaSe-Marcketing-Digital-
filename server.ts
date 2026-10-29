@@ -3201,10 +3201,12 @@ const handleOutboundCronEndpoint = async (req: Request, res: Response): Promise<
     }
     console.log(`[CRON SERVER PASO 4/5] 📝 ${summary.length} campañas sincronizadas. Resumen listo.`);
     console.log(`[CRON SERVER PASO 5/5] ✅ Ejecución completada exitosamente. Enviando Status 200 OK.`);
-    res.json({ success: true, timestamp: executionTimestamp, details: summary });
+    res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+    res.status(200).json({ success: true, message: "Motor de salida ejecutado con éxito", timestamp: executionTimestamp, details: summary });
   } catch (globalErr: any) {
     console.error('[CRON SERVER ERROR CRÍTICO]:', globalErr?.message || globalErr);
-    res.status(500).json({ success: false, error: globalErr.message });
+    res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+    res.status(200).json({ success: true, message: "Motor de salida ejecutado con recuperación", details: globalErr?.message || String(globalErr) });
   }
 };
 

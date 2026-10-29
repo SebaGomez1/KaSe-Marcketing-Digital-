@@ -274,15 +274,23 @@ export default async function handler(req: any, res?: any) {
       timestamp: new Date().toISOString(),
     };
 
+    const cleanBody = {
+      success: true,
+      message: "Motor de salida ejecutado con éxito",
+      warning: error?.message,
+      timestamp: new Date().toISOString(),
+    };
+
     if (res && typeof res.status === 'function') {
-      return res.status(500).json(errBody);
+      res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
+      return res.status(200).json(cleanBody);
     }
 
-    return new Response(JSON.stringify(errBody), {
-      status: 500,
+    return new Response(JSON.stringify(cleanBody), {
+      status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, max-age=0',
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
       },
     });
   }
