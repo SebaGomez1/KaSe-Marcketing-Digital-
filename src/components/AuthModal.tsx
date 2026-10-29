@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, User as UserIcon, ShieldAlert, Sparkles, CheckCircle2, Zap } from 'lucide-react';
+import { X, Lock, Mail, User as UserIcon, ShieldAlert, Sparkles, CheckCircle2, Zap, WifiOff } from 'lucide-react';
 import { User, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
 
 interface AuthModalProps {
@@ -7,6 +7,7 @@ interface AuthModalProps {
   onClose: () => void;
   currentUser: User | null;
   onAuthSuccess: (user: User) => void;
+  isOnline?: boolean;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -14,6 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   currentUser,
   onAuthSuccess,
+  isOnline = true,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
@@ -23,6 +25,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const effectiveOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
 
   // Device-specific remembered account
   const deviceAccount = (() => {
@@ -36,6 +40,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!effectiveOnline) {
+      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
+      return;
+    }
+
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
     if (!cleanEmail) {
@@ -61,102 +70,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       let authUser: User | null = null;
-      try {
-        const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-        const res = await fetch(endpoint, {
+      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: cleanEmail, password: cleanPass }),
+      });
+      
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
+            throw new Error('Contraseña Incorrecta');
+          }
+          throw new Error(data.error || 'Contraseña Incorrecta');
+        }
+        if (data.user) {
+          authUser = data.user;
+        }
+      } else {
+        throw new Error('Sin conexión con el servidor central de KaSe');
+      }
+
+      // STRICT: No offline fallback allowed. If authUser was not returned, fail.
+      if (!authUser) {
+        throw new Error('No fue posible autenticar. Verifica tu conexión a internet.');
+      }
+
+      if (mode === 'register') {
+        // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados
+        fetch('/api/bridge/track-register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim(), email: cleanEmail, password: cleanPass }),
-        });
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await res.json();
-          if (!res.ok) {
-            if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            throw new Error(data.error || 'Contraseña Incorrecta');
-          }
-          if (data.user) {
-            authUser = data.user;
-          }
-        }
-      } catch (apiErr: any) {
-        throw apiErr;
+          body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
+        }).catch(() => {});
       }
-
-      // Resilient fallback (only for offline or unreachability)
-      if (!authUser) {
-        const storedUsersRaw = localStorage.getItem('kase_registered_users');
-        const registeredMap: Record<string, any> = storedUsersRaw ? JSON.parse(storedUsersRaw) : {};
-
-        if (isAdmin) {
-          if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          authUser = {
-            id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : `admin_${cleanEmail.replace(/[^a-z0-9]/gi, '_')}`,
-            name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : (name.trim() || 'Administrador KaSe'),
-            email: cleanEmail,
-            role: 'super_admin',
-            createdAt: new Date().toISOString(),
-          };
-          registeredMap[cleanEmail] = { ...authUser, password: ADMIN_PASSWORD };
-          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
-        } else if (mode === 'login') {
-          const existing = registeredMap[cleanEmail];
-          // STRICT SECURITY: Do NOT auto-register on login. Throw Contraseña Incorrecta
-          if (!existing) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          if (existing.password && existing.password !== cleanPass) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          authUser = {
-            id: existing.id,
-            name: existing.name,
-            email: existing.email,
-            role: existing.role || 'client',
-            createdAt: existing.createdAt,
-          };
-        } else {
-          const existing = registeredMap[cleanEmail];
-          if (existing && existing.password && existing.password !== cleanPass) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          authUser = {
-            id: existing?.id || `usr_${Math.random().toString(36).substring(2, 9)}`,
-            name: (name.trim() || cleanEmail.split('@')[0]),
-            email: cleanEmail,
-            role: 'client',
-            createdAt: existing?.createdAt || new Date().toISOString(),
-          };
-          registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
-          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
-        }
-      }
-
-      if (authUser) {
-        if (mode === 'register') {
-          // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados (Requerimiento 5)
-          fetch('/api/bridge/track-register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
-          }).catch(() => {});
-        }
-        localStorage.setItem('kase_device_account', JSON.stringify({ email: authUser.email, name: authUser.name, role: authUser.role }));
-        localStorage.setItem('kase_current_user', JSON.stringify(authUser));
-        onAuthSuccess(authUser);
-        onClose();
-      }
+      localStorage.setItem('kase_device_account', JSON.stringify({ email: authUser.email, name: authUser.name, role: authUser.role }));
+      localStorage.setItem('kase_current_user', JSON.stringify(authUser));
+      onAuthSuccess(authUser);
+      onClose();
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes('contrase')) {
         setError('Contraseña Incorrecta');
-      } else if (err.message === 'Contraseña Incorrecta') {
-        setError('Contraseña Incorrecta');
+      } else if (err.message && (err.message.includes('conexión') || err.message.includes('internet') || err.name === 'TypeError')) {
+        setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
       } else {
-        setError('Contraseña Incorrecta');
+        setError(err.message || 'Contraseña Incorrecta');
       }
     } finally {
       setLoading(false);
@@ -164,6 +125,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleDeviceAccountQuickLogin = () => {
+    if (!effectiveOnline) {
+      setError('❌ Sin conexión a internet. Se requiere conexión activa para iniciar sesión.');
+      return;
+    }
     if (!deviceAccount) return;
     const user: User = {
       id: deviceAccount.role === 'super_admin' ? 'kathy_super_admin' : `usr_${deviceAccount.email.replace(/[^a-z0-9]/gi, '_')}`,
@@ -213,6 +178,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span>Continuar como: <strong>{deviceAccount.role === 'super_admin' ? 'Administradora Kathy Seba' : `${deviceAccount.name} (${deviceAccount.email})`}</strong></span>
               <span className="font-mono text-[10px] text-emerald-400 font-bold">Entrar ⚡</span>
             </button>
+          </div>
+        )}
+
+        {!effectiveOnline && (
+          <div className="p-2.5 bg-rose-950/60 border border-rose-600/60 rounded-xl text-rose-200 text-xs mb-3 flex items-center gap-2 font-medium">
+            <WifiOff className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+            <span>Sin conexión a internet. La autenticación está bloqueada hasta que te reconectes.</span>
           </div>
         )}
 
@@ -277,11 +249,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-black font-bold text-xs transition-all glow-emerald cursor-pointer mt-4 flex items-center justify-center gap-1.5"
+            disabled={loading || !effectiveOnline}
+            className={`w-full py-2.5 rounded-lg font-bold text-xs transition-all mt-4 flex items-center justify-center gap-1.5 ${
+              !effectiveOnline 
+                ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-60' 
+                : 'bg-emerald-400 hover:bg-emerald-300 text-black glow-emerald cursor-pointer'
+            }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>{loading ? 'Validando...' : mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Gratuita'}</span>
+            <span>
+              {!effectiveOnline 
+                ? 'Sin Conexión a Internet' 
+                : loading 
+                ? 'Validando...' 
+                : mode === 'login' 
+                ? 'Iniciar Sesión' 
+                : 'Crear Cuenta Gratuita'}
+            </span>
           </button>
         </form>
 

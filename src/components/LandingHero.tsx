@@ -19,7 +19,8 @@ import {
   Globe2,
   Sliders,
   DollarSign,
-  Star
+  Star,
+  WifiOff
 } from 'lucide-react';
 import { User, CampaignType, CAMPAIGN_TYPES_CATALOG, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
 
@@ -33,6 +34,7 @@ interface LandingHeroProps {
   onGoToModules?: () => void;
   onOpenInstallModal?: () => void;
   onRequestOneDollarCheckout?: () => void;
+  isOnline?: boolean;
 }
 
 export const LandingHero: React.FC<LandingHeroProps> = ({
@@ -45,6 +47,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   onGoToModules,
   onOpenInstallModal,
   onRequestOneDollarCheckout,
+  isOnline = true,
 }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
   const [name, setName] = useState('');
@@ -52,6 +55,8 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const effectiveOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
 
   // Device-specific remembered account (only appears on the device where that user logged in)
   const [deviceAccount, setDeviceAccount] = useState<{ email: string; name: string; role: string } | null>(() => {
@@ -65,6 +70,11 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!effectiveOnline) {
+      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
+      return;
+    }
+
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
     if (!cleanEmail) {
@@ -87,124 +97,54 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
     try {
       let authUser: User | null = null;
-      // 1. Attempt API server authentication
-      try {
-        const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
-        const res = await fetch(endpoint, {
+      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: cleanEmail, password }),
+      });
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
+            throw new Error('Contraseña Incorrecta');
+          }
+          throw new Error(data.error || 'Contraseña Incorrecta');
+        }
+        if (data.user) {
+          authUser = data.user;
+        }
+      } else {
+        throw new Error('Sin conexión con el servidor central de KaSe');
+      }
+
+      // STRICT: No offline fallback allowed
+      if (!authUser) {
+        throw new Error('No fue posible autenticar. Verifica tu conexión a internet.');
+      }
+
+      if (authMode === 'register') {
+        fetch('/api/bridge/track-register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim(), email: cleanEmail, password }),
-        });
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const data = await res.json();
-          if (!res.ok) {
-            if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            throw new Error(data.error || 'Contraseña Incorrecta');
-          }
-          if (data.user) {
-            authUser = data.user;
-          }
-        }
-      } catch (apiErr: any) {
-        if (apiErr.message === 'Contraseña Incorrecta') {
-          throw apiErr;
-        }
-        // If network or static hosting on Vercel returns HTML, use client-side persistent auth
+          body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
+        }).catch(() => {});
       }
-
-      // 2. Client-side fallback authentication & registration (resilient for Vercel)
-      if (!authUser) {
-        const storedUsersRaw = localStorage.getItem('kase_registered_users');
-        const registeredMap: Record<string, any> = storedUsersRaw ? JSON.parse(storedUsersRaw) : {};
-        const isAdmin = isUserSuperAdmin({ email: cleanEmail });
-
-        if (isAdmin) {
-          if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          authUser = {
-            id: 'kathy_super_admin',
-            name: 'Kathy Seba (Super Admin)',
-            email: 'kathyseba2020@gmail.com',
-            role: 'super_admin',
-            createdAt: new Date().toISOString(),
-            acquisitionSource: 'direct_organic',
-          };
-          registeredMap[cleanEmail] = { ...authUser, password: ADMIN_PASSWORD };
-          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
-        } else if (authMode === 'login') {
-          const existing = registeredMap[cleanEmail];
-          if (existing) {
-            if (existing.password && existing.password !== cleanPass) {
-              throw new Error('Contraseña Incorrecta');
-            }
-            authUser = {
-              id: existing.id,
-              name: existing.name,
-              email: existing.email,
-              role: existing.role || 'client',
-              createdAt: existing.createdAt,
-              acquisitionSource: existing.acquisitionSource || 'direct_organic',
-            };
-          } else {
-            // Register smoothly if logging in first time
-            authUser = {
-              id: `usr_${Math.random().toString(36).substring(2, 9)}`,
-              name: cleanEmail.split('@')[0],
-              email: cleanEmail,
-              role: 'client',
-              createdAt: new Date().toISOString(),
-              acquisitionSource: 'direct_organic',
-            };
-            registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
-            localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
-          }
-        } else {
-          // Register mode
-          const existing = registeredMap[cleanEmail];
-          if (existing && existing.password && existing.password !== cleanPass) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          authUser = {
-            id: existing?.id || `usr_${Math.random().toString(36).substring(2, 9)}`,
-            name: (name.trim() || cleanEmail.split('@')[0]),
-            email: cleanEmail,
-            role: 'client',
-            createdAt: existing?.createdAt || new Date().toISOString(),
-            acquisitionSource: 'direct_organic',
-          };
-          registeredMap[cleanEmail] = { ...authUser, password: cleanPass };
-          localStorage.setItem('kase_registered_users', JSON.stringify(registeredMap));
-        }
-      }
-
-      if (authUser) {
-        if (authMode === 'register') {
-          // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados (Requerimiento 5)
-          fetch('/api/bridge/track-register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
-          }).catch(() => {});
-        }
-        // Remember this specific account on this device
-        const deviceData = { email: authUser.email, name: authUser.name, role: authUser.role };
-        localStorage.setItem('kase_device_account', JSON.stringify(deviceData));
-        localStorage.setItem('kase_current_user', JSON.stringify(authUser));
-        setDeviceAccount(deviceData);
-        onLoginSuccess(authUser);
-        onGoToDashboard();
-      }
+      // Remember this specific account on this device
+      const deviceData = { email: authUser.email, name: authUser.name, role: authUser.role };
+      localStorage.setItem('kase_device_account', JSON.stringify(deviceData));
+      localStorage.setItem('kase_current_user', JSON.stringify(authUser));
+      setDeviceAccount(deviceData);
+      onLoginSuccess(authUser);
+      onGoToDashboard();
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes('contrase')) {
         setError('Contraseña Incorrecta');
-      } else if (err.message === 'Contraseña Incorrecta') {
-        setError('Contraseña Incorrecta');
+      } else if (err.message && (err.message.includes('conexión') || err.message.includes('internet') || err.name === 'TypeError')) {
+        setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
       } else {
-        setError('Contraseña Incorrecta');
+        setError(err.message || 'Contraseña Incorrecta');
       }
     } finally {
       setLoading(false);
@@ -212,6 +152,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   };
 
   const handleQuickResumeDeviceAccount = async () => {
+    if (!effectiveOnline) {
+      setError('❌ Sin conexión a internet. Se requiere conexión activa para iniciar sesión.');
+      return;
+    }
     if (!deviceAccount) return;
     setLoading(true);
     setError(null);
@@ -459,6 +403,13 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                     </button>
                   </div>
 
+                  {!effectiveOnline && (
+                    <div className="mb-4 p-3 rounded-lg bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-center gap-2">
+                      <WifiOff className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+                      <span>Sin conexión a internet. El registro e inicio de sesión están deshabilitados.</span>
+                    </div>
+                  )}
+
                   {error && (
                     <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
                       {error}
@@ -512,10 +463,16 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
                     <button
                       type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-emerald-400 hover:bg-emerald-300 text-black font-bold text-xs rounded-lg transition-all shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-2"
+                      disabled={loading || !effectiveOnline}
+                      className={`w-full py-3 text-black font-bold text-xs rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 ${
+                        !effectiveOnline 
+                          ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-60' 
+                          : 'bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20 cursor-pointer'
+                      }`}
                     >
-                      {loading ? (
+                      {!effectiveOnline ? (
+                        <span>Sin Conexión a Internet</span>
+                      ) : loading ? (
                         <span>Procesando...</span>
                       ) : (
                         <>

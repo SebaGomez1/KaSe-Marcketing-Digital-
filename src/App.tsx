@@ -22,6 +22,8 @@ import { LandingHero } from './components/LandingHero';
 import { CustomerReviewsSection } from './components/CustomerReviewsSection';
 import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
+import { OfflineBarrier } from './components/OfflineBarrier';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { Campaign, ModuleDefinition, User, isUserSuperAdmin } from './types/growth';
 import { INITIAL_PRODUCTION_CAMPAIGNS, isFakeCampaign } from './lib/initialCampaigns';
 import {
@@ -123,28 +125,14 @@ export default function App() {
   const [campaignForCheckout, setCampaignForCheckout] = useState<Campaign | null>(null);
   const [selectedInitialPlan, setSelectedInitialPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>('starter');
 
-  // Internet Connectivity Guard (Strict Online Enforcement)
-  const [isOnline, setIsOnline] = useState<boolean>(() => {
-    return typeof navigator !== 'undefined' ? navigator.onLine : true;
-  });
+  // Internet Connectivity Guard (Strict Online Enforcement with Server Heartbeat)
+  const { isOnline, isChecking, checkConnectivity } = useNetworkStatus(8000);
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
+    if (isOnline) {
       fetchCampaigns();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+    }
+  }, [isOnline]);
 
   // Sync user state to localStorage
   useEffect(() => {
@@ -573,12 +561,15 @@ export default function App() {
         onRequestOneDollarCheckout={handleOpenOneDollarCheckout}
       />
 
-      {/* Offline Alert Bar: Application strictly operates online */}
+      {/* Offline Alert Bar & Unskippable Fullscreen Barrier */}
       {!isOnline && (
-        <div className="bg-rose-950/95 border-b border-rose-500/60 px-4 py-2.5 text-center text-xs font-bold text-rose-200 flex items-center justify-center gap-2 sticky top-16 z-50 backdrop-blur-md shadow-lg shadow-rose-950/40">
-          <WifiOff className="w-4 h-4 text-rose-400 animate-pulse shrink-0" />
-          <span>CONEXIÓN A INTERNET REQUERIDA: KaSe y el Agente de IA operan ÚNICAMENTE EN LÍNEA para comunicarse con los motores y procesar datos en tiempo real.</span>
-        </div>
+        <>
+          <div className="bg-rose-950/95 border-b border-rose-500/60 px-4 py-2.5 text-center text-xs font-bold text-rose-200 flex items-center justify-center gap-2 sticky top-16 z-50 backdrop-blur-md shadow-lg shadow-rose-950/40">
+            <WifiOff className="w-4 h-4 text-rose-400 animate-pulse shrink-0" />
+            <span>CONEXIÓN A INTERNET REQUERIDA: KaSe y el Agente de IA operan ÚNICAMENTE EN LÍNEA para comunicarse con los motores y procesar datos en tiempo real.</span>
+          </div>
+          <OfflineBarrier onRetry={checkConnectivity} isChecking={isChecking} />
+        </>
       )}
 
       {/* Campaign Header & Selector: STRICTLY visible only when user is logged in and not on public or macro tabs */}
@@ -598,6 +589,7 @@ export default function App() {
         {activeTab === 'landing' ? (
           <LandingHero
             currentUser={currentUser}
+            isOnline={isOnline}
             onLoginSuccess={(user) => {
               setCurrentUser(user);
               if (user.role === 'super_admin') {
@@ -812,6 +804,7 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={currentUser}
+        isOnline={isOnline}
         onAuthSuccess={(user) => {
           setCurrentUser(user);
           if (user.role === 'super_admin') {

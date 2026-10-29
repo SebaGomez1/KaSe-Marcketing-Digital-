@@ -37,7 +37,6 @@ import {
   UserPlus
 } from 'lucide-react';
 import { Campaign, User } from '../types/growth';
-import { generateKaSiReply } from '../lib/kasiKnowledgeEngine';
 
 export interface KaseAssistantWidgetProps {
   activeTab?: string;
@@ -342,8 +341,9 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
       const offlineMsg: ChatMessage = {
         id: `offline_${Date.now()}`,
         role: 'assistant',
-        text: '⚠️ **CONEXIÓN REQUERIDA**: KaSi opera **ÚNICAMENTE EN LÍNEA**. Conéctate a internet para comunicarte con la IA y ejecutar acciones en vivo en tu suite.',
+        text: '⛔ **CONEXIÓN REQUERIDA**: El Agente de Inteligencia Artificial opera **ÚNICAMENTE EN LÍNEA**. Conéctate a internet para comunicarte con la IA y procesar datos en tiempo real. No se generan respuestas simuladas fuera de línea.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        suggestions: ['🔄 Reintentar conexión'],
       };
       setMessages((prev) => [...prev, userMsg, offlineMsg]);
       setInputMessage('');
@@ -377,9 +377,9 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
         text: m.text,
       }));
 
-      // Abort controller with 6-second timeout so cellular phones never hang
+      // Abort controller with 7-second timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
 
       const res = await fetch('/api/ai/code-assistant', {
         method: 'POST',
@@ -409,29 +409,27 @@ Te ayudo a conocer cómo conseguir compradores y clientes reales para tu negocio
 
       clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const contentType = res.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const parsed = await res.json();
-          if (parsed && parsed.reply) {
-            replyData = parsed;
-          }
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const parsed = await res.json();
+        if (parsed && parsed.reply) {
+          replyData = parsed;
         }
       }
     } catch (networkErr) {
-      // Backend unreachable, timed out, or static deployment: silently activate local KaSi engine
-      console.warn('Backend API unreachable or timed out, activating local KaSi engine');
+      console.warn('Network error calling AI assistant:', networkErr);
     }
 
-    // Bulletproof: If backend didn't return valid JSON, generate instantaneous reply locally
+    // STRICT: No offline fake generator. If network is down or API failed, inform user honestly.
     if (!replyData) {
-      replyData = generateKaSiReply(actualText, {
-        isInside: !!currentUser,
-        currentUser,
-        activeCampaign,
-        activeTab,
-        isSuperAdmin: currentUser?.role === 'super_admin'
-      });
+      replyData = {
+        reply: '❌ **ERROR DE CONEXIÓN A INTERNET**\n\n' +
+          'No se pudo contactar con los servidores de Inteligencia Artificial debido a una interrupción de conexión a internet.\n\n' +
+          '• **KaSe opera ÚNICAMENTE en línea**: El agente de IA no genera respuestas simuladas fuera de línea.\n' +
+          '• Por favor verifica tu conexión Wi-Fi o datos móviles y presiona **Reintentar conexión**.',
+        suggestions: ['🔄 Reintentar conexión'],
+        source: 'network_offline_error'
+      };
     }
 
     const assistantMsg: ChatMessage = {

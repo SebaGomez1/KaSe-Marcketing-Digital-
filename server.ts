@@ -1150,6 +1150,17 @@ function evaluateQuotaAndEnforce(campaign: Campaign, reason: string): boolean {
   return false;
 }
 
+// Strict Internet & Health Check Endpoints
+app.get(['/api/health', '/api/ping'], (_req: Request, res: Response): void => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.json({
+    status: 'ok',
+    online: true,
+    service: 'KaSe Marketing Digital API Engine',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // REST API ROUTES - ASYNCHRONOUS DATABASE QUERIES (PRODUCCIÓN REAL MASIVA)
 app.get('/api/campaigns', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -5668,13 +5679,13 @@ Responde de forma concisa y ágil. Si hay una acción que resolver, inclúyela e
       source: 'gemini-2.5-flash'
     });
   } catch (err) {
-    console.error('KaSi AI generation error, using smart fallback engine:', err);
-    res.json({
-      success: true,
-      reply: fallbackData.reply,
-      action: fallbackData.action,
-      suggestions: fallbackData.suggestions,
-      source: 'kase_instant_knowledge_engine'
+    console.error('KaSi AI generation network or API error:', err);
+    res.status(503).json({
+      success: false,
+      error: 'AI_CONNECTION_ERROR',
+      reply: '⚠️ **CONEXIÓN A INTERNET REQUERIDA**: No fue posible conectar con los servidores de Inteligencia Artificial en la nube. KaSi opera **estrictamente en línea** y requiere conexión a internet activa para procesar respuestas en tiempo real.',
+      suggestions: ['🔄 Reintentar conexión', '📶 Verificar internet'],
+      source: 'gemini_error'
     });
   }
 });
