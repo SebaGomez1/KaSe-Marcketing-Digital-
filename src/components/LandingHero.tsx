@@ -70,7 +70,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!effectiveOnline) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !effectiveOnline) {
       setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
       return;
     }
@@ -89,8 +89,36 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
     setLoading(true);
 
     const isAdmin = isUserSuperAdmin({ email: cleanEmail });
-    if (isAdmin && !isValidAdminCredentials(cleanEmail, cleanPass)) {
-      setError('Contraseña Incorrecta');
+    if (isAdmin) {
+      if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
+        setError('Contraseña Incorrecta');
+        setLoading(false);
+        return;
+      }
+
+      // Administrador verificado: Acceso garantizado inmediato
+      const adminUser: User = {
+        id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : 'usr_superadmin_kase',
+        name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : 'KaSe Administrador',
+        email: cleanEmail,
+        role: 'super_admin',
+        createdAt: new Date().toISOString(),
+        acquisitionSource: 'direct_organic',
+      };
+      const deviceData = { email: adminUser.email, name: adminUser.name, role: adminUser.role };
+      localStorage.setItem('kase_device_account', JSON.stringify(deviceData));
+      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
+      setDeviceAccount(deviceData);
+
+      // Sincronizar en segundo plano si el endpoint está disponible
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+      }).catch(() => {});
+
+      onLoginSuccess(adminUser);
+      onGoToDashboard();
       setLoading(false);
       return;
     }
@@ -119,9 +147,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         throw new Error('Sin conexión con el servidor central de KaSe');
       }
 
-      // STRICT: No offline fallback allowed
+      // STRICT: No offline fallback allowed for regular accounts
       if (!authUser) {
-        throw new Error('No fue posible autenticar. Verifica tu conexión a internet.');
+        throw new Error('No fue posible autenticar. Verifica tus datos de acceso.');
       }
 
       if (authMode === 'register') {
@@ -141,10 +169,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes('contrase')) {
         setError('Contraseña Incorrecta');
-      } else if (err.message && (err.message.includes('conexión') || err.message.includes('internet') || err.name === 'TypeError')) {
+      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
       } else {
-        setError(err.message || 'Contraseña Incorrecta');
+        setError(err.message || 'Error al conectar con el servidor central de autenticación');
       }
     } finally {
       setLoading(false);
@@ -152,10 +180,6 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
   };
 
   const handleQuickResumeDeviceAccount = async () => {
-    if (!effectiveOnline) {
-      setError('❌ Sin conexión a internet. Se requiere conexión activa para iniciar sesión.');
-      return;
-    }
     if (!deviceAccount) return;
     setLoading(true);
     setError(null);

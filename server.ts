@@ -64,9 +64,14 @@ app.use(express.json());
 
 // Normalización de rutas para Vercel rewrites y enrutador puente
 app.use((req, _res, next) => {
-  const matched = (req.headers['x-matched-path'] as string) || (req.headers['x-rewrite-url'] as string);
+  const matched = 
+    (req.headers['x-vercel-matched-path'] as string) ||
+    (req.headers['x-matched-path'] as string) || 
+    (req.headers['x-rewrite-url'] as string) ||
+    (req.headers['x-forwarded-uri'] as string) ||
+    (req.headers['x-original-url'] as string);
   if (matched && (req.url === '/api/index' || req.url === '/api' || req.path === '/api/index')) {
-    req.url = matched;
+    req.url = matched.startsWith('/') ? matched : `/${matched}`;
   }
   next();
 });

@@ -5,24 +5,32 @@ export function useNetworkStatus() {
 
   useEffect(() => {
     const checkActualConnection = async () => {
-      try {
-        // Hacer una petición ultra rápida a un recurso público para comprobar internet real
-        const response = await fetch('https://microlink.io', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+      // Si el navegador ya indica que está online, mantener online inmediatamente
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
         setIsOnline(true);
-      } catch (error) {
-        // Solo si la petición falla de verdad se asume que no hay internet
-        setIsOnline(navigator.onLine);
+        return;
+      }
+
+      // Verificación de respaldo ultra rápida por si navigator.onLine da un falso negativo
+      try {
+        await fetch('https://microlink.io', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' });
+        setIsOnline(true);
+      } catch {
+        setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : false);
       }
     };
 
-    // Verificar al montar el componente y cada vez que el navegador reporte cambios
     checkActualConnection();
     window.addEventListener('online', checkActualConnection);
-    window.addEventListener('offline', () => setIsOnline(false));
+    window.addEventListener('offline', () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setIsOnline(false);
+      }
+    });
 
     return () => {
       window.removeEventListener('online', checkActualConnection);
-      window.removeEventListener('offline', () => setIsOnline(false));
+      window.removeEventListener('offline', checkActualConnection);
     };
   }, []);
 

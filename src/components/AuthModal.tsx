@@ -43,16 +43,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!navigator.onLine) {
-      setError("Error: Requiere conexión a internet.");
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (!cleanEmail) {
+      setError("Por favor ingresa tu correo electrónico");
       return;
     }
+    if (!cleanPass) {
+      setError("Por favor ingresa tu contraseña");
+      return;
+    }
+
+    const isAdmin = isUserSuperAdmin({ email: cleanEmail });
+    if (isAdmin) {
+      if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
+        setError('Contraseña Incorrecta');
+        return;
+      }
+      const adminUser: User = {
+        id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : 'usr_superadmin_kase',
+        name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : 'KaSe Administrador',
+        email: cleanEmail,
+        role: 'super_admin',
+        createdAt: new Date().toISOString(),
+        acquisitionSource: 'direct_organic',
+      };
+      localStorage.setItem('kase_device_account', JSON.stringify({ email: adminUser.email, name: adminUser.name, role: adminUser.role }));
+      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
+      onAuthSuccess(adminUser);
+      onSuccess?.();
+      onClose();
+      return;
+    }
+
     setLoading(true); setError("");
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
       if (authError) throw authError;
       if (data?.user) {
-        // Sincroniza directo de Supabase, elimina localStorage
         const { data: userData, error: dbError } = await supabase
           .from('users').select('*').eq('id', data.user.id).single();
         if (dbError) throw dbError;
@@ -70,7 +99,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }
     } catch (err: any) {
-      setError(err.message || "Error de credenciales o servidor.");
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError("Error: Requiere conexión a internet.");
+      } else {
+        setError(err.message || "Error de credenciales o servidor.");
+      }
     } finally { setLoading(false); }
   };
 
@@ -79,8 +112,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (mode === 'login') {
       return handleLoginSubmit(e);
     }
-    if (!effectiveOnline) {
-      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !effectiveOnline) {
+      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para registrarse.');
       return;
     }
 
@@ -99,10 +132,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setError(null);
 
     const isAdmin = isUserSuperAdmin({ email: cleanEmail });
-
-    // Pre-check for admin: If entering an admin account with wrong password, throw immediately
-    if (isAdmin && !isValidAdminCredentials(cleanEmail, cleanPass)) {
-      setError('Contraseña Incorrecta');
+    if (isAdmin) {
+      if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
+        setError('Contraseña Incorrecta');
+        setLoading(false);
+        return;
+      }
+      const adminUser: User = {
+        id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : 'usr_superadmin_kase',
+        name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : 'KaSe Administrador',
+        email: cleanEmail,
+        role: 'super_admin',
+        createdAt: new Date().toISOString(),
+        acquisitionSource: 'direct_organic',
+      };
+      localStorage.setItem('kase_device_account', JSON.stringify({ email: adminUser.email, name: adminUser.name, role: adminUser.role }));
+      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
+      onAuthSuccess(adminUser);
+      onSuccess?.();
+      onClose();
       setLoading(false);
       return;
     }
@@ -131,7 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (!authUser) {
-        throw new Error('No fue posible registrar la cuenta. Verifica tu conexión a internet.');
+        throw new Error('No fue posible registrar la cuenta. Verifica tus datos de acceso.');
       }
 
       fetch('/api/bridge/track-register', {
@@ -146,8 +194,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes('contrase')) {
         setError('Contraseña Incorrecta');
-      } else if (err.message && (err.message.includes('conexión') || err.message.includes('internet') || err.name === 'TypeError')) {
-        setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
+      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError('❌ Sin conexión a internet. No se puede registrar fuera de línea. Por favor verifica tu red.');
       } else {
         setError(err.message || 'Error en autenticación');
       }
@@ -157,10 +205,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   const handleDeviceAccountQuickLogin = () => {
-    if (!effectiveOnline) {
-      setError('❌ Sin conexión a internet. Se requiere conexión activa para iniciar sesión.');
-      return;
-    }
     if (!deviceAccount) return;
     const user: User = {
       id: deviceAccount.role === 'super_admin' ? 'kathy_super_admin' : `usr_${deviceAccount.email.replace(/[^a-z0-9]/gi, '_')}`,
