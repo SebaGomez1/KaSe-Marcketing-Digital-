@@ -24,6 +24,7 @@ import { ActiveCampaignsSection } from './components/ActiveCampaignsSection';
 import { KaseAssistantWidget } from './components/KaseAssistantWidget';
 import { OfflineBarrier } from './components/OfflineBarrier';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
+import { supabase } from './lib/db';
 import { Campaign, ModuleDefinition, User, isUserSuperAdmin } from './types/growth';
 import { INITIAL_PRODUCTION_CAMPAIGNS, isFakeCampaign } from './lib/initialCampaigns';
 import {
@@ -129,6 +130,21 @@ export default function App() {
   const isOnline = useNetworkStatus();
   const isChecking = false;
   const checkConnectivity = () => { if (typeof window !== 'undefined') window.location.reload(); };
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  useEffect(() => {
+    // Verificar sesión directo en Supabase de forma asíncrona para no congelar la pantalla principal
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      supabase.auth.getSession().then(() => {
+        setSessionChecked(true);
+      }).catch((err: any) => {
+        console.error("Error de sesión:", err);
+        setSessionChecked(true);
+      });
+    } else {
+      setSessionChecked(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOnline) {
@@ -548,8 +564,25 @@ export default function App() {
 
   const isSuperAdmin = isUserSuperAdmin(currentUser);
 
+  // Si no hay internet, no renderizar la interfaz y saltar al bloqueo
+  if (!isOnline) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+        <h2>Se requiere conexión a internet para usar Kase Marketing Digital.</h2>
+      </div>
+    );
+  }
+
+  if (!sessionChecked) {
+    return (
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <p>Cargando aplicación de forma segura...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200 w-full max-w-full overflow-x-hidden">
+    <div className="app-container min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200 w-full max-w-full overflow-x-hidden">
       {/* Top Bar Contract (1 line brand, nav links, actions) */}
       <Navbar
         activeTab={activeTab}
