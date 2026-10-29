@@ -15,7 +15,8 @@
  */
 
 import { Campaign } from '../types/growth';
-import { FAKE_MOCK_CAMPAIGN_IDS, isFakeCampaign } from './initialCampaigns';
+import { FAKE_MOCK_CAMPAIGN_IDS, isFakeCampaign, INITIAL_PRODUCTION_CAMPAIGNS } from './initialCampaigns';
+
 import { ADMIN_EMAILS } from '../types/growth';
 import { supabase } from './db';
 
@@ -272,12 +273,17 @@ export function getVaultCampaigns(userEmail?: string, userId?: string, isSuperAd
         } catch {}
       }
     }
+    // Si la búsqueda no arrojó campañas o es la cuenta super admin kathyseba2020@gmail.com, sembrar con las 6 campañas maestras
+    if (foundMap.size === 0 || isSuperAdmin || cleanEmail === 'kathyseba2020@gmail.com') {
+      INITIAL_PRODUCTION_CAMPAIGNS.forEach(addIfValid);
+    }
   } catch (err) {
     console.error('[Error recovering vault campaigns]:', err);
   }
 
   return Array.from(foundMap.values());
 }
+
 
 /**
  * Fusión inteligente entre datos del servidor y baúl local

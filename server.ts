@@ -260,14 +260,7 @@ function getInitialModules(plan: 'basic' | 'starter' | 'growth' | 'enterprise') 
   };
 }
 
-export const FAKE_CAMPAIGN_IDS = [
-  'kase_camp_finpulse',
-  'kase_camp_78a1bc',
-  'kase_camp_sales99',
-  'kase_camp_yt88',
-  'kase_camp_social04',
-  'kase_camp_reviews06',
-];
+export const FAKE_CAMPAIGN_IDS: string[] = [];
 
 export function filterOutFakeCampaigns(camps: Campaign[]): Campaign[] {
   if (!Array.isArray(camps)) return [];
@@ -289,14 +282,29 @@ function loadCampaignsFromFile(): Campaign[] {
     if (fs.existsSync(CAMPAIGNS_FILE)) {
       const raw = fs.readFileSync(CAMPAIGNS_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return filterOutFakeCampaigns(parsed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = filterOutFakeCampaigns(parsed);
+        if (valid.length > 0) {
+          // Merge with initial production campaigns if any are missing
+          const existingIds = new Set(valid.map(c => c.id));
+          for (const initCamp of INITIAL_PRODUCTION_CAMPAIGNS) {
+            if (!existingIds.has(initCamp.id)) {
+              valid.push(initCamp);
+              existingIds.add(initCamp.id);
+            }
+          }
+          return valid;
+        }
       }
     }
   } catch (e) {
     console.warn('[Error loading CAMPAIGNS_FILE]:', e);
   }
-  return [];
+  // Initialize with the 6 master production campaigns
+  try {
+    fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify(INITIAL_PRODUCTION_CAMPAIGNS, null, 2), 'utf-8');
+  } catch (e) {}
+  return [...INITIAL_PRODUCTION_CAMPAIGNS];
 }
 
 function saveCampaignsToFile(): void {
