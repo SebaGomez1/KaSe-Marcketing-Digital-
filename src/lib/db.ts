@@ -75,12 +75,16 @@ export const isPostgresConfigured = Boolean(
   })()
 );
 
-// Initialize Supabase Client if configured
-export const supabase: SupabaseClient | null = isSupabaseConfigured
+// Initialize Supabase Client if configured or provide resilient client instance
+export const supabase: SupabaseClient | any = isSupabaseConfigured
   ? createClient(supabaseEndpoint, rawAnonKey, {
       auth: { persistSession: false },
     })
-  : null;
+  : createClient(
+      rawSupabaseUrl && rawSupabaseUrl.startsWith('http') ? rawSupabaseUrl : 'https://kase-storage.supabase.co',
+      rawAnonKey || 'placeholder-anon-key',
+      { auth: { persistSession: false } }
+    );
 
 // Initialize PostgreSQL Pool if connection string is configured
 let initializedPool: pg.Pool | null = null;

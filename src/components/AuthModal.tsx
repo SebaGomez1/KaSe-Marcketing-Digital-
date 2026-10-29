@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { X, Lock, Mail, User as UserIcon, ShieldAlert, Sparkles, CheckCircle2, Zap, WifiOff } from 'lucide-react';
 import { User, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
+import { supabase } from '../lib/db';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: User | null;
   onAuthSuccess: (user: User) => void;
+  onSuccess?: () => void;
   isOnline?: boolean;
 }
 
@@ -15,6 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   currentUser,
   onAuthSuccess,
+  onSuccess,
   isOnline = true,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -38,8 +41,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   })();
 
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!navigator.onLine) {
+      setError("Error: Requiere conexión a internet.");
+      return;
+    }
+    setLoading(true); setError("");
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      if (data?.user) {
+        // Sincroniza directo de Supabase, elimina localStorage
+        const { data: userData, error: dbError } = await supabase
+          .from('users').select('*').eq('id', data.user.id).single();
+        if (dbError) throw dbError;
+        if (userData) {
+          const authUser: User = {
+            id: userData.id,
+            name: userData.name || userData.full_name || email.split('@')[0],
+            email: userData.email || email,
+            role: userData.role === 'super_admin' ? 'super_admin' : 'client',
+            createdAt: userData.created_at || new Date().toISOString(),
+          };
+          onAuthSuccess(authUser);
+        }
+        onSuccess?.();
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err.message || "Error de credenciales o servidor.");
+    } finally { setLoading(false); }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === 'login') {
+      return handleLoginSubmit(e);
+    }
     if (!effectiveOnline) {
       setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
       return;
@@ -70,7 +109,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       let authUser: User | null = null;
-      const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const endpoint = '/api/auth/register';
       
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -82,10 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (contentType.includes('application/json')) {
         const data = await res.json();
         if (!res.ok) {
-          if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
-            throw new Error('Contraseña Incorrecta');
-          }
-          throw new Error(data.error || 'Contraseña Incorrecta');
+          throw new Error(data.error || 'Error en registro');
         }
         if (data.user) {
           authUser = data.user;
@@ -94,22 +130,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         throw new Error('Sin conexión con el servidor central de KaSe');
       }
 
-      // STRICT: No offline fallback allowed. If authUser was not returned, fail.
       if (!authUser) {
-        throw new Error('No fue posible autenticar. Verifica tu conexión a internet.');
+        throw new Error('No fue posible registrar la cuenta. Verifica tu conexión a internet.');
       }
 
-      if (mode === 'register') {
-        // Registrar paso por el siguiente enrutador puente y sumar a usuarios registrados
-        fetch('/api/bridge/track-register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
-        }).catch(() => {});
-      }
-      localStorage.setItem('kase_device_account', JSON.stringify({ email: authUser.email, name: authUser.name, role: authUser.role }));
-      localStorage.setItem('kase_current_user', JSON.stringify(authUser));
+      fetch('/api/bridge/track-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
+      }).catch(() => {});
+
       onAuthSuccess(authUser);
+      onSuccess?.();
       onClose();
     } catch (err: any) {
       if (err.message && err.message.toLowerCase().includes('contrase')) {
@@ -117,7 +149,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else if (err.message && (err.message.includes('conexión') || err.message.includes('internet') || err.name === 'TypeError')) {
         setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
       } else {
-        setError(err.message || 'Contraseña Incorrecta');
+        setError(err.message || 'Error en autenticación');
       }
     } finally {
       setLoading(false);

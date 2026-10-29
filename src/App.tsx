@@ -125,8 +125,10 @@ export default function App() {
   const [campaignForCheckout, setCampaignForCheckout] = useState<Campaign | null>(null);
   const [selectedInitialPlan, setSelectedInitialPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>('starter');
 
-  // Internet Connectivity Guard (Strict Online Enforcement with Server Heartbeat)
-  const { isOnline, isChecking, checkConnectivity } = useNetworkStatus(8000);
+  // Internet Connectivity Guard (Strict Online Enforcement)
+  const isOnline = useNetworkStatus();
+  const isChecking = false;
+  const checkConnectivity = () => { if (typeof window !== 'undefined') window.location.reload(); };
 
   useEffect(() => {
     if (isOnline) {

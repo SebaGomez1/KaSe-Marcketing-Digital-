@@ -508,9 +508,7 @@ export function recordAuditLog(log: BridgeAuditLog): void {
           client_ip: normalizedLog.client_ip || null,
           ...(normalizedLog.metadata || {}),
         },
-      })
-      .then(() => {})
-      .catch(() => {});
+      });
   }
 }
 
@@ -984,6 +982,7 @@ async function saveCampaignAsync(campaign: Campaign): Promise<void> {
 
         // Guardar conversiones directamente en PostgreSQL (bypass de RLS de Supabase)
         if (Array.isArray(campaign.recentConversions) && campaign.recentConversions.length > 0) {
+          const assignedUserId = campaign.userId || campaign.creatorEmail || (row as any).user_id || 'usuario_anonimo';
           for (const c of campaign.recentConversions.slice(0, 10)) {
             if (!c || !c.id) continue;
             try {

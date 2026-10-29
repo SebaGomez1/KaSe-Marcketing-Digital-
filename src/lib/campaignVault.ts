@@ -17,6 +17,7 @@
 import { Campaign } from '../types/growth';
 import { FAKE_MOCK_CAMPAIGN_IDS, isFakeCampaign } from './initialCampaigns';
 import { ADMIN_EMAILS } from '../types/growth';
+import { supabase } from './db';
 
 const VAULT_MASTER_KEY = 'kase_vault_campaigns_master';
 const VAULT_CACHE_KEY = 'kase_cached_campaigns';
@@ -373,4 +374,13 @@ export function deleteCampaignFromVault(id: string, requesterEmail?: string, con
     console.error('[Error deleting campaign from vault]:', err);
   }
 }
+
+export async function getUserCampaigns(userId: string) {
+  if (!navigator.onLine) throw new Error("Requiere conexión a internet.");
+  // Forzar descarga de la nube de Supabase (Multiplataforma Celular/PC)
+  const { data, error } = await supabase.from('campaigns').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 
