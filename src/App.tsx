@@ -31,6 +31,7 @@ import {
   saveCampaignToVault,
   saveAllCampaignsToVault,
   getVaultCampaigns,
+  getUserCampaigns,
   mergeCampaigns,
   purgeFakeCampaignsFromStorage,
 } from './lib/campaignVault';
@@ -296,6 +297,19 @@ export default function App() {
         }
       } catch (netErr) {
         console.warn('[Fetch Server Error - Using Local Vault]:', netErr);
+      }
+
+      // Consulta directa a Supabase con ID de usuario para sincronización multiplataforma
+      if (currentUser?.id && typeof navigator !== 'undefined' && navigator.onLine) {
+        try {
+          const directSupabaseData = await getUserCampaigns(currentUser.id);
+          if (Array.isArray(directSupabaseData) && directSupabaseData.length > 0) {
+            const validSbCampaigns = directSupabaseData.filter((c: any) => !isFakeCampaign(c));
+            serverCampaigns = [...serverCampaigns, ...validSbCampaigns];
+          }
+        } catch (sbErr) {
+          console.warn('[Supabase Direct Fetch]:', sbErr);
+        }
       }
 
       // Sincronización bidireccional automática: si el baúl local tiene campañas que el servidor no tiene, respaldar en servidor

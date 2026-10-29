@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Users, 
   Target, 
@@ -18,26 +18,80 @@ import {
   Clock,
   Zap
 } from 'lucide-react';
+import { supabase } from '../lib/db';
+import { getUserCampaigns } from '../lib/campaignVault';
 import { Campaign } from '../types/growth';
 import { ModuleConversionBreakdown } from './ModuleConversionBreakdown';
 import { useLiveRelativeTime } from '../utils/timeFormat';
 
 interface CampaignOverviewProps {
-  campaign: Campaign;
-  onOpenIntegration: () => void;
-  onOpenModules: () => void;
-  onOpenGuide: () => void;
-  onOpenPlans: () => void;
+  campaign?: Campaign;
+  onOpenIntegration?: () => void;
+  onOpenModules?: () => void;
+  onOpenGuide?: () => void;
+  onOpenPlans?: () => void;
 }
 
-export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
-  campaign,
-  onOpenIntegration,
-  onOpenModules,
-  onOpenGuide,
-  onOpenPlans,
-}) => {
-  if (!campaign) return null;
+export default function CampaignOverview({
+  campaign: propCampaign,
+  onOpenIntegration = () => {},
+  onOpenModules = () => {},
+  onOpenGuide = () => {},
+  onOpenPlans = () => {},
+}: CampaignOverviewProps) {
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadRealtimeData() {
+      try {
+        setLoading(true);
+        // 1. Obtener el usuario activo directamente desde la sesión activa de internet
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        let targetUserId = user?.id;
+        if (!targetUserId && typeof window !== 'undefined') {
+          try {
+            const saved = window.localStorage.getItem('kase_current_user');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              targetUserId = parsed?.id;
+            }
+          } catch {}
+        }
+
+        if (targetUserId) {
+          // 2. Forzar la descarga directa de la base de datos de Supabase sin usar caché local
+          const data = await getUserCampaigns(targetUserId);
+          setCampaigns(data || []);
+        }
+      } catch (err) {
+        console.error("Error sincronizando campañas en este dispositivo:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      loadRealtimeData();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  if (loading && !propCampaign) {
+    return <div style={{ padding: '20px', color: '#fff' }}>Sincronizando campañas en tiempo real...</div>;
+  }
+
+  const campaign = (campaigns.length > 0 ? (campaigns.find((c: any) => c.id === propCampaign?.id) || campaigns[0]) : null) || propCampaign;
+
+  if (!campaign) {
+    return (
+      <div style={{ padding: '20px', color: '#fff' }}>
+        No se encontraron campañas activas para este usuario en Supabase.
+      </div>
+    );
+  }
   const { currentRegistrations, targetRegistrations, status, plan, modules } = campaign;
   const liveCreationTime = useLiveRelativeTime(campaign.createdAt, 1000);
 
@@ -600,4 +654,6 @@ export const CampaignOverview: React.FC<CampaignOverviewProps> = ({
       )}
     </div>
   );
-};
+}
+
+export { CampaignOverview };
