@@ -14,16 +14,24 @@
       "destination": "/api/cron"
     },
     {
+      "source": "/api/cron/puente/(.*)",
+      "destination": "/api/cron?id=$1&type=bridge"
+    },
+    {
+      "source": "/api/cron/r/(.*)",
+      "destination": "/api/cron?id=$1&type=bridge"
+    },
+    {
       "source": "/r/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/cron?id=$1&type=bridge"
     },
     {
       "source": "/puente/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/cron?id=$1&type=bridge"
     },
     {
       "source": "/api/campaigns/sync",
-      "destination": "/api/index"
+      "destination": "/api/cron"
     },
     {
       "source": "/api/campaigns",
@@ -39,3 +47,4 @@
     }
   ]
 }
+

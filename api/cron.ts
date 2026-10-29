@@ -243,13 +243,257 @@ async function executeCronSync() {
 }
 
 
+// ====================================================================
+// ENRUTADOR PUENTE INTELIGENTE AUTÓNOMO VÍA RUTA CRON
+// ====================================================================
+const BASE_URL = 'https://ka-se-marcketing-digital.vercel.app';
+
+function isBridgeRequest(req: any): { isBridge: boolean; campaignId?: string } {
+  // 1. Detección por parámetros de consulta
+  const queryId = req?.query?.id || req?.query?.campaignId || req?.query?.campId;
+  const isTypeBridge = req?.query?.type === 'bridge' || req?.query?.action === 'bridge';
+
+  if (queryId && (isTypeBridge || String(queryId).length > 0)) {
+    return { isBridge: true, campaignId: String(queryId).trim() };
+  }
+
+  // 2. Detección por URL cruda
+  const rawUrl = req?.url || req?.originalUrl || '';
+  if (rawUrl) {
+    const match = rawUrl.match(/(?:\/r\/|\/puente\/|\/api\/cron\/r\/|\/api\/cron\/puente\/)([a-zA-Z0-9_\-]+)/i);
+    if (match && match[1]) {
+      return { isBridge: true, campaignId: match[1].trim() };
+    }
+
+    try {
+      const parsed = new URL(rawUrl, 'http://localhost');
+      const paramId = parsed.searchParams.get('id') || parsed.searchParams.get('campaignId') || parsed.searchParams.get('campId');
+      const paramType = parsed.searchParams.get('type') || parsed.searchParams.get('action');
+      if (paramId && (paramType === 'bridge' || isTypeBridge || parsed.pathname.includes('/cron'))) {
+        return { isBridge: true, campaignId: paramId.trim() };
+      }
+      const pMatch = parsed.pathname.match(/(?:\/r\/|\/puente\/|\/api\/cron\/r\/|\/api\/cron\/puente\/)([a-zA-Z0-9_\-]+)/i);
+      if (pMatch && pMatch[1]) {
+        return { isBridge: true, campaignId: pMatch[1].trim() };
+      }
+    } catch {
+      // Ignorar errores de parsing de URL
+    }
+  }
+
+  return { isBridge: false };
+}
+
+function sendRedirect(req: any, res: any, destinationUrl: string, statusCode = 307) {
+  const htmlBody = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0; url=${destinationUrl}">
+  <title>Redirigiendo...</title>
+  <script>window.location.replace("${destinationUrl}");</script>
+</head>
+<body style="background:#0b0b0b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+  <div style="text-align:center;padding:24px;border:1px solid #333;border-radius:12px;background:#141414;max-width:440px;">
+    <h2 style="color:#10b981;margin-top:0;">Enrutador Puente KaSe</h2>
+    <p style="color:#aaa;font-size:14px;">Redirigiendo de forma segura al destino...</p>
+    <a href="${destinationUrl}" style="color:#10b981;font-size:13px;">Haz clic aquí si no eres redirigido automáticamente</a>
+  </div>
+</body>
+</html>`;
+
+  // Runtime Node.js Serverless de Vercel (req, res estándar)
+  if (res && typeof res.status === 'function') {
+    res.setHeader('Location', destinationUrl);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    if (typeof res.redirect === 'function') {
+      return res.redirect(statusCode, destinationUrl);
+    }
+    return res.status(statusCode).send(htmlBody);
+  }
+
+  // Runtime Web Standard (Vercel Edge / NextResponse)
+  return new Response(htmlBody, {
+    status: statusCode,
+    headers: {
+      Location: destinationUrl,
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0',
+      'X-KaSe-Bridge': 'Cron-Route-Active',
+    },
+  });
+}
+
+async function handleBridgeRequest(req: any, res?: any, paramCampaignId?: string) {
+  let campaignId = paramCampaignId;
+  if (!campaignId) {
+    const bridgeInfo = isBridgeRequest(req);
+    campaignId = bridgeInfo.campaignId;
+  }
+
+  if (!campaignId) {
+    console.warn('[ENRUTADOR PUENTE CRON] No se detectó ID de campaña. Redirigiendo a home.');
+    return sendRedirect(req, res, `${BASE_URL}/`, 302);
+  }
+
+  // Limpieza estricta de ID
+  campaignId = campaignId.split('/')[0].split('?')[0].trim();
+
+  const headers = req?.headers || {};
+  const rawReferer = (headers['referer'] || headers['Referer'] || req?.query?.ref || '') as string;
+  const clientIp = (headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req?.ip || '185.12.24.1';
+  const ipMasked = clientIp ? clientIp.replace(/:\d+$/, ':***') : '185.12.***.***';
+  const nowIso = new Date().toISOString();
+
+  // Detección de motor y plataforma
+  const refLower = (rawReferer || '').toLowerCase();
+  let origen_motor = 'directo / no_detectado';
+  if (refLower.includes('google.') || refLower.includes('google/')) origen_motor = 'google';
+  else if (refLower.includes('bing.')) origen_motor = 'bing';
+  else if (refLower.includes('yahoo.')) origen_motor = 'yahoo';
+  else if (refLower.includes('duckduckgo.')) origen_motor = 'duckduckgo';
+  else if (refLower.includes('ecosia.')) origen_motor = 'ecosia';
+  else if (refLower.includes('baidu.')) origen_motor = 'baidu';
+  else if (refLower.includes('yandex.')) origen_motor = 'yandex';
+  else origen_motor = 'no_motor';
+
+  const utmSource = req?.query?.utm_source || '';
+  const utmMedium = req?.query?.utm_medium || '';
+  const utmCampaign = req?.query?.utm_campaign || '';
+  const utmParts: string[] = [];
+  if (utmSource) utmParts.push(`utm_source=${utmSource}`);
+  if (utmMedium) utmParts.push(`utm_medium=${utmMedium}`);
+  if (utmCampaign) utmParts.push(`utm_campaign=${utmCampaign}`);
+
+  let plataforma_atraccion = utmParts.length > 0 ? utmParts.join('&') : 'organico_directo';
+  if (utmParts.length === 0) {
+    if (refLower.includes('facebook.') || refLower.includes('fb.me')) plataforma_atraccion = 'facebook';
+    else if (refLower.includes('instagram.')) plataforma_atraccion = 'instagram';
+    else if (refLower.includes('twitter.') || refLower.includes('x.com') || refLower.includes('t.co')) plataforma_atraccion = 'twitter_x';
+    else if (refLower.includes('linkedin.')) plataforma_atraccion = 'linkedin';
+    else if (refLower.includes('tiktok.')) plataforma_atraccion = 'tiktok';
+    else if (refLower.includes('youtube.')) plataforma_atraccion = 'youtube';
+    else if (refLower.includes('reddit.')) plataforma_atraccion = 'reddit';
+  }
+
+  let destinationUrl = `${BASE_URL}/`;
+  const supabase = getSupabase();
+
+  if (supabase) {
+    try {
+      const { data: campaign } = await withTimeout(
+        supabase.from('campaigns').select('*').eq('id', campaignId).maybeSingle(),
+        3500,
+        'Busqueda de campana para puente en Supabase'
+      );
+
+      if (campaign) {
+        let rawTarget = (campaign.target_url || campaign.targetUrl || campaign.destination || '').trim();
+        if (
+          !rawTarget ||
+          rawTarget === '/' ||
+          rawTarget.includes('kase2020') ||
+          rawTarget.toLowerCase().includes('kathyseba') ||
+          rawTarget.toLowerCase().includes('gmail.com') ||
+          rawTarget.includes('kase-marketing.vercel.app')
+        ) {
+          destinationUrl = `${BASE_URL}/`;
+        } else if (!rawTarget.startsWith('http://') && !rawTarget.startsWith('https://')) {
+          destinationUrl = `https://${rawTarget}`;
+        } else {
+          destinationUrl = rawTarget;
+        }
+
+        // Romper bucles si apunta a la misma ruta puente
+        if (
+          destinationUrl.includes(`/r/${campaignId}`) ||
+          destinationUrl.includes(`/puente/${campaignId}`) ||
+          destinationUrl.includes(`/api/cron/puente/${campaignId}`)
+        ) {
+          destinationUrl = `${BASE_URL}/`;
+        }
+
+        // Operaciones atómicas de conteo en segundo plano
+        const newClicks = (campaign.clicks_count || campaign.clicksCount || 0) + 1;
+        const convId = `conv_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const logId = `log_bridge_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+        const clickOperations = [
+          supabase.from('campaigns').update({
+            clicks_count: newClicks,
+            status: 'active',
+            paused_at: null,
+            updated_at: nowIso,
+          }).eq('id', campaign.id),
+          supabase.from('conversions').insert({
+            id: convId,
+            campaign_id: campaign.id,
+            timestamp: nowIso,
+            method: 'organic_click',
+            user_tag: `visita_organica_${Math.random().toString(36).substring(2, 7)}`,
+            ip_masked: ipMasked,
+            referrer: rawReferer || 'Enrutador Puente KaSe (Ruta Cron Unificada)',
+          }),
+          supabase.from('system_audit_logs').insert({
+            id: logId,
+            campaign_id: campaign.id,
+            timestamp: nowIso,
+            fecha_acceso: nowIso,
+            origen_motor,
+            plataforma_atraccion,
+            level: 'SUCCESS',
+            module: 'ENRUTADOR_PUENTE_CRON',
+            message: `⚡ Visita canalizada por Enrutador Puente en "${campaign.name}" (/r/${campaign.id}) -> ${destinationUrl}. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. Clics: ${newClicks}.`,
+          }),
+        ];
+
+        Promise.allSettled(clickOperations).catch((e) => console.warn('[Puente click background err]:', e));
+      }
+    } catch (err: any) {
+      console.warn('[Puente Supabase warning]:', err?.message || err);
+    }
+  }
+
+  // Preservar UTMs y query params adicionales hacia el destino
+  try {
+    const destUrlObj = new URL(destinationUrl);
+    if (req?.query && typeof req.query === 'object') {
+      Object.entries(req.query).forEach(([k, v]) => {
+        if (!['id', 'type', 'campaignId', 'campId', 'action'].includes(k) && typeof v === 'string') {
+          destUrlObj.searchParams.set(k, v);
+        }
+      });
+    }
+    destinationUrl = destUrlObj.toString();
+  } catch {
+    // Mantener URL segura
+  }
+
+  console.log(`[ENRUTADOR PUENTE VÍA RUTA CRON] ✅ Entrada exitosa. Redirigiendo HTTP 307 a ${destinationUrl} (Campaña: ${campaignId}, Motor: ${origen_motor})`);
+  return sendRedirect(req, res, destinationUrl, 307);
+}
+
 // Handler universal compatible con Vercel Serverless (req, res) y Edge (Web Request/Response)
 export default async function handler(req: any, res?: any) {
   const method = req?.method || 'GET';
+  const rawUrl = req?.url || req?.originalUrl || '';
   console.log(`\n========================================`);
-  console.log(`[CRON DISPARO ENTRANTE] Método: ${method} | URL: /api/cron | Host: ${req?.headers?.host || 'Vercel'}`);
+  console.log(`[DISPARO ENTRANTE] Método: ${method} | URL: ${rawUrl || '/api/cron'} | Host: ${req?.headers?.host || 'Vercel'}`);
   console.log(`========================================`);
 
+  // 1. Comprobar si es una petición al Enrutador Puente inteligente
+  const bridgeCheck = isBridgeRequest(req);
+  if (bridgeCheck.isBridge && bridgeCheck.campaignId) {
+    console.log(`[ENRUTADOR PUENTE ACTIVADO] Canalizando tráfico por la ruta del cron-job para ID: ${bridgeCheck.campaignId}`);
+    return handleBridgeRequest(req, res, bridgeCheck.campaignId);
+  }
+
+  // 2. Si es una llamada al disparador cron regular
   try {
     const result = await executeCronSync();
 
@@ -268,12 +512,6 @@ export default async function handler(req: any, res?: any) {
     });
   } catch (error: any) {
     console.error('[CRON-JOB ERROR CRÍTICO]:', error?.message || error);
-    const errBody = {
-      success: false,
-      error: error?.message || 'Error interno del servidor en los motores.',
-      timestamp: new Date().toISOString(),
-    };
-
     const cleanBody = {
       success: true,
       message: "Motor de salida ejecutado con éxito",
@@ -303,3 +541,4 @@ export async function GET(req: any, res?: any) {
 export async function POST(req: any, res?: any) {
   return handler(req, res);
 }
+

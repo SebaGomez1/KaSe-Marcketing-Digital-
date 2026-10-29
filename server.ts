@@ -1855,6 +1855,11 @@ app.get('/puente/:campaignId', handleBridgeRoute);
 app.get('/puente/:id', handleBridgeRoute);
 app.get('/api/r/:campaignId', handleBridgeRoute);
 app.get('/api/puente/:campaignId', handleBridgeRoute);
+app.get('/api/cron/r/:campaignId', handleBridgeRoute);
+app.get('/api/cron/r/:id', handleBridgeRoute);
+app.get('/api/cron/puente/:campaignId', handleBridgeRoute);
+app.get('/api/cron/puente/:id', handleBridgeRoute);
+
 
 // Endpoint API para seguimiento de clics desde el cliente SPA
 app.post('/api/bridge/track-click', async (req: Request, res: Response): Promise<void> => {
@@ -4139,6 +4144,11 @@ app.all(['/api/cron/sync-campaigns', '/api/cron'], async (req: Request, res: Res
   console.log(`\n======================================================`);
   console.log(`[HTTP CRON-JOB RECIBIDO 📥] Ruta: ${req.originalUrl || req.url} | Método: ${req.method} | IP: ${req.ip} | Hora: ${new Date().toISOString()}`);
   console.log(`======================================================`);
+
+  if (req.query?.type === 'bridge' || req.query?.action === 'bridge' || (req.query?.id && req.query?.type)) {
+    return handleBridgeRoute(req, res);
+  }
+
 
   try {
     let allCampaigns = await getCampaignsAsync(undefined, true);
