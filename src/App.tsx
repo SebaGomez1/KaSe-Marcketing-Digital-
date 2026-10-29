@@ -47,18 +47,17 @@ const KATHY_SUPER_ADMIN_USER: User = {
 };
 
 export default function App() {
-  // 1. Persistent Authentication State: Solo kathyseba2020@gmail.com puede ser Super Admin
+  // 1. Persistent Authentication State: Soporta cuentas Administradoras autorizadas
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = typeof window !== 'undefined' ? window.localStorage.getItem('kase_current_user') : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.email || parsed.name || parsed.id)) {
-          const cleanEmail = (parsed.email || '').toLowerCase().trim();
-          if (cleanEmail === 'kathyseba2020@gmail.com') {
+          if (isUserSuperAdmin(parsed)) {
             parsed.role = 'super_admin';
           } else {
-            parsed.role = 'client';
+            parsed.role = parsed.role || 'client';
           }
           return parsed;
         }
@@ -203,6 +202,39 @@ export default function App() {
     }
   }, []);
 
+  // Enrutador Puente Inteligente: Redirección instantánea sin fricción si se accede vía /r/:id o /puente/:id
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const pathname = window.location.pathname;
+      const isBridge = pathname.startsWith('/r/') || pathname.startsWith('/puente/');
+      if (isBridge) {
+        const campaignId = pathname.replace(/^\/(?:r|puente)\//, '').split('/')[0].trim();
+        if (campaignId) {
+          const search = window.location.search || '';
+          fetch(`/api/bridge/track-click${search}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              referrer: document.referrer || '',
+              fullUrl: window.location.href,
+            }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data?.targetUrl) {
+                window.location.replace(data.targetUrl);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
   // 5. Registrar visita del Enrutador Puente en Hero al iniciar la aplicación (Captura de origen real)
   useEffect(() => {
     try {
@@ -239,7 +271,7 @@ export default function App() {
 
       const authenticatedUserId = currentUser?.id || currentUser?.email || '';
       const cleanEmail = (currentUser?.email || '').trim().toLowerCase();
-      const isSuperAdmin = cleanEmail === 'kathyseba2020@gmail.com';
+      const isSuperAdmin = isUserSuperAdmin(currentUser);
 
       // 1. Obtener campañas guardadas en el baúl blindado local (Aislamiento de Privacidad)
       const localVault = getVaultCampaigns(currentUser?.email, currentUser?.id, isSuperAdmin);
@@ -260,13 +292,28 @@ export default function App() {
         console.warn('[Fetch Server Error - Using Local Vault]:', netErr);
       }
 
-      // Ensure strict privacy: Solo Kathy Seba ve todo. Los usuarios normales solo ven sus campañas.
+      // Sincronización bidireccional automática: si el baúl local tiene campañas que el servidor no tiene, respaldar en servidor
+      if (localVault.length > 0) {
+        const missingOnServer = localVault.filter(
+          (lc) => !serverCampaigns.some((sc) => sc.id === lc.id)
+        );
+        if (missingOnServer.length > 0) {
+          fetch('/api/campaigns/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaigns: missingOnServer }),
+          }).catch(() => {});
+        }
+      }
+
+      // Ensure strict privacy: Super Admins ven todo. Usuarios normales ven sus campañas (sin ocultar 'configuring').
       const isolatedServer = isSuperAdmin
         ? serverCampaigns
         : serverCampaigns.filter(
             (c: Campaign) =>
               (c.creatorEmail && c.creatorEmail.toLowerCase() === cleanEmail) ||
-              (c.userId && (c.userId.toLowerCase() === cleanEmail || c.userId === currentUser.id))
+              (c.userId && (c.userId.toLowerCase() === cleanEmail || c.userId === currentUser.id)) ||
+              (currentUser?.id && c.userId === currentUser.id)
           );
 
       // 2. FUSIÓN BLINDADA: Combina lo que tiene el servidor con lo que tiene el baúl local.
@@ -509,7 +556,7 @@ export default function App() {
     setActiveTab('landing');
   };
 
-  const isSuperAdmin = (currentUser?.email || '').toLowerCase() === 'kathyseba2020@gmail.com';
+  const isSuperAdmin = isUserSuperAdmin(currentUser);
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-neutral-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200 w-full max-w-full overflow-x-hidden">

@@ -16,6 +16,7 @@
 
 import { Campaign } from '../types/growth';
 import { FAKE_MOCK_CAMPAIGN_IDS, isFakeCampaign } from './initialCampaigns';
+import { ADMIN_EMAILS } from '../types/growth';
 
 const VAULT_MASTER_KEY = 'kase_vault_campaigns_master';
 const VAULT_CACHE_KEY = 'kase_cached_campaigns';
@@ -63,20 +64,16 @@ export function purgeFakeCampaignsFromStorage(): void {
 
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) {
-          // Filtrar campañas falsas y campañas impagas (status 'configuring') de usuarios comunes
+          // Filtrar unicamente IDs de prueba falsas
           const cleaned = parsed.filter((c: any) => {
             const id = typeof c === 'string' ? c : c?.id;
             if (!id || FAKE_MOCK_CAMPAIGN_IDS.includes(id)) return false;
-            const isKathy = c?.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
-            if (!isKathy && c?.status === 'configuring') return false;
             return true;
           });
-          // Se preserva intacto el array limpio sin alterar contadores de producción
           window.localStorage.setItem(key, JSON.stringify(cleaned));
         } else if (parsed && typeof parsed === 'object') {
           const id = parsed.id || '';
-          const isKathy = parsed.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
-          if (FAKE_MOCK_CAMPAIGN_IDS.includes(id) || (!isKathy && parsed.status === 'configuring')) {
+          if (FAKE_MOCK_CAMPAIGN_IDS.includes(id)) {
             window.localStorage.removeItem(key);
           }
         }
@@ -94,9 +91,6 @@ export function purgeFakeCampaignsFromStorage(): void {
  */
 export function saveCampaignToVault(campaign: Campaign): void {
   if (!isBrowser() || !campaign || !campaign.id || isFakeCampaign(campaign)) return;
-  const isKathy = campaign.creatorEmail?.toLowerCase() === 'kathyseba2020@gmail.com';
-  // Bloqueo estricto: Campañas no pagadas (status 'configuring') de usuarios comunes NUNCA se guardan en el baúl
-  if (!isKathy && campaign.status === 'configuring') return;
 
   try {
     // 1. Guardar en Master Vault
@@ -189,9 +183,7 @@ export function getVaultCampaigns(userEmail?: string, userId?: string, isSuperAd
   // Helper para evaluar si la campaña pertenece al usuario
   const belongsToUser = (c: Campaign): boolean => {
     if (!c || !c.id || isFakeCampaign(c)) return false;
-    if (isSuperAdmin) return true; // Super admin (kathyseba2020@gmail.com) ve todas las campañas reales
-    // Campañas impagas (status 'configuring') de usuarios comunes NUNCA deben mostrarse
-    if (c.status === 'configuring') return false;
+    if (isSuperAdmin) return true; // Super admin ve todas las campañas reales
     const cEmail = (c.creatorEmail || '').toLowerCase().trim();
     const cUser = (c.userId || '').trim().toLowerCase();
 
@@ -329,11 +321,12 @@ export async function syncCampaignToBackend(campaign: Campaign): Promise<boolean
 /**
  * Eliminación permanente de campaña en todas las capas del baúl local (Exclusivo Super Admin)
  */
-export function deleteCampaignFromVault(id: string, requesterEmail?: string, confirmDelete?: boolean): void {
+export function deleteCampaignFromVault(id: string, requesterEmail?: string, confirmDelete?: boolean, doubleConfirmed?: boolean): void {
   if (!isBrowser() || !id) return;
   const cleanEmail = (requesterEmail || '').toLowerCase().trim();
-  if (cleanEmail !== 'kathyseba2020@gmail.com' || confirmDelete !== true) {
-    console.warn(`[SECURITY SHIELD] Borrado en Vault local denegado para campaña ${id}. Exclusivo Administradora.`);
+  const isAdmin = ADMIN_EMAILS.some((adm) => adm.toLowerCase() === cleanEmail);
+  if (!isAdmin || confirmDelete !== true || doubleConfirmed !== true) {
+    console.warn(`[SECURITY SHIELD] Borrado en Vault local denegado para campaña ${id}. Se requiere autorización de Administrador y Doble Confirmación.`);
     return;
   }
   try {

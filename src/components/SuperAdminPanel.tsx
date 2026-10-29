@@ -415,26 +415,48 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
     }
   };
 
-  // Super Admin Campaign Deletion Protocol (Exclusivo Kathy Seba)
+  // Super Admin Campaign Deletion Protocol con Doble Confirmación Blindada Obligatoria
   const handleDeleteCampaign = async (campaignId: string, campaignName: string) => {
-    if (!window.confirm(`¿Confirmas eliminar permanentemente la campaña "${campaignName}" (${campaignId})?\nEsta acción es exclusiva de Super Admin y purgará los registros de la base de datos.`)) {
+    const adminEmail = currentUser?.email || 'kase.marketing.digital@gmail.com';
+    
+    // 1. PRIMERA CONFIRMACIÓN MANUAL
+    const firstConfirm = window.confirm(
+      `⚠️ [PASO 1/2] PRIMERA CONFIRMACIÓN DE SEGURIDAD:\n` +
+      `¿Deseas iniciar la solicitud de eliminación de la campaña "${campaignName}" (${campaignId})?\n` +
+      `Esta acción purgará los registros de forma definitiva.`
+    );
+    if (!firstConfirm) return;
+
+    // 2. SEGUNDA CONFIRMACIÓN MANUAL ESTRICTA
+    const secondConfirm = window.prompt(
+      `🛑 [PASO 2/2] SEGUNDA CONFIRMACIÓN OBLIGATORIA:\n` +
+      `Para blindar completamente contra modificaciones no autorizadas o accidentales de IA,\n` +
+      `escribe exactamente la palabra CONFIRMAR para autorizar el borrado definitivo:`
+    );
+    if (secondConfirm?.trim().toUpperCase() !== 'CONFIRMAR') {
+      alert('Operación cancelada: No se completó la segunda confirmación obligatoria. La campaña permanece 100% protegida.');
       return;
     }
+
     setIsDeletingCampaign(true);
     try {
-      const res = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}?adminEmail=kathyseba2020@gmail.com&confirm_delete=true`, {
-        method: 'DELETE',
-        headers: { 
-          'x-admin-email': 'kathyseba2020@gmail.com',
-          'x-confirm-delete': 'true',
-        },
-      });
+      const res = await fetch(
+        `/api/campaigns/${encodeURIComponent(campaignId)}?adminEmail=${encodeURIComponent(adminEmail)}&confirm_delete=true&double_confirm=true`,
+        {
+          method: 'DELETE',
+          headers: { 
+            'x-admin-email': adminEmail,
+            'x-confirm-delete': 'true',
+            'x-double-confirm': 'true',
+          },
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar campaña');
 
-      deleteCampaignFromVault(campaignId, 'kathyseba2020@gmail.com', true);
+      deleteCampaignFromVault(campaignId, adminEmail, true, true);
       setSelectedCampaignIds((prev) => prev.filter((id) => id !== campaignId));
-      setDeleteSuccessMessage(`Campaña "${campaignName}" eliminada correctamente.`);
+      setDeleteSuccessMessage(`Campaña "${campaignName}" eliminada tras doble confirmación.`);
       setTimeout(() => setDeleteSuccessMessage(null), 4000);
       onRefreshCampaigns();
       await fetchAdminData();
@@ -447,30 +469,48 @@ export const SuperAdminPanel: React.FC<SuperAdminPanelProps> = ({
 
   const handleDeleteSelectedCampaigns = async () => {
     if (selectedCampaignIds.length === 0) return;
-    if (!window.confirm(`¿Confirmas eliminar permanentemente las ${selectedCampaignIds.length} campañas seleccionadas?\nEsta acción es exclusiva de Super Admin y no se puede deshacer.`)) {
+    const adminEmail = currentUser?.email || 'kase.marketing.digital@gmail.com';
+
+    // 1. PRIMERA CONFIRMACIÓN MANUAL POR LOTES
+    const firstConfirm = window.confirm(
+      `⚠️ [PASO 1/2] PRIMERA CONFIRMACIÓN DE SEGURIDAD:\n` +
+      `¿Deseas iniciar la eliminación por lotes de las ${selectedCampaignIds.length} campañas seleccionadas?`
+    );
+    if (!firstConfirm) return;
+
+    // 2. SEGUNDA CONFIRMACIÓN MANUAL POR LOTES
+    const secondConfirm = window.prompt(
+      `🛑 [PASO 2/2] SEGUNDA CONFIRMACIÓN OBLIGATORIA:\n` +
+      `Escribe exactamente la palabra CONFIRMAR para autorizar la eliminación definitiva de ${selectedCampaignIds.length} campañas:`
+    );
+    if (secondConfirm?.trim().toUpperCase() !== 'CONFIRMAR') {
+      alert('Operación cancelada: No se completó la segunda confirmación obligatoria. Las campañas están a salvo.');
       return;
     }
+
     setIsDeletingCampaign(true);
     try {
       const res = await fetch('/api/admin/delete-campaigns', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-email': 'kathyseba2020@gmail.com',
+          'x-admin-email': adminEmail,
           'x-confirm-delete': 'true',
+          'x-double-confirm': 'true',
         },
         body: JSON.stringify({
-          adminEmail: 'kathyseba2020@gmail.com',
+          adminEmail,
           confirm_delete: true,
+          double_confirm: true,
           campaignIds: selectedCampaignIds,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al eliminar campañas');
 
-      selectedCampaignIds.forEach((id) => deleteCampaignFromVault(id));
+      selectedCampaignIds.forEach((id) => deleteCampaignFromVault(id, adminEmail, true, true));
       setSelectedCampaignIds([]);
-      setDeleteSuccessMessage(`${data.count || selectedCampaignIds.length} campañas eliminadas correctamente.`);
+      setDeleteSuccessMessage(`${data.count || selectedCampaignIds.length} campañas eliminadas tras doble confirmación.`);
       setTimeout(() => setDeleteSuccessMessage(null), 4000);
       onRefreshCampaigns();
       await fetchAdminData();

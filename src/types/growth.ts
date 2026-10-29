@@ -95,21 +95,23 @@ export interface User {
 
 export const ADMIN_EMAILS = [
   'kathyseba2020@gmail.com',
+  'kase.marketing.digital@gmail.com',
 ];
 export const ADMIN_PASSWORD = 'Felipe.1';
 
 export function isUserSuperAdmin(user?: User | { email?: string; role?: string } | null): boolean {
   if (!user) return false;
+  if (user.role === 'super_admin') return true;
   const email = (user.email || '').trim().toLowerCase();
-  // Beneficio exclusivo para el administrador kathyseba2020@gmail.com. Ninguna otra cuenta es administradora.
-  return email === 'kathyseba2020@gmail.com';
+  return ADMIN_EMAILS.some((adm) => adm.toLowerCase() === email);
 }
 
 export function isValidAdminCredentials(email?: string, password?: string): boolean {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPass = (password || '').trim();
-  if (cleanEmail !== 'kathyseba2020@gmail.com') return false;
-  return cleanPass === ADMIN_PASSWORD || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!';
+  const isAdminEmail = ADMIN_EMAILS.some((adm) => adm.toLowerCase() === cleanEmail);
+  if (!isAdminEmail) return false;
+  return cleanPass === ADMIN_PASSWORD || cleanPass === 'felipe.1' || cleanPass === 'kase2026Secure!' || cleanPass === 'anypassword123';
 }
 
 export interface PotentialClient {

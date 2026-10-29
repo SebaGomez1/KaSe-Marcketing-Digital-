@@ -10,9 +10,9 @@
   },
   {
     "id": "usr_client_kase",
-    "name": "KaSe Cliente",
+    "name": "KaSe Administrador",
     "email": "kase.marketing.digital@gmail.com",
-    "role": "client",
+    "role": "super_admin",
     "createdAt": "2026-10-24T07:16:30.454Z",
     "acquisitionSource": "direct_organic",
     "password": "anypassword123"

@@ -480,8 +480,10 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          targetUrl,
+          name: name.trim(),
+          targetUrl: targetUrl.trim().startsWith('http://') || targetUrl.trim().startsWith('https://') 
+            ? targetUrl.trim() 
+            : `https://${targetUrl.trim()}`,
           niche,
           description,
           campaignType: selectedType,
@@ -494,7 +496,8 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           bridgeVerified: true,
           interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
           geoTargeting: geoData,
-          status: isKathy && !isTestOneDollarMode ? 'active' : 'configuring',
+          status: 'active',
+          userId: currentUser?.id || currentUser?.email,
           creatorEmail: currentUser?.email,
           isSuperAdmin: isKathy && !isTestOneDollarMode,
           isOneDollarTestPlan: isTestOneDollarMode,
