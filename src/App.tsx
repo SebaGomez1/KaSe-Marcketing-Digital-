@@ -291,8 +291,10 @@ export default function App() {
         const res = await fetch(`/api/campaigns${queryParam}`);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.campaigns)) {
-            serverCampaigns = data.campaigns.filter((c: Campaign) => !isFakeCampaign(c));
+          if (Array.isArray(data)) {
+            serverCampaigns = data.filter((c: any) => !isFakeCampaign(c));
+          } else if (Array.isArray(data?.campaigns)) {
+            serverCampaigns = data.campaigns.filter((c: any) => !isFakeCampaign(c));
           }
         }
       } catch (netErr) {
