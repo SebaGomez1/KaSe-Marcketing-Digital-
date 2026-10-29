@@ -14,6 +14,66 @@
       "destination": "/api/cron"
     },
     {
+      "source": "/api/bridge/(.*)",
+      "destination": "/api/cron?action=bridge_track&endpoint=$1"
+    },
+    {
+      "source": "/r/hero",
+      "destination": "/api/cron?id=hero&type=hero"
+    },
+    {
+      "source": "/puente/hero",
+      "destination": "/api/cron?id=hero&type=hero"
+    },
+    {
+      "source": "/r/registros/(.*)",
+      "destination": "/api/cron?id=$1&type=user_registrations"
+    },
+    {
+      "source": "/puente/registros/(.*)",
+      "destination": "/api/cron?id=$1&type=user_registrations"
+    },
+    {
+      "source": "/r/ventas/(.*)",
+      "destination": "/api/cron?id=$1&type=plan_sales"
+    },
+    {
+      "source": "/puente/ventas/(.*)",
+      "destination": "/api/cron?id=$1&type=plan_sales"
+    },
+    {
+      "source": "/r/seguidores/(.*)",
+      "destination": "/api/cron?id=$1&type=social_followers"
+    },
+    {
+      "source": "/puente/seguidores/(.*)",
+      "destination": "/api/cron?id=$1&type=social_followers"
+    },
+    {
+      "source": "/r/likes/(.*)",
+      "destination": "/api/cron?id=$1&type=likes_engagement"
+    },
+    {
+      "source": "/puente/likes/(.*)",
+      "destination": "/api/cron?id=$1&type=likes_engagement"
+    },
+    {
+      "source": "/r/comentarios/(.*)",
+      "destination": "/api/cron?id=$1&type=comments_reviews"
+    },
+    {
+      "source": "/puente/comentarios/(.*)",
+      "destination": "/api/cron?id=$1&type=comments_reviews"
+    },
+    {
+      "source": "/r/youtube/(.*)",
+      "destination": "/api/cron?id=$1&type=youtube_growth"
+    },
+    {
+      "source": "/puente/youtube/(.*)",
+      "destination": "/api/cron?id=$1&type=youtube_growth"
+    },
+    {
       "source": "/api/cron/puente/(.*)",
       "destination": "/api/cron?id=$1&type=bridge"
     },
@@ -47,4 +107,5 @@
     }
   ]
 }
+
 

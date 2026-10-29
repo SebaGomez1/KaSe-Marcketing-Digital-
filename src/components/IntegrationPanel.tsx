@@ -12,6 +12,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Campaign } from '../types/growth';
+import { getBridgeUrl, BRIDGE_ROUTE_CONFIGS } from '../lib/bridgeRouter';
+
 
 interface IntegrationPanelProps {
   campaign: Campaign;
@@ -34,7 +36,8 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({
   const [webhookResult, setWebhookResult] = useState<any>(null);
 
   const baseUrl = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
-  const bridgeUrl = `${baseUrl}/r/${campaign.id}`;
+  const bridgeUrl = getBridgeUrl(campaign.id, campaign.campaignType, baseUrl);
+  const bridgeConfig = BRIDGE_ROUTE_CONFIGS[campaign.campaignType || 'user_registrations'];
   const webhookUrl = `${baseUrl}/api/webhook/conversion/${campaign.id}`;
 
   const curlSnippet = `curl -X POST "${webhookUrl}" \\
@@ -168,9 +171,13 @@ const trackConversion = async (userData) => {
           </div>
 
           <div className="space-y-3">
-            <label className="block text-xs font-bold text-white">
-              Tu Enlace del Enrutador Puente Autónomo:
+            <label className="block text-xs font-bold text-white flex items-center justify-between">
+              <span>{bridgeConfig?.label || 'Tu Enlace del Enrutador Puente Autónomo'}:</span>
+              <span className="text-[11px] font-mono text-emerald-400 bg-neutral-900 px-2 py-0.5 rounded border border-neutral-800">
+                {bridgeConfig?.badge || '/r/:id'}
+              </span>
             </label>
+
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 type="text"

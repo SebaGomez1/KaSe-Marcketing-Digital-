@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { Campaign, User, isUserSuperAdmin } from '../types/growth';
 import { useLiveRelativeTime } from '../utils/timeFormat';
+import { getBridgeUrl, BRIDGE_ROUTE_CONFIGS } from '../lib/bridgeRouter';
+
 
 const CampaignLiveTime: React.FC<{ createdAt?: string }> = ({ createdAt }) => {
   const liveTime = useLiveRelativeTime(createdAt, 1000);
@@ -412,18 +414,23 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                         <div className="space-y-2 text-xs text-neutral-300">
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-neutral-500 text-[11px] font-medium">Enlace Puente Aislado:</span>
+                              <span className="text-neutral-500 text-[11px] font-medium flex items-center gap-1.5">
+                                <span>{BRIDGE_ROUTE_CONFIGS[camp.campaignType || 'user_registrations']?.label || 'Enlace Puente Aislado'}:</span>
+                                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.2 rounded border border-emerald-500/20 font-mono">
+                                  {BRIDGE_ROUTE_CONFIGS[camp.campaignType || 'user_registrations']?.badge || '/r/:id'}
+                                </span>
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => {
                                   const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
-                                  const bridgeUrl = `${origin}/r/${camp.id}`;
+                                  const bridgeUrl = getBridgeUrl(camp.id, camp.campaignType, origin);
                                   navigator.clipboard.writeText(bridgeUrl);
                                   setCopiedBridgeId(camp.id);
                                   setTimeout(() => setCopiedBridgeId(null), 2000);
                                 }}
                                 className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 cursor-pointer bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 px-2 py-0.5 rounded transition-all"
-                                title={`Copiar enlace puente exclusivo para ${camp.id}`}
+                                title={`Copiar enlace puente exclusivo (${camp.campaignType}) para ${camp.id}`}
                               >
                                 {copiedBridgeId === camp.id ? (
                                   <>
@@ -439,9 +446,10 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                               </button>
                             </div>
                             <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-1 rounded border border-neutral-800 block truncate select-all">
-                              {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${camp.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${camp.id}`}
+                              {getBridgeUrl(camp.id, camp.campaignType)}
                             </code>
                           </div>
+
 
                           <div>
                             <span className="text-neutral-500 text-[11px] block">Tráfico Interceptado (Clics al Puente):</span>

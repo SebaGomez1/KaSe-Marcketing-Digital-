@@ -1849,6 +1849,64 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
 };
 
 // Rutas completas del Enrutador Puente (Compatibilidad absoluta con URLs amigables y rewrites)
+const handleHeroBridgeRoute = async (req: Request, res: Response): Promise<void> => {
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip || '185.12.24.1';
+  const ipMasked = clientIp ? clientIp.replace(/:\d+$/, ':***') : '185.12.***.***';
+  const rawReferer = (req.headers['referer'] || (req.query.ref as string) || '') as string;
+  const nowIso = new Date().toISOString();
+  const utmParams = {
+    utm_source: (req.query.utm_source as string) || undefined,
+    utm_medium: (req.query.utm_medium as string) || undefined,
+    utm_campaign: (req.query.utm_campaign as string) || undefined,
+  };
+  const origen_motor = identifySearchEngine(rawReferer);
+  const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
+
+  recordAuditLog({
+    id: `log_hero_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    timestamp: nowIso,
+    fecha_acceso: nowIso,
+    origen_motor,
+    plataforma_atraccion,
+    level: 'INFO',
+    module: 'ENRUTADOR_PUENTE_HERO',
+    message: `⚡ Visita orgánica canalizada por Enrutador Puente Hero Landing. Motor: ${origen_motor}. Plataforma: ${plataforma_atraccion}. IP: ${ipMasked}. (Aislada: 0 registros de usuarios).`,
+    user_id: 'visitante_portal',
+    client_ip: clientIp,
+    metadata: { origen_motor, plataforma_atraccion, referrer: rawReferer, utmParams },
+  });
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, max-age=0');
+  res.redirect(307, '/');
+};
+
+app.get(['/r/hero', '/puente/hero'], handleHeroBridgeRoute);
+
+app.get(['/r/registros/:campaignId', '/puente/registros/:campaignId'], (req, res) => {
+  req.query.type = 'user_registrations';
+  handleBridgeRoute(req, res);
+});
+app.get(['/r/ventas/:campaignId', '/puente/ventas/:campaignId'], (req, res) => {
+  req.query.type = 'plan_sales';
+  handleBridgeRoute(req, res);
+});
+app.get(['/r/seguidores/:campaignId', '/puente/seguidores/:campaignId'], (req, res) => {
+  req.query.type = 'social_followers';
+  handleBridgeRoute(req, res);
+});
+app.get(['/r/likes/:campaignId', '/puente/likes/:campaignId'], (req, res) => {
+  req.query.type = 'likes_engagement';
+  handleBridgeRoute(req, res);
+});
+app.get(['/r/comentarios/:campaignId', '/puente/comentarios/:campaignId'], (req, res) => {
+  req.query.type = 'comments_reviews';
+  handleBridgeRoute(req, res);
+});
+app.get(['/r/youtube/:campaignId', '/puente/youtube/:campaignId'], (req, res) => {
+  req.query.type = 'youtube_growth';
+  handleBridgeRoute(req, res);
+});
+
 app.get('/r/:campaignId', handleBridgeRoute);
 app.get('/r/:id', handleBridgeRoute);
 app.get('/puente/:campaignId', handleBridgeRoute);
@@ -1859,6 +1917,7 @@ app.get('/api/cron/r/:campaignId', handleBridgeRoute);
 app.get('/api/cron/r/:id', handleBridgeRoute);
 app.get('/api/cron/puente/:campaignId', handleBridgeRoute);
 app.get('/api/cron/puente/:id', handleBridgeRoute);
+
 
 
 // Endpoint API para seguimiento de clics desde el cliente SPA

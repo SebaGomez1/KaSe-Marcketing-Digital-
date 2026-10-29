@@ -216,7 +216,35 @@ export default function App() {
       const pathname = window.location.pathname;
       const isBridge = pathname.startsWith('/r/') || pathname.startsWith('/puente/');
       if (isBridge) {
-        const campaignId = pathname.replace(/^\/(?:r|puente)\//, '').split('/')[0].trim();
+        const parts = pathname.replace(/^\/(?:r|puente)\//, '').split('/').filter(Boolean);
+        const isHeroRoute = parts[0] === 'hero';
+
+        if (isHeroRoute) {
+          // Tráfico orgánico de Hero: NUNCA cuenta como registro de usuario en campañas
+          fetch('/api/bridge/track-hero', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referrer: document.referrer || '',
+              fullUrl: window.location.href,
+              isHeroBridge: true,
+            }),
+          }).catch(() => {});
+          return;
+        }
+
+        // Si es una ruta tipificada (/r/registros/:id, /r/ventas/:id, etc.) o genérica (/r/:id)
+        const typeSlugs = ['registros', 'ventas', 'seguidores', 'likes', 'comentarios', 'youtube'];
+        let campaignId = '';
+        let campaignType = 'user_registrations';
+
+        if (typeSlugs.includes(parts[0])) {
+          campaignType = parts[0];
+          campaignId = parts[1] || '';
+        } else {
+          campaignId = parts[0] || '';
+        }
+
         if (campaignId) {
           const search = window.location.search || '';
           fetch(`/api/bridge/track-click${search}`, {
@@ -224,6 +252,7 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               campaignId,
+              campaignType,
               referrer: document.referrer || '',
               fullUrl: window.location.href,
             }),

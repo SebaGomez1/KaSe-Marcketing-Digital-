@@ -20,6 +20,8 @@ import {
   Search
 } from 'lucide-react';
 import { Campaign, CampaignType, CAMPAIGN_TYPES_CATALOG, GeoTargeting, User, EngineValidationResult, isUserSuperAdmin } from '../types/growth';
+import { getBridgeUrl, BRIDGE_ROUTE_CONFIGS } from '../lib/bridgeRouter';
+
 import { 
   GEOGRAPHICAL_DATABASE, 
   WORLD_COUNTRIES_CATALOG, 
@@ -194,13 +196,13 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                   type="button"
                   onClick={() => {
                     const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
-                    const bridgeUrl = `${origin}/r/${adminSuccessCamp.id}`;
+                    const bridgeUrl = getBridgeUrl(adminSuccessCamp.id, adminSuccessCamp.campaignType, origin);
                     navigator.clipboard.writeText(bridgeUrl);
                     setCopiedSuccessBridge(true);
                     setTimeout(() => setCopiedSuccessBridge(false), 2000);
                   }}
                   className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 px-2 py-0.5 rounded transition-colors"
-                  title={`Copiar enlace puente para ${adminSuccessCamp.id}`}
+                  title={`Copiar enlace puente exclusivo para ${adminSuccessCamp.id}`}
                 >
                   {copiedSuccessBridge ? (
                     <>
@@ -216,7 +218,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
                 </button>
               </div>
               <code className="block font-mono text-[11px] text-emerald-300 bg-neutral-950 px-2.5 py-1.5 rounded border border-neutral-800 truncate select-all">
-                {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${adminSuccessCamp.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${adminSuccessCamp.id}`}
+                {getBridgeUrl(adminSuccessCamp.id, adminSuccessCamp.campaignType)}
               </code>
             </div>
           </div>
@@ -1074,18 +1076,18 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
                 <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 space-y-2 text-[11px] text-neutral-300">
                   <p className="leading-relaxed">
-                    ✨ <strong>Sin instalación manual de scripts:</strong> Esta campaña canalizará todo el tráfico derivado por los 8 motores a través del <strong>Enrutador Puente Inteligente (<code className="text-emerald-400">/r/{campaign?.id || ':id'}</code>)</strong>, interceptando y contabilizando cada visita y compra hacia <strong className="text-neutral-200 font-mono">{targetUrl}</strong> de forma 100% transparente y automática.
+                    ✨ <strong>Sin instalación manual de scripts:</strong> Esta campaña canalizará todo el tráfico derivado por los 8 motores a través del <strong>{BRIDGE_ROUTE_CONFIGS[selectedType]?.label || 'Enrutador Puente'} (<code className="text-emerald-400">{BRIDGE_ROUTE_CONFIGS[selectedType]?.badge.replace(':id', campaign?.id || ':id')}</code>)</strong>, interceptando y contabilizando cada visita hacia <strong className="text-neutral-200 font-mono">{targetUrl}</strong> de forma 100% transparente y automática.
                   </p>
                   {campaign?.id && (
                     <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between gap-2">
                       <code className="font-mono text-[11px] text-emerald-300 bg-neutral-900 px-2 py-1 rounded border border-neutral-800 truncate select-all flex-1">
-                        {typeof window !== 'undefined' && window.location.origin ? `${window.location.origin}/r/${campaign.id}` : `https://ka-se-marcketing-digital.vercel.app/r/${campaign.id}`}
+                        {getBridgeUrl(campaign.id, selectedType)}
                       </code>
                       <button
                         type="button"
                         onClick={() => {
                           const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://ka-se-marcketing-digital.vercel.app';
-                          const bridgeUrl = `${origin}/r/${campaign.id}`;
+                          const bridgeUrl = getBridgeUrl(campaign.id, selectedType, origin);
                           navigator.clipboard.writeText(bridgeUrl);
                           setCopiedFormBridge(true);
                           setTimeout(() => setCopiedFormBridge(false), 2000);
