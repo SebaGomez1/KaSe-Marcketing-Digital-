@@ -85,13 +85,16 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
-    if (!activeCampaignId) return;
+    // Seguridad estricta: Si no hay ID activo, tomamos por defecto la primera campaña de la lista
+    const currentId = activeCampaignId || (campaigns && campaigns[0]?.id);
+    if (!currentId) return;
+
     const fetchLogs = async () => {
       setLogsLoading(true);
       const { data, error } = await supabase
         .from('system_audit_logs')
         .select('*')
-        .eq('campaign_id', activeCampaignId)
+        .eq('campaign_id', currentId)
         .order('timestamp', { ascending: false });
       if (!error && data) setLogs(data);
       setLogsLoading(false);
@@ -99,12 +102,15 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
     fetchLogs();
 
     const channel = supabase
-      .channel(`realtime-campaign-logs-${activeCampaignId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_audit_logs', filter: `campaign_id=eq.${activeCampaignId}` }, 
+      .channel(`realtime-campaign-logs-${currentId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_audit_logs', filter: `campaign_id=eq.${currentId}` }, 
         (payload) => { setLogs((prev) => [payload.new as AuditLog, ...prev]); }
       ).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [activeCampaignId]);
+  }, [activeCampaignId, campaigns]);
+
+  const publicacionesLinks = logs ? logs.filter(log => log.publication_url || (log.message && log.message.includes('http'))) : [];
+
 
   const publicacionesLinks = logs.filter(log => log.publication_url || (log.message && log.message.includes('http')));
 
@@ -570,7 +576,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
         className={`pb-2 text-xs font-bold uppercase flex items-center gap-1.5 transition-colors ${activeTab === 'publicaciones' ? 'border-b-2 border-emerald-400 text-emerald-400' : 'text-neutral-400 hover:text-neutral-200'}`}
       >
         🔗 Enlaces Verificables
-        {publicacionesLinks.length > 0 && (
+        {publicacionesLinks && publicacionesLinks.length > 0 && (
           <span className="bg-emerald-500 text-black text-[10px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
             {publicacionesLinks.length}
           </span>
@@ -582,7 +588,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
       <div className="space-y-3">
         {logsLoading ? (
           <div className="text-xs text-neutral-500 font-mono py-4">Sincronizando con Supabase...</div>
-        ) : logs.length === 0 ? (
+        ) : !logs || logs.length === 0 ? (
           <div className="text-xs text-neutral-500 font-mono py-4">Esperando acciones en tiempo real de los motores...</div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -591,8 +597,8 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
               return (
                 <div key={log.id} className="p-3 bg-black/40 border border-neutral-800 rounded-lg">
                   <div className="flex justify-between text-[10px] text-neutral-500 mb-1">
-                    <span className="text-emerald-400 font-bold uppercase tracking-wider">{log.module}</span>
-                    <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                    <span className="text-emerald-400 font-bold uppercase tracking-wider">{log.module || 'MOTOR'}</span>
+                    <span>{log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''}</span>
                   </div>
                   {isCalentamiento ? (
                     <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-200 mt-1">
@@ -612,7 +618,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
     {activeTab === 'publicaciones' && (
       <div className="space-y-3">
-        {publicacionesLinks.length === 0 ? (
+        {!publicacionesLinks || publicacionesLinks.length === 0 ? (
           <div className="text-xs text-amber-400 font-mono p-4 bg-amber-500/5 rounded-lg border border-amber-500/10">
             Fase de calentamiento activa. Los enlaces verificables aparecerán aquí automáticamente en tiempo real en cuanto los motores completen los primeros posteos.
           </div>
@@ -645,6 +651,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
       </div>
     )}
   </div>
+
 
                         
                         <button
