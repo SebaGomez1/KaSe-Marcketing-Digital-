@@ -112,7 +112,6 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   const publicacionesLinks = logs ? logs.filter(log => log.publication_url || (log.message && log.message.includes('http'))) : [];
 
 
-  const publicacionesLinks = logs.filter(log => log.publication_url || (log.message && log.message.includes('http')));
 
 
   const toggleExpand = (id: string) => {
