@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Inicialización ultra-segura tolerante a variables de entorno ausentes en el cliente
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Solo creamos la instancia si las variables existen para evitar congelar la pantalla
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 interface AuditLog {
   id: string;
@@ -15,6 +18,7 @@ interface AuditLog {
   message: string;
   publication_url?: string;
 }
+
 
 import { 
   FolderKanban, 
@@ -84,10 +88,11 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   const [activeTab, setActiveTab] = useState<'motores' | 'publicaciones'>('motores');
   const [logsLoading, setLogsLoading] = useState(false);
 
-  useEffect(() => {
-    // Seguridad estricta: Si no hay ID activo, tomamos por defecto la primera campaña de la lista
-    const currentId = activeCampaignId || (campaigns && campaigns[0]?.id);
-    if (!currentId) return;
+    useEffect(() => {
+    // Seguridad estricta: Si no hay ID activo, tomamos el ID de la primera campaña del array de forma correcta
+    const currentId = activeCampaignId || (campaigns && campaigns.length > 0 ? campaigns[0].id : null);
+    if (!currentId || !supabase) return;
+
 
     const fetchLogs = async () => {
       setLogsLoading(true);
