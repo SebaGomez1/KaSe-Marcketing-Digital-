@@ -13,7 +13,7 @@ interface AuditLog {
   level: string;
   module: string;
   message: string;
-  publication_url?: string; // Campo para los links reales de redes sociales
+  publication_url?: string; // Enlaces directos cargados por el motor
 }
 
 interface ActiveCampaignsSectionProps {
@@ -67,7 +67,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({ 
     };
   }, [campaignId]);
 
-  // Filtrar logs que contienen links reales de publicaciones
+  // Filtrar registros que contienen enlaces URL válidos para la auditoría del cliente
   const publicacionesLinks = logs.filter(log => log.publication_url || (log.message && log.message.includes('http')));
 
   // Función interna para renderizar explicaciones inteligentes de calentamiento o retraso
@@ -98,7 +98,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({ 
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 text-white w-full max-w-5xl mx-auto shadow-2xl">
-      {/* Sistema de Navegación del Flujo Transparente */}
+      {/* Sistema de Navigation del Flujo Transparente */}
       <div className="flex border-b border-gray-800 mb-6 gap-4">
         <button
           onClick={() => setActiveTab('motores')}
@@ -187,9 +187,9 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({ 
           ) : (
             <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-2">
               {publicacionesLinks.map((pub) => {
-                // Extraer el link dinámico si viene embebido en el mensaje o en su columna dedicada
-                const urlMatch = pub.publication_url || (pub.message && pub.message.match(/https?:\/\/[^\s]+/)?.[0]);
-                const finalUrl = urlMatch ? urlMatch.replace(/[.,)]+$/, '') : '#';
+                // Extracción segura de la URL del mensaje o columna dedicada
+                const extractedUrl = pub.publication_url || (pub.message ? pub.message.match(/https?:\/\/[^\s]+/)?.[0] : null);
+                const finalUrl = extractedUrl ? extractedUrl.replace(/[.,)]+$/, '') : '#';
                 
                 // Detección automática de plataforma para la UI limpia
                 let plataforma = 'Canal Digital';
