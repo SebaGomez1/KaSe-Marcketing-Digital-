@@ -86,7 +86,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   // Nuevo estado para las campañas reales leídas en caliente desde la nube
   const [dbCampaigns, setDbCampaigns] = useState<Campaign[]>([]);
 
-  // 1. Sincronización indestructible: Traer campañas desde Supabase filtradas estrictamente por el Gmail del usuario
+  // 1. Sincronización indestructible: Traer campaigns desde Supabase por Gmail
   useEffect(() => {
     if (!currentUser?.email || !supabase) return;
 
@@ -104,7 +104,6 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
     fetchCloudCampaigns();
 
-    // Escucha en tiempo real de la tabla campaigns para reflejar cambios instantáneos entre dispositivos
     const campaignChannel = supabase
       .channel(`realtime-cloud-campaigns-${currentUser.email}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'campaigns', filter: `user_email=eq.${currentUser.email}` }, 
@@ -116,6 +115,35 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
     };
   }, [currentUser?.email]);
 
+  // 2. Carga en vivo y realtime de los logs de la campaña activa
+  useEffect(() => {
+    const currentId = activeCampaignId || (dbCampaigns && dbCampaigns.length > 0 ? dbCampaigns[0].id : null);
+    if (!currentId || !supabase) return;
+
+    const fetchLogs = async () => {
+      setLogsLoading(true);
+      const { data, error } = await supabase
+        .from('system_audit_logs')
+        .select('*')
+        .eq('campaign_id', currentId)
+        .order('timestamp', { ascending: false });
+      if (!error && data) setLogs(data);
+      setLogsLoading(false);
+    };
+    fetchLogs();
+
+    const channel = supabase
+      .channel(`realtime-campaign-logs-${currentId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_audit_logs', filter: `campaign_id=eq.${currentId}` }, 
+        (payload) => { setLogs((prev) => [payload.new as AuditLog, ...prev]); }
+      ).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeCampaignId, dbCampaigns]);
+
+  // Forzamos el uso de los datos de la nube
+  const campaigns = dbCampaigns;
+
+  
   // 2. Carga en vivo y realtime de los logs minuto a minuto de la campaña activa
   useEffect(() => {
     const currentId = activeCampaignId || (dbCampaigns && dbCampaigns.length > 0 ? dbCampaigns[0].id : null);
