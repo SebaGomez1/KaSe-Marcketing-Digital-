@@ -131,28 +131,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     }
   }, [isOpen]);
 
-  // Fetch real Vercel API status for the selected plan
-  useEffect(() => {
-    if (!isOpen) return;
-    let isMounted = true;
-    setIsValidatingEngines(true);
 
-    fetch(`/api/system/validate-engines?plan=${plan}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data.success && data.validation) {
-          setEngineValidation(data.validation);
-        }
-      })
-      .catch((err) => console.warn('Error validating engines:', err))
-      .finally(() => {
-        if (isMounted) setIsValidatingEngines(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [plan, isOpen]);
 
   if (!isOpen) return null;
 
@@ -486,54 +465,70 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     };
 
     const pricing = getDynamicPricing(selectedType, targetQuantity);
-
     try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          targetUrl: targetUrl.trim().startsWith('http://') || targetUrl.trim().startsWith('https://') 
-            ? targetUrl.trim() 
-            : `https://${targetUrl.trim()}`,
-          niche,
-          description,
-          campaignType: selectedType,
-          targetUnitLabel: currentTypeMeta.unitLabelPlural,
-          minPlanPrice: requiresPricingCalibration ? numMin : undefined,
-          maxPlanPrice: requiresPricingCalibration ? numMax : undefined,
-          currency: requiresPricingCalibration ? currency : undefined,
-          targetRegistrations: targetQuantity,
-          plan: pricing.plan,
-          bridgeVerified: true,
-          interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
-          geoTargeting: geoData,
-          status: 'active',
-          userId: currentUser?.id || currentUser?.email,
-          creatorEmail: currentUser?.email,
-          isSuperAdmin: isKathy && !isTestOneDollarMode,
-          isOneDollarTestPlan: isTestOneDollarMode,
-          price: isTestOneDollarMode ? 1 : (isKathy ? 0 : pricing.totalPrice),
-        }),
-      });
+      // Estructuración de la nueva campaña con los datos del formulario reales
+      const generatedId = campaign?.id || `camp_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newCampaignData = {
+        id: generatedId,
+        user_email: currentUser?.email || creatorEmail || '', // Sincronización estricta por Gmail
+        name: name.trim() || `Campaña ${selectedType.replace('_', ' ')}`,
+        campaignType: selectedType,
+        targetUrl: targetUrl.trim(),
+        niche: niche,
+        description: description.trim(),
+        status: 'configuring', // Estado controlado inicial nativo
+        plan: pricing.plan,
+        planName: pricing.planName,
+        targetRegistrations: Number(targetQuantity) || defaultInitialQty,
+        currentRegistrations: 0,
+        total_clicks: 0,
+        destination_url: targetUrl.trim(),
+        is_active: false,
+        country_code: selectedCountryCode,
+        region_name: selectedRegionName,
+        city_name: selectedCityName,
+        min_plan_price: minPlanPrice,
+        max_plan_price: maxPlanPrice,
+        currency: currency,
+        interaction_preferences: interactionPreferences,
+        communication_tone: communicationTone,
+        created_at: campaign?.createdAt || new Date().toISOString()
+      };
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Error al dar de alta la campaña');
+      // Escritura directa síncrona en la nube remota de Supabase sin usar localStorage
+      let dbError = null;
+      if (campaign?.id) {
+        const { error } = await supabase
+          .from('campaigns')
+          .update(newCampaignData)
+          .eq('id', campaign.id);
+        dbError = error;
+      } else {
+        const { error } = await supabase
+          .from('campaigns')
+          .insert([newCampaignData]);
+        dbError = error;
       }
 
-      // REQUERIMIENTO: Certeza de Activación Inicial (Primer Momento)
-      // Al momento exacto en que "cualquier" usuario cree una campaña, se añade al estado inmediatamente
-      // y se muestra la confirmación visual de que la campaña ya está activa y ejecutándose con los 8 motores
-      onCreated(data.campaign);
-      setAdminSuccessCamp(data.campaign);
+      if (dbError) {
+        throw new Error(`Error al persistir en la nube: ${dbError.message}`);
+      }
 
-    } catch (err: any) {
-      setError(err.message || 'Error de conexión');
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Convertimos los datos al formato esperado por el resto del componente padre
+      const formattedCampaign = newCampaignData as unknown as Campaign;
+
+      // Disparador directo hacia la pasarela de Mercado Pago sin bloqueos intermedios
+      if (onRequestCheckout) {
+        setLoading(false);
+        onRequestCheckout(formattedCampaign);
+        return;
+      } else {
+        onCreated(formattedCampaign);
+        onClose();
+        return;
+      }
+
 
   const getCampaignIcon = (typeId: CampaignType) => {
     switch (typeId) {
