@@ -92,13 +92,6 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   const [copiedSuccessBridge, setCopiedSuccessBridge] = useState(false);
   const [copiedFormBridge, setCopiedFormBridge] = useState(false);
 
-  // Forzamos el estado interno verificado para que la UI use tus credenciales de Mercado Pago en Vercel
-  const [engineValidation, setEngineValidation] = useState<EngineValidationResult | null>({
-    areApisConfigured: true,
-    mercadoPagoStatus: 'verified',
-    routingStatus: 'stable'
-  });
-  const [isValidatingEngines, setIsValidatingEngines] = useState<boolean>(false);
 
   // Conditional Fields
   const [interactionPreferences, setInteractionPreferences] = useState('Comentarios positivos y preguntas frecuentes orientadas al nicho');
