@@ -1,25 +1,5 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
-// Inicialización ultra-segura tolerante a variables de entorno ausentes en el cliente
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-// Solo creamos la instancia si las variables existen para evitar congelar la pantalla
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
-
-interface AuditLog {
-  id: string;
-  campaign_id: string;
-  timestamp: string;
-  level: string;
-  module: string;
-  message: string;
-  publication_url?: string;
-}
-
-
 import { 
   FolderKanban, 
   ChevronDown, 
@@ -47,6 +27,22 @@ import { Campaign, User, isUserSuperAdmin } from '../types/growth';
 import { useLiveRelativeTime } from '../utils/timeFormat';
 import { getBridgeUrl, BRIDGE_ROUTE_CONFIGS } from '../lib/bridgeRouter';
 
+// Inicialización ultra-segura tolerante a variables de entorno ausentes en el cliente
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Solo creamos la instancia si las variables existen para evitar congelar la pantalla
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
+interface AuditLog {
+  id: string;
+  campaign_id: string;
+  timestamp: string;
+  level: string;
+  module: string;
+  message: string;
+  publication_url?: string;
+}
 
 const CampaignLiveTime: React.FC<{ createdAt?: string }> = ({ createdAt }) => {
   const liveTime = useLiveRelativeTime(createdAt, 1000);
@@ -59,7 +55,7 @@ const CampaignLiveTime: React.FC<{ createdAt?: string }> = ({ createdAt }) => {
 };
 
 interface ActiveCampaignsSectionProps {
-  campaigns: Campaign[];
+  campaigns: Campaign[]; // Se mantiene por compatibilidad sintáctica con el archivo padre
   activeCampaignId: string;
   onSelectCampaign: (id: string) => void;
   onOpenNewCampaign: () => void;
@@ -69,7 +65,7 @@ interface ActiveCampaignsSectionProps {
 }
 
 export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
-  campaigns,
+  campaigns: localCampaigns, // Ignoramos por completo la lista volátil del localStorage local
   activeCampaignId,
   onSelectCampaign,
   onOpenNewCampaign,
@@ -77,28 +73,59 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   onGoToDashboard,
   currentUser,
 }) => {
-  // Expanded campaign IDs set
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
-    [activeCampaignId || (campaigns[0]?.id || '')]: true,
+    [activeCampaignId || '']: true,
   });
 
   const [filterType, setFilterType] = useState<string>('all');
   const [copiedBridgeId, setCopiedBridgeId] = useState<string | null>(null);
-    const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [activeTab, setActiveTab] = useState<'motores' | 'publicaciones'>('motores');
   const [logsLoading, setLogsLoading] = useState(false);
 
-    useEffect(() => {
-    // Seguridad estricta: Si no hay ID activo, tomamos el ID de la primera campaña del array de forma correcta
-    const currentId = activeCampaignId || (campaigns && campaigns.length > 0 ? campaigns[0].id : null);
-    if (!currentId || !supabase) return;
+  // Nuevo estado para las campañas reales leídas en caliente desde la nube
+  const [dbCampaigns, setDbCampaigns] = useState<Campaign[]>([]);
 
+  // 1. Sincronización indestructible: Traer campañas desde Supabase filtradas estrictamente por el Gmail del usuario
+  useEffect(() => {
+    if (!currentUser?.email || !supabase) return;
+
+    const fetchCloudCampaigns = async () => {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('user_email', currentUser.email)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setDbCampaigns(data as unknown as Campaign[]);
+      }
+    };
+
+    fetchCloudCampaigns();
+
+    // Escucha en tiempo real de la tabla campaigns para reflejar cambios instantáneos entre dispositivos
+    const campaignChannel = supabase
+      .channel(`realtime-cloud-campaigns-${currentUser.email}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaigns', filter: `user_email=eq.${currentUser.email}` }, 
+        () => { fetchCloudCampaigns(); }
+      ).subscribe();
+
+    return () => {
+      supabase.removeChannel(campaignChannel);
+    };
+  }, [currentUser?.email]);
+
+  // 2. Carga en vivo y realtime de los logs minuto a minuto de la campaña activa
+  useEffect(() => {
+    const currentId = activeCampaignId || (dbCampaigns && dbCampaigns.length > 0 ? dbCampaigns[0].id : null);
+    if (!currentId || !supabase) return;
 
     const fetchLogs = async () => {
       setLogsLoading(true);
       const { data, error } = await supabase
         .from('system_audit_logs')
-        .select('*')
+.select('*')
         .eq('campaign_id', currentId)
         .order('timestamp', { ascending: false });
       if (!error && data) setLogs(data);
