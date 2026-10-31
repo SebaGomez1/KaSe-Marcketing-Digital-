@@ -76,6 +76,14 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
 
   const [selectedType, setSelectedType] = useState<CampaignType>(campaign?.campaignType || 'user_registrations');
   const [name, setName] = useState(campaign?.name || '');
+    const [engineValidation, setEngineValidation] = useState<any>({
+    areApisConfigured: true,
+    mercadoPagoStatus: 'verified',
+    routingStatus: 'stable',
+    canProceed: true
+  });
+  const [isValidatingEngines, setIsValidatingEngines] = useState<boolean>(false);
+
   const [targetUrl, setTargetUrl] = useState(campaign?.targetUrl || 'https://');
   const [niche, setNiche] = useState(campaign?.niche || 'Fintech & B2B SaaS');
   const [description, setDescription] = useState(campaign?.description || '');
