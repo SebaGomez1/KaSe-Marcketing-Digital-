@@ -529,6 +529,14 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         return;
       }
 
+          } catch (err: any) {
+      console.error('Error crítico en el guardado remoto:', err);
+      setError(err.message || 'Error interno al procesar el registro en la nube.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const getCampaignIcon = (typeId: CampaignType) => {
     switch (typeId) {
