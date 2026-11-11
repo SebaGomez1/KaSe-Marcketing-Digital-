@@ -1,4 +1,4 @@
-import { Campaign } from '../types/growth';
+import { Campaign } from '../types/growth.js';
 
 export const INITIAL_PRODUCTION_CAMPAIGNS: Campaign[] = [
   {

@@ -3,12 +3,12 @@
  * Ejecución asíncrona no bloqueante de los 8 motores con reporte en tiempo real
  * Diseñado para disparador Cron-Job (cada 15 min) y Certeza de Activación Inicial Inmediata.
  */
-import { Campaign, CampaignSyncLog, ModuleKey } from '../types/growth';
+import { Campaign, CampaignSyncLog, ModuleKey } from '../types/growth.js';
 import { 
   forzarIndexacionGoogleAPI, 
   getTwitterClient, 
   ejecutarOutboundSeguroSocialListening 
-} from './networkEngines';
+} from './networkEngines.js';
 
 export interface SingleEngineSyncResult {
   engineId: ModuleKey;

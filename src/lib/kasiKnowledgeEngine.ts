@@ -1,4 +1,4 @@
-import { Campaign, User } from '../types/growth';
+import { Campaign, User } from '../types/growth.js';
 
 export interface KaSiActionProposal {
   id: string;
