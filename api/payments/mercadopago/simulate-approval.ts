@@ -17,6 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const updatedCampaign = {
+      modules: [],
+      conversations: [],
+      syncLogs: [],
+      leads: [],
+      metrics: [],
+      channels: [],
       ...campaignData,
       id: campaignId,
       status: 'active',
