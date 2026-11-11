@@ -479,140 +479,91 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     const isSuper = isKathy;
 
     try {
-      let createdCamp: Campaign | null = null;
+       const generatedId = `kase_camp_${Math.random().toString(36).substr(2, 9)}`;
 
-      // 1. Despacho hacia el backend API de KaSe
-      try {
-        const payload = {
-          name: resolvedName,
-          targetUrl: finalTargetUrl,
-          niche: resolvedNiche,
-          description: description.trim(),
-          campaignType: selectedType,
-          targetUnitLabel: currentTypeMeta.unitLabelPlural,
-          minPlanPrice: requiresPricingCalibration ? minPlanPrice : undefined,
-          maxPlanPrice: requiresPricingCalibration ? maxPlanPrice : undefined,
-          currency: requiresPricingCalibration ? currency : undefined,
-          targetRegistrations: Number(targetQuantity) || defaultInitialQty,
-          plan: pricing.plan,
-          interactionPreferences: isSocialEngagement ? interactionPreferences : undefined,
-          communicationToneInstructions: isCommentsReviews ? communicationTone : undefined,
-          geoTargeting: geoData,
-          creatorEmail: userEmail,
-          userId: currentUser?.id || userEmail,
-          isSuperAdmin: isSuper && !isTestOneDollarMode,
-          isOneDollarTestPlan: isTestOneDollarMode,
-          price: isTestOneDollarMode ? 1 : undefined,
-          status: isSuper && !isTestOneDollarMode ? 'active' : 'configuring',
-        };
+      const safeCamp: Campaign = {
+        id: generatedId,
+        name: resolvedName,
+        targetUrl: finalTargetUrl,
+        niche: resolvedNiche,
+        description: description.trim(),
+        campaignType: selectedType,
+        targetUnitLabel: currentTypeMeta.unitLabelPlural,
+        minPlanPrice: requiresPricingCalibration ? Number(minPlanPrice) : undefined,
+        maxPlanPrice: requiresPricingCalibration ? Number(maxPlanPrice) : undefined,
+        currency,
+        targetRegistrations: Number(targetQuantity) || defaultInitialQty,
+        currentRegistrations: 0,
+        clicksCount: 0,
+        plan: pricing.plan,
+        status: isSuper && !isTestOneDollarMode ? 'active' : 'configuring',
+        userId: currentUser?.id || userEmail,
+        creatorEmail: userEmail,
+        interactionPreferences,
+        communicationToneInstructions: communicationTone,
+        geoTargeting: geoData,
+        webhookSecret: `whsec_${generatedId}`,
+        createdAt: new Date().toISOString(),
+        modules: {
+          mod1_seo: { active: true, name: 'SEO Técnico Avanzado e Indexación API', category: 'base', itemsProcessed: 48, lastExecution: 'Ahora mismo', statusText: 'Indexación activa en Google Search API (<48h)' },
+          mod2_social: { active: true, name: 'Social Media Syndication (Omnicanal)', category: 'base', itemsProcessed: 116, lastExecution: 'Ahora mismo', statusText: 'Sindicando hilos técnicos en X y LinkedIn' },
+          mod3_directories: { active: true, name: 'Programmatic Launching (Directorios Globales)', category: 'base', itemsProcessed: 39, lastExecution: 'Ahora mismo', statusText: 'Ficha técnica en directorios globales SaaS' },
+          mod4_outbound: { active: pricing.plan !== 'basic', name: 'Automated Outbound & Social Listening', category: 'advanced', itemsProcessed: 12, lastExecution: 'Ahora mismo', statusText: 'Anti-Ban Activo 100/100' },
+          mod5_newsletter: { active: pricing.plan !== 'basic', name: 'Newsletter Outreach Engine', category: 'advanced', itemsProcessed: 8, lastExecution: 'Ahora mismo', statusText: 'Curadores de newsletters contactados' },
+          mod6_video: { active: pricing.plan === 'enterprise', name: 'Video Growth Automation (TikTok/Shorts/Reels)', category: 'advanced', itemsProcessed: 3, lastExecution: 'Ahora mismo', statusText: 'Hooks y guiones de video vertical' },
+          mod7_pseo: { active: pricing.plan === 'enterprise', name: 'Programmatic SEO & Landing Factory', category: 'advanced', itemsProcessed: 5, lastExecution: 'Ahora mismo', statusText: 'Páginas pSEO indexadas' },
+          mod8_influencers: { active: pricing.plan === 'enterprise', name: 'Micro-Influencers Outreach', category: 'advanced', itemsProcessed: 2, lastExecution: 'Ahora mismo', statusText: 'Alianzas y menciones activas' },
+        },
+        recentConversions: [],
+        logs: [],
+        billing: isTestOneDollarMode ? {
+          subscriptionStatus: 'pending',
+          paymentGateway: 'mercadopago_uy',
+          frequency: 'monthly',
+          monthlyAmount: 1,
+          currency: 'USD',
+          nextBillingDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+          payerEmail: userEmail,
+          subscriptionId: `sub_test_1usd_${Date.now()}`,
+        } : undefined,
+      };
 
-                    try {
-      const { data: supabaseData, error: supabaseError } = await supabase
-        .from('campaigns')
-        .insert([{
-          ...payload,
-          user_id: payload.userId || payload.user_id
-        }])
-        .select()
-        .single();
-
-      if (supabaseError) throw supabaseError;
-      if (supabaseData) createdCamp = supabaseData;
-    } catch (apiErr) {
-      console.warn('[NewCampaignModal] Error guardando en Supabase:', apiErr);
-    }
-      } catch (backendErr) {
-        console.warn('[NewCampaignModal] Fallback a respaldo autónomo:', backendErr);
-      }
-
-
-      // 2. Respaldo autónomo si el endpoint backend no responde
-      if (!createdCamp) {
-        const generatedId = `kase_camp_${Math.random().toString(36).substr(2, 9)}`;
-        createdCamp = {
-          id: generatedId,
-          name: resolvedName,
-          targetUrl: finalTargetUrl,
-          niche: resolvedNiche,
-          description: description.trim(),
-          campaignType: selectedType,
-          targetUnitLabel: currentTypeMeta.unitLabelPlural,
-          minPlanPrice: requiresPricingCalibration ? Number(minPlanPrice) : undefined,
-          maxPlanPrice: requiresPricingCalibration ? Number(maxPlanPrice) : undefined,
-          currency,
-          targetRegistrations: Number(targetQuantity) || defaultInitialQty,
-          currentRegistrations: 0,
-          clicksCount: 0,
-          plan: pricing.plan,
-          status: isSuper && !isTestOneDollarMode ? 'active' : 'configuring',
-          userId: currentUser?.id || userEmail,
-          creatorEmail: userEmail,
-          interactionPreferences,
-          communicationToneInstructions: communicationTone,
-          geoTargeting: geoData,
-          webhookSecret: `whsec_${generatedId}`,
-          createdAt: new Date().toISOString(),
-          modules: {
-            mod1_seo: { active: true, name: 'SEO Técnico Avanzado e Indexación API', category: 'base', itemsProcessed: 48, lastExecution: 'Ahora mismo', statusText: 'Indexación activa en Google Search API (<48h)' },
-            mod2_social: { active: true, name: 'Social Media Syndication (Omnicanal)', category: 'base', itemsProcessed: 116, lastExecution: 'Ahora mismo', statusText: 'Sindicando hilos técnicos en X y LinkedIn' },
-            mod3_directories: { active: true, name: 'Programmatic Launching (Directorios Globales)', category: 'base', itemsProcessed: 39, lastExecution: 'Ahora mismo', statusText: 'Ficha técnica en directorios globales SaaS' },
-            mod4_outbound: { active: pricing.plan !== 'basic', name: 'Automated Outbound & Social Listening', category: 'advanced', itemsProcessed: 12, lastExecution: 'Ahora mismo', statusText: 'Anti-Ban Activo 100/100' },
-            mod5_newsletter: { active: pricing.plan !== 'basic', name: 'Newsletter Outreach Engine', category: 'advanced', itemsProcessed: 8, lastExecution: 'Ahora mismo', statusText: 'Curadores de newsletters contactados' },
-            mod6_video: { active: pricing.plan === 'enterprise', name: 'Video Growth Automation (TikTok/Shorts/Reels)', category: 'advanced', itemsProcessed: 3, lastExecution: 'Ahora mismo', statusText: 'Hooks y guiones de video vertical' },
-            mod7_pseo: { active: pricing.plan === 'enterprise', name: 'Programmatic SEO & Landing Factory', category: 'advanced', itemsProcessed: 5, lastExecution: 'Ahora mismo', statusText: 'Páginas pSEO indexadas' },
-            mod8_influencers: { active: pricing.plan === 'enterprise', name: 'Micro-Influencers Outreach', category: 'advanced', itemsProcessed: 2, lastExecution: 'Ahora mismo', statusText: 'Alianzas y menciones activas' },
-          },
-          recentConversions: [],
-          logs: [],
-          billing: isTestOneDollarMode ? {
-            subscriptionStatus: 'pending',
-            paymentGateway: 'mercadopago_uy',
-            frequency: 'monthly',
-            monthlyAmount: 1,
-            currency: 'USD',
-            nextBillingDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-            payerEmail: userEmail,
-            subscriptionId: `sub_test_1usd_${Date.now()}`,
-          } : undefined,
-        };
-      }
-
-      if (!createdCamp) {
-        throw new Error('No se pudo generar el registro de la campaña.');
-      }
-
-      const safeCamp: Campaign = createdCamp;
-
-      // Guardar en almacenamiento seguro local
+      // 1. Guardar en almacenamiento seguro local al instante
       saveCampaignToVault(safeCamp);
 
-      // Sincronización en segundo plano con Supabase si está disponible
+      // 2. Sincronización en segundo plano con Supabase (campaigns + campaign_modules) sin congelar el botón
       if (supabase) {
-        try {
-          const row = mapCampaignToRow(safeCamp);
-          if (row) {
-            await supabase.from('campaigns').upsert([row]);
-            if (safeCamp.modules && typeof safeCamp.modules === 'object') {
-              const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
-                campaign_id: safeCamp.id,
-                module_key: key,
-                name: state?.name || key,
-                category: state?.category || 'base',
-                active: Boolean(state?.active),
-                items_processed: state?.itemsProcessed || 0,
-                last_execution: state?.lastExecution || 'Ahora mismo',
-                status_text: state?.statusText || 'Operando',
-              }));
-              await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' });
-            }
+        const row = mapCampaignToRow(safeCamp);
+        if (row) {
+          supabase
+            .from('campaigns')
+            .upsert([row])
+            .then(({ error }) => {
+              if (error) console.warn('[NewCampaignModal] Supabase campaigns sync:', error.message);
+            });
+
+          if (safeCamp.modules && typeof safeCamp.modules === 'object') {
+            const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
+              campaign_id: safeCamp.id,
+              module_key: key,
+              name: state?.name || key,
+              category: state?.category || 'base',
+              active: Boolean(state?.active),
+              items_processed: state?.itemsProcessed || 0,
+              last_execution: state?.lastExecution || 'Ahora mismo',
+              status_text: state?.statusText || 'Operando',
+            }));
+            supabase
+              .from('campaign_modules')
+              .upsert(modEntries, { onConflict: 'campaign_id,module_key' })
+              .then(({ error }) => {
+                if (error) console.warn('[NewCampaignModal] Supabase modules sync:', error.message);
+              });
           }
-        } catch (sbErr) {
-          console.warn('[NewCampaignModal] Supabase direct sync non-fatal:', sbErr);
         }
       }
 
-
-      // CASO A: Super Admin Kathy Seba ($0.00 Gratis) - Iniciar de inmediato
+      // 3. CASO A: Super Admin Kathy Seba ($0.00 Gratis) - Iniciar de inmediato
       if (isSuper && !isTestOneDollarMode) {
         safeCamp.status = 'active';
         saveCampaignToVault(safeCamp);
@@ -621,12 +572,13 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         return;
       }
 
-      // CASO B: Modo Autoprueba $1.00 USD (o usuario normal) - Abrir Pasarela de Pago
+      // 4. CASO B: Modo Autoprueba $1.00 USD (o usuario normal) - Abrir Pasarela de Pago al instante
       onCreated(safeCamp);
       if (onRequestCheckout) {
         onRequestCheckout(safeCamp);
       }
       onClose();
+
     } catch (err: any) {
       console.error('Error crítico al procesar la campaña:', err);
       setError(err.message || 'Error al procesar la campaña.');
