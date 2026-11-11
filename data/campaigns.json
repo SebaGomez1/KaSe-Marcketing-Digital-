@@ -1,5 +1,131 @@
 [
   {
+    "id": "kase_camp_wug8yllb7",
+    "userId": "usr_s035p38",
+    "creatorEmail": "kathy1316torres@gmail.com",
+    "name": "Campaña user registrations",
+    "targetUrl": "https://kase-marketing.vercel.app",
+    "niche": "Fintech & B2B SaaS",
+    "description": "",
+    "campaignType": "user_registrations",
+    "targetUnitLabel": "usuarios registrados",
+    "minPlanPrice": 29,
+    "maxPlanPrice": 199,
+    "currency": "USD",
+    "targetRegistrations": 2000,
+    "currentRegistrations": 0,
+    "clicksCount": 0,
+    "plan": "starter",
+    "status": "active",
+    "webhookSecret": "whsec_kase_camp_wug8yllb7",
+    "interactionPreferences": "Comentarios positivos y preguntas frecuentes orientadas al nicho",
+    "geoTargeting": {
+      "city": "Tráfico Global Cualificado por Idioma e Intención",
+      "region": "Mundial",
+      "country": "Audiencia Global (Mundial - Sin Restricción)",
+      "radiusKm": 15,
+      "isFeasible30Days": true,
+      "autoExpandProximity": true,
+      "estimatedCityPopulation": 150000000
+    },
+    "createdAt": "2026-11-11T03:38:11.142+00:00",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado",
+        "category": "base",
+        "itemsProcessed": 54,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://kase-marketing.vercel.app",
+          "https://www.google.com/search?q=site:kase-marketing.vercel.app"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication",
+        "category": "base",
+        "itemsProcessed": 124,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=Campa%C3%B1a%20user%20registrations%20Fintech%20%26%20B2B%20SaaS&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching",
+        "category": "base",
+        "itemsProcessed": 43,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=Campa%C3%B1a%20user%20registrations",
+          "https://betalist.com/search?q=Campa%C3%B1a%20user%20registrations",
+          "https://saashub.com/best-campa%C3%B1a-user-registrations"
+        ]
+      },
+      "mod4_outbound": {
+        "active": false,
+        "name": "Automated Outbound & Social Outreach",
+        "category": "advanced",
+        "itemsProcessed": 5,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": false,
+        "name": "Newsletter Outreach",
+        "category": "advanced",
+        "itemsProcessed": 3,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados con warming óptimo"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation",
+        "category": "advanced",
+        "itemsProcessed": 2,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO",
+        "category": "advanced",
+        "itemsProcessed": 5,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://kase-marketing.vercel.app/vs-alternativas",
+          "https://kase-marketing.vercel.app/solucion-para-campa-a-user-registrations"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas",
+        "category": "advanced",
+        "itemsProcessed": 1,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [],
+    "logs": [
+      {
+        "id": "log_sync_1794368315558_jhj0",
+        "timestamp": "2026-11-11T03:38:35.557Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:38:35.557Z"
+      }
+    ]
+  },
+  {
     "id": "kase_camp_rllfc7a",
     "name": "Test Camp",
     "targetUrl": "https://example.com",
@@ -21,7 +147,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 333,
+        "itemsProcessed": 345,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -33,7 +159,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 496,
+        "itemsProcessed": 512,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -44,7 +170,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 229,
+        "itemsProcessed": 237,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -57,7 +183,7 @@
         "active": false,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 110,
+        "itemsProcessed": 115,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -65,7 +191,7 @@
         "active": false,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 66,
+        "itemsProcessed": 69,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados con warming óptimo"
       },
@@ -73,7 +199,7 @@
         "active": false,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 44,
+        "itemsProcessed": 46,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -81,7 +207,7 @@
         "active": false,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 110,
+        "itemsProcessed": 115,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -93,7 +219,7 @@
         "active": false,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 22,
+        "itemsProcessed": 23,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -110,6 +236,16 @@
       "subscriptionId": "kase_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189318_asuw",
+        "timestamp": "2026-11-11T03:36:29.316Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (2ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.316Z"
+      },
       {
         "id": "log_sync_1793675087311_il1o",
         "timestamp": "2026-11-03T03:04:47.268Z",
@@ -365,7 +501,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 285,
+        "itemsProcessed": 297,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -377,7 +513,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 432,
+        "itemsProcessed": 448,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -388,7 +524,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 197,
+        "itemsProcessed": 205,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -401,7 +537,7 @@
         "active": true,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 479,
+        "itemsProcessed": 499,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -409,7 +545,7 @@
         "active": true,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 265,
+        "itemsProcessed": 277,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados"
       },
@@ -417,7 +553,7 @@
         "active": true,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 189,
+        "itemsProcessed": 197,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -425,7 +561,7 @@
         "active": true,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 605,
+        "itemsProcessed": 625,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -437,7 +573,7 @@
         "active": true,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 144,
+        "itemsProcessed": 148,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -479,6 +615,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189462_1caa",
+        "timestamp": "2026-11-11T03:36:29.460Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (2ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.460Z"
+      },
       {
         "id": "log_sync_1793675087362_l4x6",
         "timestamp": "2026-11-03T03:04:47.358Z",
@@ -618,7 +764,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 285,
+        "itemsProcessed": 297,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -630,7 +776,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 432,
+        "itemsProcessed": 448,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -641,7 +787,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 197,
+        "itemsProcessed": 205,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -654,7 +800,7 @@
         "active": false,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 45,
+        "itemsProcessed": 50,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -662,7 +808,7 @@
         "active": false,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 27,
+        "itemsProcessed": 30,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados con warming óptimo"
       },
@@ -670,7 +816,7 @@
         "active": false,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 18,
+        "itemsProcessed": 20,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -678,7 +824,7 @@
         "active": false,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 45,
+        "itemsProcessed": 50,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -690,7 +836,7 @@
         "active": false,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 9,
+        "itemsProcessed": 10,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -732,6 +878,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189500_arn5",
+        "timestamp": "2026-11-11T03:36:29.500Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.500Z"
+      },
       {
         "id": "log_sync_1793675087537_83j8",
         "timestamp": "2026-11-03T03:04:47.516Z",
@@ -871,7 +1027,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 288,
+        "itemsProcessed": 300,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -883,7 +1039,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 436,
+        "itemsProcessed": 452,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -894,7 +1050,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 199,
+        "itemsProcessed": 207,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -907,7 +1063,7 @@
         "active": true,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 484,
+        "itemsProcessed": 504,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -915,7 +1071,7 @@
         "active": true,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 268,
+        "itemsProcessed": 280,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados"
       },
@@ -923,7 +1079,7 @@
         "active": false,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 20,
+        "itemsProcessed": 22,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -931,7 +1087,7 @@
         "active": false,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 50,
+        "itemsProcessed": 55,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -943,7 +1099,7 @@
         "active": false,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 10,
+        "itemsProcessed": 11,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -977,6 +1133,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189536_6u3t",
+        "timestamp": "2026-11-11T03:36:29.536Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.536Z"
+      },
       {
         "id": "log_sync_1793675087702_ozop",
         "timestamp": "2026-11-03T03:04:47.678Z",
@@ -1119,7 +1285,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 288,
+        "itemsProcessed": 300,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -1131,7 +1297,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 436,
+        "itemsProcessed": 452,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -1142,7 +1308,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 199,
+        "itemsProcessed": 207,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -1155,7 +1321,7 @@
         "active": true,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 484,
+        "itemsProcessed": 504,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -1163,7 +1329,7 @@
         "active": true,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 268,
+        "itemsProcessed": 280,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados"
       },
@@ -1171,7 +1337,7 @@
         "active": true,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 191,
+        "itemsProcessed": 199,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -1179,7 +1345,7 @@
         "active": true,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 610,
+        "itemsProcessed": 630,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -1191,7 +1357,7 @@
         "active": true,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 145,
+        "itemsProcessed": 149,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -1217,6 +1383,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189570_5a6s",
+        "timestamp": "2026-11-11T03:36:29.570Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.570Z"
+      },
       {
         "id": "log_sync_1793675087837_i5gs",
         "timestamp": "2026-11-03T03:04:47.829Z",
@@ -1359,7 +1535,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 285,
+        "itemsProcessed": 297,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -1371,7 +1547,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 432,
+        "itemsProcessed": 448,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -1382,7 +1558,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 197,
+        "itemsProcessed": 205,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -1395,7 +1571,7 @@
         "active": true,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 479,
+        "itemsProcessed": 499,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -1403,7 +1579,7 @@
         "active": true,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 265,
+        "itemsProcessed": 277,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados"
       },
@@ -1411,7 +1587,7 @@
         "active": false,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 18,
+        "itemsProcessed": 20,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -1419,7 +1595,7 @@
         "active": false,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 45,
+        "itemsProcessed": 50,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -1431,7 +1607,7 @@
         "active": false,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 9,
+        "itemsProcessed": 10,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -1457,6 +1633,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189598_1kzt",
+        "timestamp": "2026-11-11T03:36:29.598Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.598Z"
+      },
       {
         "id": "log_sync_1793675087945_lj64",
         "timestamp": "2026-11-03T03:04:47.942Z",
@@ -1589,7 +1775,7 @@
         "active": true,
         "name": "SEO Técnico Avanzado e Indexación API",
         "category": "base",
-        "itemsProcessed": 285,
+        "itemsProcessed": 297,
         "lastExecution": "Ahora mismo",
         "statusText": "Indexación activa en Google Search API (<48h)",
         "last_published_links": [
@@ -1601,7 +1787,7 @@
         "active": true,
         "name": "Social Media Syndication (Omnicanal)",
         "category": "base",
-        "itemsProcessed": 432,
+        "itemsProcessed": 448,
         "lastExecution": "Ahora mismo",
         "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
         "last_published_links": [
@@ -1612,7 +1798,7 @@
         "active": true,
         "name": "Programmatic Launching (Directorios Globales)",
         "category": "base",
-        "itemsProcessed": 197,
+        "itemsProcessed": 205,
         "lastExecution": "Ahora mismo",
         "statusText": "Listado en directorios SaaS y startups verificado",
         "last_published_links": [
@@ -1625,7 +1811,7 @@
         "active": true,
         "name": "Automated Outbound (X & Foros Q&A Blindado)",
         "category": "advanced",
-        "itemsProcessed": 479,
+        "itemsProcessed": 499,
         "lastExecution": "Ahora mismo",
         "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
       },
@@ -1633,7 +1819,7 @@
         "active": true,
         "name": "Newsletter Outreach Engine",
         "category": "advanced",
-        "itemsProcessed": 265,
+        "itemsProcessed": 277,
         "lastExecution": "Ahora mismo",
         "statusText": "Curadores de boletines tech contactados"
       },
@@ -1641,7 +1827,7 @@
         "active": false,
         "name": "Video Growth Automation (TikTok/Reels/Shorts)",
         "category": "advanced",
-        "itemsProcessed": 18,
+        "itemsProcessed": 20,
         "lastExecution": "Ahora mismo",
         "statusText": "Guiones y hooks virales distribuidos en video vertical"
       },
@@ -1649,7 +1835,7 @@
         "active": false,
         "name": "Programmatic SEO & Landing Page Factory",
         "category": "advanced",
-        "itemsProcessed": 45,
+        "itemsProcessed": 50,
         "lastExecution": "Ahora mismo",
         "statusText": "Páginas comparativas de alta intención indexadas",
         "last_published_links": [
@@ -1661,7 +1847,7 @@
         "active": false,
         "name": "Bot de Alianzas y Micro-Influencers Outreach",
         "category": "advanced",
-        "itemsProcessed": 9,
+        "itemsProcessed": 10,
         "lastExecution": "Ahora mismo",
         "statusText": "Alianzas y enlaces de afiliación en distribución"
       }
@@ -1687,6 +1873,16 @@
       "subscriptionId": "kathy_superadmin_free_lifetime"
     },
     "logs": [
+      {
+        "id": "log_sync_1794368189624_ebhc",
+        "timestamp": "2026-11-11T03:36:29.623Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-11T03:36:29.623Z"
+      },
       {
         "id": "log_sync_1793675088080_ccxs",
         "timestamp": "2026-11-03T03:04:48.076Z",

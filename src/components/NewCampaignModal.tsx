@@ -521,6 +521,9 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     } catch (apiErr) {
       console.warn('[NewCampaignModal] Error guardando en Supabase:', apiErr);
     }
+      } catch (backendErr) {
+        console.warn('[NewCampaignModal] Fallback a respaldo autónomo:', backendErr);
+      }
 
 
       // 2. Respaldo autónomo si el endpoint backend no responde
@@ -630,8 +633,7 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
     } finally {
       setLoading(false);
     }
-  
-
+  };
 
   const getCampaignIcon = (typeId: CampaignType) => {
     switch (typeId) {
@@ -1492,8 +1494,4 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       </div>
     </div>
   );
-  } catch (error) {
-    console.error("Error general del formulario:", error);
-  }
 };
-}
