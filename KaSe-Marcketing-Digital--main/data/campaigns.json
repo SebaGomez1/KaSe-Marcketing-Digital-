@@ -1,0 +1,1446 @@
+[
+  {
+    "id": "kase_camp_rllfc7a",
+    "name": "Test Camp",
+    "targetUrl": "https://example.com",
+    "niche": "SaaS",
+    "description": "",
+    "campaignType": "user_registrations",
+    "targetUnitLabel": "usuarios registrados",
+    "currency": "USD",
+    "targetRegistrations": 1000,
+    "currentRegistrations": 0,
+    "plan": "starter",
+    "status": "active",
+    "userId": "kathyseba2020@gmail.com",
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "webhookSecret": "whsec_k65i4z9ljr_mvxz33r8",
+    "createdAt": "2026-11-01T15:16:17.732Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 228,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://example.com",
+          "https://www.google.com/search?q=site:example.com"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 356,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=Test%20Camp%20SaaS&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 159,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=Test%20Camp",
+          "https://betalist.com/search?q=Test%20Camp",
+          "https://saashub.com/best-test-camp"
+        ]
+      },
+      "mod4_outbound": {
+        "active": false,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 85,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": false,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 51,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados con warming óptimo"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 34,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 85,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://example.com/vs-alternativas",
+          "https://example.com/solucion-para-test-camp"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 17,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-11-01T15:16:17.732Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kase_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241760_kscf",
+        "timestamp": "2026-11-01T18:54:01.760Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.760Z"
+      },
+      {
+        "id": "log_sync_1793558341745_reda",
+        "timestamp": "2026-11-01T18:39:01.743Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (2ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.743Z"
+      },
+      {
+        "id": "log_sync_1793557446852_c1ws",
+        "timestamp": "2026-11-01T18:24:06.850Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (2ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:06.850Z"
+      },
+      {
+        "id": "log_sync_1793549879068_3v5v",
+        "timestamp": "2026-11-01T16:17:59.067Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.067Z"
+      },
+      {
+        "id": "log_sync_1793546382760_7js2",
+        "timestamp": "2026-11-01T15:19:42.760Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:19:42.760Z"
+      },
+      {
+        "id": "log_sync_1793546368360_b6lo",
+        "timestamp": "2026-11-01T15:19:28.359Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:19:28.359Z"
+      },
+      {
+        "id": "log_sync_1793546353603_4h36",
+        "timestamp": "2026-11-01T15:19:13.602Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:19:13.602Z"
+      },
+      {
+        "id": "log_sync_1793546338852_zyno",
+        "timestamp": "2026-11-01T15:18:58.851Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:18:58.851Z"
+      },
+      {
+        "id": "log_sync_1793546330785_yafr",
+        "timestamp": "2026-11-01T15:18:50.783Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (2ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:18:50.783Z"
+      },
+      {
+        "id": "log_sync_1793546320847_pe9z",
+        "timestamp": "2026-11-01T15:18:40.846Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:18:40.846Z"
+      },
+      {
+        "id": "log_sync_1793546312851_khug",
+        "timestamp": "2026-11-01T15:18:32.850Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:18:32.850Z"
+      },
+      {
+        "id": "log_sync_1793546296649_sgun",
+        "timestamp": "2026-11-01T15:18:16.646Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (3ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:18:16.646Z"
+      },
+      {
+        "id": "log_sync_1793546256777_f1x1",
+        "timestamp": "2026-11-01T15:17:36.776Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:17:36.776Z"
+      },
+      {
+        "id": "log_sync_1793546229731_og2m",
+        "timestamp": "2026-11-01T15:17:09.730Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:17:09.730Z"
+      },
+      {
+        "id": "log_sync_1793546214871_hitz",
+        "timestamp": "2026-11-01T15:16:54.870Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:16:54.870Z"
+      },
+      {
+        "id": "log_sync_1793546199990_plqu",
+        "timestamp": "2026-11-01T15:16:39.990Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:16:39.990Z"
+      },
+      {
+        "id": "log_sync_1793546177758_6m7k",
+        "timestamp": "2026-11-01T15:16:17.758Z",
+        "level": "SUCCESS",
+        "module": "ACTIVACION_INICIAL",
+        "message": "⚡ [ACTIVACIÓN INICIAL PRIORITARIA] Los 8 motores autónomos fueron activados e inicializados en simultáneo (0ms). Campaña 100% operativa.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:16:17.758Z"
+      },
+      {
+        "id": "log_init_1793546177732",
+        "timestamp": "2026-11-01T15:16:17.732Z",
+        "level": "SUCCESS",
+        "module": "CORE_ENGINE",
+        "message": "⚡ Campaña \"Test Camp\" creada con ACTIVACIÓN INICIAL PRIORITARIA. Conexión inmediata a los 8 motores en paralelo completada sin esperar el ciclo de 15 minutos. Estado: ACTIVA."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_finpulse",
+    "name": "FinPulse AI - Escalamiento y Adquisición Masiva (200,045 Unidades)",
+    "targetUrl": "https://finpulse.uy",
+    "niche": "Fintech & SaaS B2B",
+    "description": "Campaña matriz de escalamiento autónomo omnicanal con 200,045 unidades de adquisición y activación de los 8 motores.",
+    "campaignType": "user_registrations",
+    "targetUnitLabel": "usuarios registrados",
+    "minPlanPrice": 49,
+    "maxPlanPrice": 890,
+    "currency": "USD",
+    "targetRegistrations": 200045,
+    "currentRegistrations": 14820,
+    "plan": "enterprise",
+    "status": "active",
+    "webhookSecret": "whsec_finpulse_200k_live",
+    "pixelToken": "px_finpulse_live_881",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-21T14:15:30.000Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 180,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://finpulse.uy",
+          "https://www.google.com/search?q=site:finpulse.uy"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 292,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=FinPulse%20AI%20-%20Escalamiento%20y%20Adquisici%C3%B3n%20Masiva%20(200%2C045%20Unidades)%20Fintech%20%26%20SaaS%20B2B&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 127,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=FinPulse%20AI%20-%20Escalamiento%20y%20Adquisici%C3%B3n%20Masiva%20(200%2C045%20Unidades)",
+          "https://betalist.com/search?q=FinPulse%20AI%20-%20Escalamiento%20y%20Adquisici%C3%B3n%20Masiva%20(200%2C045%20Unidades)",
+          "https://saashub.com/best-finpulse-ai---escalamiento-y-adquisici%C3%B3n-masiva-(200%2C045-unidades)"
+        ]
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 304,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 160,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados"
+      },
+      "mod6_video": {
+        "active": true,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 119,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": true,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 430,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://finpulse.uy/vs-alternativas",
+          "https://finpulse.uy/solucion-para-finpulse-ai-escalamiento-y-adquisici-n-masiva-200-045-unidades-"
+        ]
+      },
+      "mod8_influencers": {
+        "active": true,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 109,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_fp_01",
+        "timestamp": "2026-10-26T03:30:15.000Z",
+        "method": "organic_click",
+        "userTag": "lead_fintech_val_912",
+        "ipMasked": "185.12.***.***",
+        "referrer": "Enlace Puente KaSe (Edge)"
+      },
+      {
+        "id": "conv_fp_02",
+        "timestamp": "2026-10-26T02:45:00.000Z",
+        "method": "webhook",
+        "userTag": "registro_b2b_director@corp.com",
+        "ipMasked": "201.217.***.***",
+        "referrer": "https://finpulse.uy/register"
+      },
+      {
+        "id": "conv_fp_03",
+        "timestamp": "2026-10-26T01:15:22.000Z",
+        "method": "pixel",
+        "userTag": "px_lead_enterprise_90",
+        "ipMasked": "179.24.***.***",
+        "referrer": "https://finpulse.uy/demo"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-21T14:15:30.000Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241776_fnh7",
+        "timestamp": "2026-11-01T18:54:01.775Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.775Z"
+      },
+      {
+        "id": "log_sync_1793558341767_rurp",
+        "timestamp": "2026-11-01T18:39:01.766Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.766Z"
+      },
+      {
+        "id": "log_sync_1793557446884_s46n",
+        "timestamp": "2026-11-01T18:24:06.884Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:06.884Z"
+      },
+      {
+        "id": "log_sync_1793549879182_8mkv",
+        "timestamp": "2026-11-01T16:17:59.182Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.182Z"
+      },
+      {
+        "id": "log_fp_01",
+        "timestamp": "2026-10-26T03:30:15.000Z",
+        "level": "SUCCESS",
+        "module": "ENRUTADOR_PUENTE",
+        "message": "⚡ Enlace Puente interceptado: +1 registro guardado en Supabase (FinPulse 200k). Total: 14,820/200,045."
+      },
+      {
+        "id": "log_fp_02",
+        "timestamp": "2026-10-26T02:45:00.000Z",
+        "level": "SUCCESS",
+        "module": "WEBHOOK_RECEIVER",
+        "message": "Conversión confirmada vía webhook seguro: registro_b2b_director@corp.com."
+      },
+      {
+        "id": "log_fp_03",
+        "timestamp": "2026-10-21T14:15:30.000Z",
+        "level": "SUCCESS",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "🎉 Campaña de 200,045 Unidades publicada y activada con éxito por Super Administradora Kathy Seba (kathyseba2020@gmail.com)."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_78a1bc",
+    "name": "PulseFlow AI - B2B Operations Suite",
+    "targetUrl": "https://pulseflow.app",
+    "niche": "SaaS / Productividad y Gestión Inteligente",
+    "description": "Plataforma de orquestación de operaciones y automatización de flujos de trabajo B2B con IA.",
+    "campaignType": "user_registrations",
+    "targetUnitLabel": "usuarios registrados",
+    "minPlanPrice": 29,
+    "maxPlanPrice": 199,
+    "currency": "USD",
+    "targetRegistrations": 2000,
+    "currentRegistrations": 1845,
+    "plan": "starter",
+    "status": "active",
+    "webhookSecret": "whsec_98f41e0b57a2c6d4",
+    "pixelToken": "px_pulse_78a1",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-16T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 180,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://pulseflow.app",
+          "https://www.google.com/search?q=site:pulseflow.app"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 292,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=PulseFlow%20AI%20-%20B2B%20Operations%20Suite%20SaaS%20%2F%20Productividad%20y%20Gesti%C3%B3n%20Inteligente&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 127,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=PulseFlow%20AI%20-%20B2B%20Operations%20Suite",
+          "https://betalist.com/search?q=PulseFlow%20AI%20-%20B2B%20Operations%20Suite",
+          "https://saashub.com/best-pulseflow-ai---b2b-operations-suite"
+        ]
+      },
+      "mod4_outbound": {
+        "active": false,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 20,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": false,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 12,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados con warming óptimo"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 8,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 20,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://pulseflow.app/vs-alternativas",
+          "https://pulseflow.app/solucion-para-pulseflow-ai-b2b-operations-suite"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 4,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_918",
+        "timestamp": "2026-10-26T01:28:00.000Z",
+        "method": "webhook",
+        "userTag": "usr_718293@finteam.co",
+        "ipMasked": "194.22.***.***",
+        "referrer": "https://news.ycombinator.com"
+      },
+      {
+        "id": "conv_917",
+        "timestamp": "2026-10-25T23:14:00.000Z",
+        "method": "pixel",
+        "userTag": "usr_849201@startup.io",
+        "ipMasked": "82.165.***.***",
+        "referrer": "https://producthunt.com/posts/pulseflow-ai"
+      },
+      {
+        "id": "conv_916",
+        "timestamp": "2026-10-25T21:47:00.000Z",
+        "method": "webhook",
+        "userTag": "usr_901824@techlead.de",
+        "ipMasked": "213.133.***.***",
+        "referrer": "https://google.com/search?q=alternativa+operaciones+saas"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-16T02:32:52.011Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241795_4gbn",
+        "timestamp": "2026-11-01T18:54:01.795Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.795Z"
+      },
+      {
+        "id": "log_sync_1793558341794_aneh",
+        "timestamp": "2026-11-01T18:39:01.794Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.794Z"
+      },
+      {
+        "id": "log_sync_1793557446916_dd35",
+        "timestamp": "2026-11-01T18:24:06.916Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:06.916Z"
+      },
+      {
+        "id": "log_sync_1793549879298_69r9",
+        "timestamp": "2026-11-01T16:17:59.298Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.298Z"
+      },
+      {
+        "id": "log_01",
+        "timestamp": "2026-10-26T01:28:00.000Z",
+        "level": "SUCCESS",
+        "module": "WEBHOOK_RECEIVER",
+        "message": "Conversión confirmada vía Webhook seguro. Usuario: usr_718293@finteam.co. Total: 1845/2000 usuarios registrados."
+      },
+      {
+        "id": "log_02",
+        "timestamp": "2026-10-25T22:18:00.000Z",
+        "level": "INFO",
+        "module": "MÓDULO 1 (SEO API)",
+        "message": "Lote de 4 artículos técnicos indexados con éxito vía Google Search Indexing API."
+      },
+      {
+        "id": "log_03",
+        "timestamp": "2026-10-16T02:32:52.011Z",
+        "level": "SUCCESS",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "Campaña PulseFlow AI creada y activada exitosamente."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_sales99",
+    "name": "NovaMetrics Pro - Venta de Membresías",
+    "targetUrl": "https://novametrics.io/pricing",
+    "niche": "Analytics & Business Intelligence",
+    "description": "Campaña orientada a la venta directa de membresías y suscripciones anuales con captación de clientes de alto valor.",
+    "campaignType": "plan_sales",
+    "targetUnitLabel": "ventas de planes",
+    "minPlanPrice": 49,
+    "maxPlanPrice": 390,
+    "currency": "USD",
+    "targetRegistrations": 50,
+    "currentRegistrations": 42,
+    "plan": "growth",
+    "status": "active",
+    "webhookSecret": "whsec_sales_8192a7bc",
+    "pixelToken": "px_sales_99a8",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-11T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 183,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://novametrics.io/pricing",
+          "https://www.google.com/search?q=site:novametrics.io"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 296,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=NovaMetrics%20Pro%20-%20Venta%20de%20Membres%C3%ADas%20Analytics%20%26%20Business%20Intelligence&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 129,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=NovaMetrics%20Pro%20-%20Venta%20de%20Membres%C3%ADas",
+          "https://betalist.com/search?q=NovaMetrics%20Pro%20-%20Venta%20de%20Membres%C3%ADas",
+          "https://saashub.com/best-novametrics-pro---venta-de-membres%C3%ADas"
+        ]
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 309,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 163,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 10,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 25,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://novametrics.io/pricing/vs-alternativas",
+          "https://novametrics.io/pricing/solucion-para-novametrics-pro-venta-de-membres-as"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 5,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_sale_01",
+        "timestamp": "2026-10-25T19:20:00.000Z",
+        "method": "webhook",
+        "userTag": "orden_#8492 ($390/año) - cfo@logistix.com",
+        "ipMasked": "201.217.***.***",
+        "referrer": "https://novametrics.io/checkout/success"
+      },
+      {
+        "id": "conv_sale_02",
+        "timestamp": "2026-10-25T12:07:00.000Z",
+        "method": "webhook",
+        "userTag": "orden_#8491 ($49/mes) - ceo@agenciapro.uy",
+        "ipMasked": "179.24.***.***",
+        "referrer": "https://mercadopago.com.uy/checkout"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-11T02:32:52.011Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241813_mzec",
+        "timestamp": "2026-11-01T18:54:01.813Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.813Z"
+      },
+      {
+        "id": "log_sync_1793558341820_udde",
+        "timestamp": "2026-11-01T18:39:01.820Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.820Z"
+      },
+      {
+        "id": "log_sync_1793557446950_vvo3",
+        "timestamp": "2026-11-01T18:24:06.950Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:06.950Z"
+      },
+      {
+        "id": "log_sync_1793549879345_3ug3",
+        "timestamp": "2026-11-01T16:17:59.345Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.345Z"
+      },
+      {
+        "id": "log_sync_1793546559769_yub1",
+        "timestamp": "2026-11-01T15:22:39.768Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:22:39.768Z"
+      },
+      {
+        "id": "log_s01",
+        "timestamp": "2026-10-25T19:20:00.000Z",
+        "level": "SUCCESS",
+        "module": "PAYMENT_WEBHOOK",
+        "message": "Venta de Membresía Enterprise ($390) confirmada vía Webhook de pago. Progreso: 42/50 ventas alcanzadas."
+      },
+      {
+        "id": "log_s02",
+        "timestamp": "2026-10-11T02:32:52.011Z",
+        "level": "INFO",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "Campaña NovaMetrics Pro iniciada y calibrada para tickets altos."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_yt88",
+    "name": "GrowthLab Studio - Canal YouTube",
+    "targetUrl": "https://youtube.com/@GrowthLabStudio",
+    "niche": "Educación Tecnológica & Startups",
+    "description": "Atracción masiva de reproducciones orgánicas de alta retención y suscriptores para serie de masterclasses.",
+    "campaignType": "youtube_growth",
+    "targetUnitLabel": "vistas y suscriptores",
+    "minPlanPrice": 0,
+    "maxPlanPrice": 79,
+    "currency": "USD",
+    "targetRegistrations": 25000,
+    "currentRegistrations": 21800,
+    "plan": "enterprise",
+    "status": "active",
+    "webhookSecret": "whsec_yt_991823",
+    "pixelToken": "px_yt_4401",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-05T02:32:52.011Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 183,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://youtube.com/@GrowthLabStudio",
+          "https://www.google.com/search?q=site:youtube.com"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 296,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=GrowthLab%20Studio%20-%20Canal%20YouTube%20Educaci%C3%B3n%20Tecnol%C3%B3gica%20%26%20Startups&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 129,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=GrowthLab%20Studio%20-%20Canal%20YouTube",
+          "https://betalist.com/search?q=GrowthLab%20Studio%20-%20Canal%20YouTube",
+          "https://saashub.com/best-growthlab-studio---canal-youtube"
+        ]
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 309,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 163,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados"
+      },
+      "mod6_video": {
+        "active": true,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 121,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": true,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 435,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://youtube.com/@GrowthLabStudio/vs-alternativas",
+          "https://youtube.com/@GrowthLabStudio/solucion-para-growthlab-studio-canal-youtube"
+        ]
+      },
+      "mod8_influencers": {
+        "active": true,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 110,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_yt_01",
+        "timestamp": "2026-10-25T16:10:00.000Z",
+        "method": "organic_click",
+        "userTag": "vista_youtube_hq_392",
+        "ipMasked": "186.52.***.***",
+        "referrer": "https://youtube.com"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-05T02:32:52.011Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241832_3zk3",
+        "timestamp": "2026-11-01T18:54:01.832Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.832Z"
+      },
+      {
+        "id": "log_sync_1793558341844_cds8",
+        "timestamp": "2026-11-01T18:39:01.844Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.844Z"
+      },
+      {
+        "id": "log_sync_1793557446981_bs30",
+        "timestamp": "2026-11-01T18:24:06.981Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:06.981Z"
+      },
+      {
+        "id": "log_sync_1793549879389_1v0q",
+        "timestamp": "2026-11-01T16:17:59.389Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.389Z"
+      },
+      {
+        "id": "log_sync_1793546559643_4enr",
+        "timestamp": "2026-11-01T15:22:39.642Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T15:22:39.642Z"
+      },
+      {
+        "id": "log_yt01",
+        "timestamp": "2026-10-25T16:10:00.000Z",
+        "level": "SUCCESS",
+        "module": "YOUTUBE_TRACKER",
+        "message": "Lote de 840 reproducciones orgánicas y 34 nuevos suscriptores confirmados. Total: 21,800/25,000."
+      },
+      {
+        "id": "log_yt02",
+        "timestamp": "2026-10-05T02:32:52.011Z",
+        "level": "INFO",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "Campaña GrowthLab Studio iniciada para escalamiento de reproducciones."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_social04",
+    "name": "DevCommunity LATAM - Red de Sindicación y Seguidores",
+    "targetUrl": "https://x.com/DevCommunityLatam",
+    "niche": "Comunidades Tech & Desarrolladores",
+    "description": "Crecimiento de audiencia orgánica y engagement continuo en X y redes sociales profesionales.",
+    "campaignType": "social_followers",
+    "targetUnitLabel": "seguidores nuevos",
+    "minPlanPrice": 0,
+    "maxPlanPrice": 0,
+    "currency": "USD",
+    "targetRegistrations": 10000,
+    "currentRegistrations": 8430,
+    "plan": "growth",
+    "status": "active",
+    "webhookSecret": "whsec_social_latam_772",
+    "pixelToken": "px_social_latam_99",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-18T09:40:15.000Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 180,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://x.com/DevCommunityLatam",
+          "https://www.google.com/search?q=site:x.com"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 292,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=DevCommunity%20LATAM%20-%20Red%20de%20Sindicaci%C3%B3n%20y%20Seguidores%20Comunidades%20Tech%20%26%20Desarrolladores&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 127,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=DevCommunity%20LATAM%20-%20Red%20de%20Sindicaci%C3%B3n%20y%20Seguidores",
+          "https://betalist.com/search?q=DevCommunity%20LATAM%20-%20Red%20de%20Sindicaci%C3%B3n%20y%20Seguidores",
+          "https://saashub.com/best-devcommunity-latam---red-de-sindicaci%C3%B3n-y-seguidores"
+        ]
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 304,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 160,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 8,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 20,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://x.com/DevCommunityLatam/vs-alternativas",
+          "https://x.com/DevCommunityLatam/solucion-para-devcommunity-latam-red-de-sindicaci-n-y-seguidores"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 4,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_soc_01",
+        "timestamp": "2026-10-25T20:15:00.000Z",
+        "method": "organic_click",
+        "userTag": "follow_dev_9182",
+        "ipMasked": "190.11.***.***",
+        "referrer": "https://x.com"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-18T09:40:15.000Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241848_eyuw",
+        "timestamp": "2026-11-01T18:54:01.848Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.848Z"
+      },
+      {
+        "id": "log_sync_1793558341864_n11f",
+        "timestamp": "2026-11-01T18:39:01.864Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.864Z"
+      },
+      {
+        "id": "log_sync_1793557447011_a931",
+        "timestamp": "2026-11-01T18:24:07.011Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:07.011Z"
+      },
+      {
+        "id": "log_sync_1793549879426_zag1",
+        "timestamp": "2026-11-01T16:17:59.426Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.426Z"
+      },
+      {
+        "id": "log_soc_01",
+        "timestamp": "2026-10-25T20:15:00.000Z",
+        "level": "SUCCESS",
+        "module": "SOCIAL_ENGINE",
+        "message": "Lote de 240 nuevos seguidores orgánicos verificados en perfiles comunitarios. Total: 8,430/10,000."
+      },
+      {
+        "id": "log_soc_02",
+        "timestamp": "2026-10-18T09:40:15.000Z",
+        "level": "INFO",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "Campaña DevCommunity LATAM iniciada."
+      }
+    ]
+  },
+  {
+    "id": "kase_camp_reviews06",
+    "name": "CloudScale Ops - Reviews Calificados & Feedback B2B",
+    "targetUrl": "https://cloudscale.io/reviews",
+    "niche": "Cloud Infrastructure & DevOps",
+    "description": "Generación de prueba social, debates técnicos y testimonios verificados de ingenieros y fundadores B2B.",
+    "campaignType": "comments_reviews",
+    "targetUnitLabel": "comentarios y reseñas",
+    "minPlanPrice": 0,
+    "maxPlanPrice": 0,
+    "currency": "USD",
+    "targetRegistrations": 2500,
+    "currentRegistrations": 2180,
+    "plan": "growth",
+    "status": "active",
+    "webhookSecret": "whsec_reviews_cloud_112",
+    "pixelToken": "px_reviews_cloud_33",
+    "pixelVerified": true,
+    "creatorEmail": "kathyseba2020@gmail.com",
+    "userId": "kathyseba2020@gmail.com",
+    "createdAt": "2026-10-22T18:22:45.000Z",
+    "modules": {
+      "mod1_seo": {
+        "active": true,
+        "name": "SEO Técnico Avanzado e Indexación API",
+        "category": "base",
+        "itemsProcessed": 180,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Indexación activa en Google Search API (<48h)",
+        "last_published_links": [
+          "https://cloudscale.io/reviews",
+          "https://www.google.com/search?q=site:cloudscale.io"
+        ]
+      },
+      "mod2_social": {
+        "active": true,
+        "name": "Social Media Syndication (Omnicanal)",
+        "category": "base",
+        "itemsProcessed": 292,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Hilos virales y publicaciones sindicadas en X y LinkedIn",
+        "last_published_links": [
+          "https://x.com/search?q=CloudScale%20Ops%20-%20Reviews%20Calificados%20%26%20Feedback%20B2B%20Cloud%20Infrastructure%20%26%20DevOps&f=live"
+        ]
+      },
+      "mod3_directories": {
+        "active": true,
+        "name": "Programmatic Launching (Directorios Globales)",
+        "category": "base",
+        "itemsProcessed": 127,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Listado en directorios SaaS y startups verificado",
+        "last_published_links": [
+          "https://www.producthunt.com/search?q=CloudScale%20Ops%20-%20Reviews%20Calificados%20%26%20Feedback%20B2B",
+          "https://betalist.com/search?q=CloudScale%20Ops%20-%20Reviews%20Calificados%20%26%20Feedback%20B2B",
+          "https://saashub.com/best-cloudscale-ops---reviews-calificados-%26-feedback-b2b"
+        ]
+      },
+      "mod4_outbound": {
+        "active": true,
+        "name": "Automated Outbound (X & Foros Q&A Blindado)",
+        "category": "advanced",
+        "itemsProcessed": 304,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Monitoreo de debates y respuestas de nicho con Anti-Ban activo"
+      },
+      "mod5_newsletter": {
+        "active": true,
+        "name": "Newsletter Outreach Engine",
+        "category": "advanced",
+        "itemsProcessed": 160,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Curadores de boletines tech contactados"
+      },
+      "mod6_video": {
+        "active": false,
+        "name": "Video Growth Automation (TikTok/Reels/Shorts)",
+        "category": "advanced",
+        "itemsProcessed": 8,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Guiones y hooks virales distribuidos en video vertical"
+      },
+      "mod7_pseo": {
+        "active": false,
+        "name": "Programmatic SEO & Landing Page Factory",
+        "category": "advanced",
+        "itemsProcessed": 20,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Páginas comparativas de alta intención indexadas",
+        "last_published_links": [
+          "https://cloudscale.io/reviews/vs-alternativas",
+          "https://cloudscale.io/reviews/solucion-para-cloudscale-ops-reviews-calificados-feedback-b2b"
+        ]
+      },
+      "mod8_influencers": {
+        "active": false,
+        "name": "Bot de Alianzas y Micro-Influencers Outreach",
+        "category": "advanced",
+        "itemsProcessed": 4,
+        "lastExecution": "Ahora mismo",
+        "statusText": "Alianzas y enlaces de afiliación en distribución"
+      }
+    },
+    "recentConversions": [
+      {
+        "id": "conv_rev_01",
+        "timestamp": "2026-10-25T22:40:00.000Z",
+        "method": "webhook",
+        "userTag": "review_devops_lead@stack.io",
+        "ipMasked": "194.22.***.***",
+        "referrer": "https://cloudscale.io/reviews"
+      }
+    ],
+    "billing": {
+      "subscriptionStatus": "active",
+      "paymentGateway": "mercadopago_uy",
+      "frequency": "monthly",
+      "monthlyAmount": 0,
+      "currency": "USD",
+      "nextBillingDate": "2027-10-22T18:22:45.000Z",
+      "payerEmail": "kathyseba2020@gmail.com",
+      "subscriptionId": "kathy_superadmin_free_lifetime"
+    },
+    "logs": [
+      {
+        "id": "log_sync_1793559241863_2lpa",
+        "timestamp": "2026-11-01T18:54:01.863Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:54:01.863Z"
+      },
+      {
+        "id": "log_sync_1793558341889_e0gz",
+        "timestamp": "2026-11-01T18:39:01.889Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:39:01.889Z"
+      },
+      {
+        "id": "log_sync_1793557447032_qkf5",
+        "timestamp": "2026-11-01T18:24:07.032Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (0ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T18:24:07.032Z"
+      },
+      {
+        "id": "log_sync_1793549879461_h73o",
+        "timestamp": "2026-11-01T16:17:59.460Z",
+        "level": "SUCCESS",
+        "module": "CRON_15M_SYNC",
+        "message": "🔄 [CRON-JOB 15M] Sincronización simultánea completada en los 8 motores (1ms). Todas las acciones y métricas auditadas en campaign_sync_logs.",
+        "origen_motor": "8_motores_paralelo",
+        "plataforma_atraccion": "suite_autonoma",
+        "fecha_acceso": "2026-11-01T16:17:59.460Z"
+      },
+      {
+        "id": "log_rev_01",
+        "timestamp": "2026-10-25T22:40:00.000Z",
+        "level": "SUCCESS",
+        "module": "REVIEWS_TRACKER",
+        "message": "Reseña técnica verificada (5/5 estrellas). Total: 2,180/2,500 comentarios y reseñas."
+      },
+      {
+        "id": "log_rev_02",
+        "timestamp": "2026-10-22T18:22:45.000Z",
+        "level": "INFO",
+        "module": "SUPER_ADMIN_ENGINE",
+        "message": "Campaña CloudScale Ops publicada para recopilación de testimonios técnicos."
+      }
+    ]
+  }
+]
