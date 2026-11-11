@@ -584,28 +584,31 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
       saveCampaignToVault(safeCamp);
 
       // Sincronización en segundo plano con Supabase si está disponible
+            // Sincronización en verdadero segundo plano con Supabase (sin bloquear UI)
       if (supabase) {
-        try {
-          const row = mapCampaignToRow(safeCamp);
-          if (row) {
-            await supabase.from('campaigns').upsert([row]);
-            if (safeCamp.modules && typeof safeCamp.modules === 'object') {
-              const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
-                campaign_id: safeCamp.id,
-                module_key: key,
-                name: state?.name || key,
-                category: state?.category || 'base',
-                active: Boolean(state?.active),
-                items_processed: state?.itemsProcessed || 0,
-                last_execution: state?.lastExecution || 'Ahora mismo',
-                status_text: state?.statusText || 'Operando',
-              }));
-              await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' });
+        (async () => {
+          try {
+            const row = mapCampaignToRow(safeCamp);
+            if (row) {
+              await supabase.from('campaigns').upsert([row]);
+              if (safeCamp.modules && typeof safeCamp.modules === 'object') {
+                const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
+                  campaign_id: safeCamp.id,
+                  module_key: key,
+                  name: state?.name || key,
+                  category: state?.category || 'base',
+                  active: Boolean(state?.active),
+                  items_processed: state?.itemsProcessed || 0,
+                  last_execution: state?.lastExecution || 'Ahora mismo',
+                  status_text: state?.statusText || 'Operando',
+                }));
+                await supabase.from('campaign_modules').upsert(modEntries, { onConflict: 'campaign_id,module_key' });
+              }
             }
+          } catch (sbErr) {
+            console.warn('[NewCampaignModal] Supabase direct sync non-fatal:', sbErr);
           }
-        } catch (sbErr) {
-          console.warn('[NewCampaignModal] Supabase direct sync non-fatal:', sbErr);
-        }
+        })();
       }
 
 
