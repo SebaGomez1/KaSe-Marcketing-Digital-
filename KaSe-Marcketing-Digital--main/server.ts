@@ -20,10 +20,10 @@ import {
   saveCampaignSyncLogs,
   fetchCampaignSyncLogs,
   ensureCampaignSyncLogsTable,
-} from './src/lib/db.ts';
-import { executeParallelSyncForCampaign, ParallelSyncResult } from './src/lib/engineSynchronizer.ts';
+} from './src/lib/db';
+import { executeParallelSyncForCampaign, ParallelSyncResult } from './src/lib/engineSynchronizer';
 
-import { INITIAL_PRODUCTION_CAMPAIGNS } from './src/lib/initialCampaigns.ts';
+import { INITIAL_PRODUCTION_CAMPAIGNS } from './src/lib/initialCampaigns';
 import {
   forzarIndexacionGoogleAPI,
   publicarHiloAutonomo,
@@ -35,8 +35,8 @@ import {
   scanForSensitiveDataExposure,
   detectMercadoPagoToken,
   testMercadoPagoApiLive,
-} from './src/lib/networkEngines.ts';
-import { generateKaSiReply, KaSiReplyResult } from './src/lib/kasiKnowledgeEngine.ts';
+} from './src/lib/networkEngines';
+import { generateKaSiReply, KaSiReplyResult } from './src/lib/kasiKnowledgeEngine';
 
 process.env.DOTENV_CONFIG_QUIET = 'true';
 dotenv.config({ quiet: true });

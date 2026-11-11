@@ -506,21 +506,6 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
           status: isSuper && !isTestOneDollarMode ? 'active' : 'configuring',
         };
 
-                    try {
-      const { data: supabaseData, error: supabaseError } = await supabase
-        .from('campaigns')
-        .insert([{
-          ...payload,
-          user_id: payload.userId || payload.user_id
-        }])
-        .select()
-        .single();
-
-      if (supabaseError) throw supabaseError;
-      if (supabaseData) createdCamp = supabaseData;
-    } catch (apiErr) {
-      console.warn('[NewCampaignModal] Error guardando en Supabase:', apiErr);
-    }
 
 
       // 2. Respaldo autónomo si el endpoint backend no responde

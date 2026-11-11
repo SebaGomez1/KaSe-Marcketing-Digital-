@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { mapCampaignToRow, mapRowToCampaign } from '../src/lib/db.ts';
+import { mapCampaignToRow, mapRowToCampaign } from '../src/lib/db';
 
 function cleanEnv(val?: string): string {
   if (!val) return '';
