@@ -13,7 +13,7 @@ import {
   CampaignSyncLog,
   ConversionRecord, 
   User 
-} from '../types/growth';
+} from '../types/growth.js';
 
 function cleanEnv(val?: string): string {
   if (!val) return '';

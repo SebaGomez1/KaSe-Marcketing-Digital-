@@ -588,9 +588,11 @@ async function getCampaignsAsync(userId?: string, isGlobalInternalQuery: boolean
           }
           return camp;
         }));
-        if (mapped.length > 0) {
+               if (mapped.length > 0) {
           campaigns = mapped;
-          saveCampaignsToFile();
+          if (!process.env.VERCEL) {
+            try { saveCampaignsToFile(); } catch {}
+          }
         }
         return isSuper ? mapped : mapped.filter((c: any) => c.status !== 'configuring');
       }
@@ -617,10 +619,12 @@ async function getCampaignsAsync(userId?: string, isGlobalInternalQuery: boolean
             }
             return camp;
           }));
-          if (mapped.length > 0) {
-            campaigns = mapped;
-            saveCampaignsToFile();
+                  if (mapped.length > 0) {
+          campaigns = mapped;
+          if (!process.env.VERCEL) {
+            try { saveCampaignsToFile(); } catch {}
           }
+        }
           return mapped;
         }
       } finally {
