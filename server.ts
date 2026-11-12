@@ -2876,7 +2876,7 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
   const cleanAmount = Number(amount || 490);
   const cleanTitle = title || (campaign ? `Plan Growth (${campaign.name}) - Bloque de 50 ventas` : 'Plan Growth - Bloque de 50 ventas');
   // Usar estrictamente variables de entorno seguras del backend
-   const token = (detectMercadoPagoToken() || process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadopagoAccessToken || '').trim();
+ const token = (detectMercadoPagoToken()?.token || process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
 
   // If a real production or test Access Token is provided, call Mercado Pago API directly
   if (token && token.length > 15) {
