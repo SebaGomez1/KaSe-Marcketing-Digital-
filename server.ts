@@ -2876,7 +2876,7 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
   const cleanAmount = Number(amount || 490);
   const cleanTitle = title || (campaign ? `Plan Growth (${campaign.name}) - Bloque de 50 ventas` : 'Plan Growth - Bloque de 50 ventas');
   // Usar estrictamente variables de entorno seguras del backend
-  const token = (process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
+   const token = (detectMercadoPagoToken() || process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadopagoAccessToken || '').trim();
 
   // If a real production or test Access Token is provided, call Mercado Pago API directly
   if (token && token.length > 15) {
@@ -2953,30 +2953,11 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
     }
   }
 
-  // Graceful simulation / sandbox fallback
-  const prefId = `mp_pref_uy_${Math.random().toString(36).substring(2, 10)}`;
-  if (campaign) {
-    campaign.billing = {
-      subscriptionStatus: 'pending',
-      paymentGateway: 'mercadopago_uy',
-      frequency: 'monthly',
-      monthlyAmount: cleanAmount,
-      currency: currency as 'USD' | 'UYU',
-      nextBillingDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-      payerEmail: payerEmail || 'cliente@empresa.com',
-      subscriptionId: prefId,
-    };
-    await saveCampaignAsync(campaign);
-  }
-
-  res.json({
-    success: true,
-    preferenceId: prefId,
-    checkoutUrl: `https://www.mercadopago.com.uy/checkout/v1/redirect?pref_id=${prefId}`,
-    sandboxCheckoutUrl: `https://sandbox.mercadopago.com.uy/checkout/v1/redirect?pref_id=${prefId}`,
-    amount: cleanAmount,
-    currency,
-    isLiveMercadoPago: false,
+   return res.status(400).json({
+    success: false,
+    error: !token || token.length <= 15
+      ? 'MERCADO_PAGO_ACCESS_TOKEN no configurado en el servidor.'
+      : 'Mercado Pago rechazó la creación del checkout. Verifica las credenciales de producción y la moneda habilitada en tu cuenta.',
   });
 });
 

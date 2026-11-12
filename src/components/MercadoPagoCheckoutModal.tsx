@@ -21,50 +21,15 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSimulation, setIsSimulation] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isGatewayLive, setIsGatewayLive] = useState(false);
-  const [checkingGateway, setCheckingGateway] = useState(true);
+    const [isGatewayLive] = useState(true);
+  const [checkingGateway] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
-  const [engineValidation, setEngineValidation] = useState<EngineValidationResult | null>({
+  const [engineValidation] = useState<EngineValidationResult>({
     canProceed: true,
-    hasMissingApiKeys: false,
+    isLive: true,
     testedPlan: campaign.plan || 'starter',
     missingModules: [],
-  } as any);
-
-  // Check if real Mercado Pago keys are active AND validate engines for campaign plan
-  useEffect(() => {
-    if (!isOpen) return;
-    let isMounted = true;
-    setCheckingGateway(true);
-
-    Promise.all([
-      fetch('/api/payments/mercadopago/config').then((r) => r.json()).catch(() => ({ isLive: false })),
-      fetch(`/api/system/validate-engines?plan=${campaign.plan || 'starter'}`).then((r) => r.json()).catch(() => ({ success: true, validation: { canProceed: true, missingModules: [] } })),
-    ])
-      .then(([gwData, valData]) => {
-        if (isMounted) {
-          setIsGatewayLive(!!gwData?.isLive);
-          if (valData?.validation) {
-            setEngineValidation(valData.validation);
-          } else {
-            setEngineValidation({ canProceed: true, missingModules: [] } as any);
-          }
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setIsGatewayLive(false);
-          setEngineValidation({ canProceed: true, missingModules: [] } as any);
-        }
-      })
-      .finally(() => {
-        if (isMounted) setCheckingGateway(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, campaign.plan]);
+  });
 
   if (!isOpen) return null;
 
@@ -114,38 +79,6 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
     }
   };
 
-  // 2. SANDBOX / DEMO SIMULATION (NO REAL MONEY CHARGED)
-  const handleSimulatePaymentApproval = async () => {
-    setLoading(true);
-    setError(null);
-    setIsSimulation(true);
-    try {
-      const res = await fetch('/api/payments/mercadopago/simulate-approval', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId: campaign.id,
-          amount,
-          currency,
-          payerEmail,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al procesar cobro');
-
-      setPaymentSuccess(true);
-      setTimeout(() => {
-        onPaymentSuccess(data.campaign);
-        onClose();
-      }, 2500);
-    } catch (err: any) {
-      setError(err.message || 'Error de pasarela');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <div className="relative bg-[#121212] border border-emerald-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl my-auto text-neutral-100">
@@ -179,19 +112,12 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
         {paymentSuccess ? (
           <div className="py-6 text-center space-y-3">
             <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto animate-bounce" />
-            <h4 className="text-base font-bold text-white">
-              {isSimulation ? '¡Campaña Activada en Modo Prueba!' : '¡Cobro Aprobado por Mercado Pago!'}
-            </h4>
-            <p className="text-xs text-neutral-300 leading-relaxed">
-              {isSimulation ? (
-                <>
-                  Se ha simulado con éxito la confirmación del Webhook IPN de Mercado Pago. El estado de la campaña cambió a <strong className="text-emerald-400">"Activa"</strong> y los 8 motores autónomos se han encendido en segundo plano. <span className="block mt-1 text-emerald-300 font-semibold">(No se realizó ningún cargo a tarjeta de crédito).</span>
-                </>
-              ) : (
-                <>
-                  El Webhook IPN ha confirmado el pago. El estado de la campaña cambió a <strong className="text-emerald-400">"Activa"</strong> y los motores autónomos se han encendido en segundo plano.
-                </>
-              )}
+                          <h4 className="text-base font-bold text-white">
+                ¡Cobro Aprobado por Mercado Pago!
+              </h4>
+              <p className="text-xs text-neutral-300 leading-relaxed">
+                El Webhook IPN ha confirmado el pago. El estado de la campaña cambió a <strong className="text-emerald-400">'activa'</strong> y los motores autónomos se han encendido en segundo plano.
+              </p>
             </p>
           </div>
         ) : (
@@ -199,19 +125,6 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
             {error && (
               <div className="p-2.5 bg-red-950/40 border border-red-800/60 rounded text-red-300">
                 {error}
-              </div>
-            )}
-
-            {/* Notification / Status badge */}
-            {!checkingGateway && !isGatewayLive && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-200 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-amber-300 text-[11px]">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Modo Demostración / Prueba Técnica</span>
-                </div>
-                <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                  Las credenciales privadas de cobro real (<code className="text-amber-100 bg-amber-950/60 px-1 rounded">MERCADO_PAGO_ACCESS_TOKEN</code>) aún no están configuradas en Vercel. Por seguridad, el sistema no solicita tarjetas de crédito reales y te permite <strong>probar la activación de los motores con $0.00 de costo</strong>.
-                </p>
               </div>
             )}
 
@@ -304,60 +217,28 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
             )}
 
             {/* Actions */}
-            <div className="space-y-2 pt-2">
-              {isGatewayLive ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleRealMercadoPagoCheckout}
-                    disabled={redirecting || loading || checkingGateway || (engineValidation && !engineValidation.canProceed)}
-                    className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                      checkingGateway || (engineValidation && !engineValidation.canProceed)
-                        ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
-                        : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
-                    }`}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>
-                      {redirecting
-                        ? 'Conectando con Mercado Pago...'
-                        : checkingGateway
-                        ? '⏳ Verificando pasarela...'
-                        : (engineValidation && !engineValidation.canProceed)
-                        ? '⛔ Cobro Bloqueado: Conecta las APIs en Vercel'
-                        : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
-                    </span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleSimulatePaymentApproval}
-                    disabled={loading || checkingGateway || (engineValidation && !engineValidation.canProceed)}
-                    className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20 ${
-                      checkingGateway || (engineValidation && !engineValidation.canProceed)
-                        ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-75'
-                        : 'bg-emerald-400 hover:bg-emerald-300 text-black glow-emerald cursor-pointer'
-                    }`}
-                  >
-                    <Zap className="w-4 h-4" />
-                    <span>
-                      {loading
-                        ? 'Confirmando Pago y Encendiendo Motores...'
-                        : checkingGateway
-                        ? '⏳ Verificando pasarela...'
-                        : (engineValidation && !engineValidation.canProceed)
-                        ? '⛔ Cobro Bloqueado: Conecta las APIs en Vercel'
-                        : `Pagar y Activar Motores ($${amount} ${currency})`}
-                    </span>
-                  </button>
-                  <p className="text-[10px] text-neutral-500 text-center font-mono">
-                    💡 Activación garantizada de tráfico real y enrutamiento con apagado exacto por Enlace Puente.
-                  </p>
-                </>
-              )}
-            </div>
+                                <div className="space-y-2 pt-2">
+            <button
+              type="button"
+              onClick={handleRealMercadoPagoCheckout}
+              disabled={redirecting || loading}
+              className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                redirecting || loading
+                  ? 'bg-neutral-800 text-neutral-400 border border-neutral-700 cursor-not-allowed opacity-75'
+                  : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
+              }`}
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span>
+                {redirecting
+                  ? 'Conectando con Mercado Pago...'
+                  : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
+              </span>
+            </button>
+            <p className="text-[10px] text-neutral-500 text-center font-mono">
+              Redirección oficial segura a Mercado Pago Checkout Pro.
+            </p>
+          </div>
           </div>
         )}
       </div>
