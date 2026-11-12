@@ -119,7 +119,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
                 El Webhook IPN ha confirmado el pago. El estado de la campaña cambió a <strong className="text-emerald-400">'activa'</strong> y los motores autónomos se han encendido en segundo plano.
               </p>
             </p>
-          </div>
+        
         ) : (
           <div className="space-y-4 text-xs">
             {error && (
