@@ -33,7 +33,7 @@ import {
   getAllEnginesHealth,
   validateCampaignEnginesForPlan,
   scanForSensitiveDataExposure,
-  detectMercadopagoToken,
+  detectMercadoPagoToken,
   testMercadoPagoApiLive,
 } from './src/lib/networkEngines.js';
 import { generateKaSiReply, KaSiReplyResult } from './src/lib/kasiKnowledgeEngine.js';
