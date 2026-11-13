@@ -528,56 +528,57 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
         } : undefined,
       };
 
-      // 1. Guardar en almacenamiento seguro local al instante
-      saveCampaignToVault(safeCamp);
-
-      // 2. Sincronización en segundo plano con Supabase (campaigns + campaign_modules) sin congelar el botón
-      if (supabase) {
-        const row = mapCampaignToRow(safeCamp);
-        if (row) {
-          supabase
-            .from('campaigns')
-            .upsert([row])
-            .then(({ error }) => {
-              if (error) console.warn('[NewCampaignModal] Supabase campaigns sync:', error.message);
-            });
-
-          if (safeCamp.modules && typeof safeCamp.modules === 'object') {
-            const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
-              campaign_id: safeCamp.id,
-              module_key: key,
-              name: state?.name || key,
-              category: state?.category || 'base',
-              active: Boolean(state?.active),
-              items_processed: state?.itemsProcessed || 0,
-              last_execution: state?.lastExecution || 'Ahora mismo',
-              status_text: state?.statusText || 'Operando',
-            }));
-            supabase
-              .from('campaign_modules')
-              .upsert(modEntries, { onConflict: 'campaign_id,module_key' })
-              .then(({ error }) => {
-                if (error) console.warn('[NewCampaignModal] Supabase modules sync:', error.message);
-              });
-          }
-        }
-      }
-
-      // 3. CASO A: Super Admin Kathy Seba ($0.00 Gratis) - Iniciar de inmediato
+            // 1. CASO A: Super Admin Kathy Seba ($0.00 Gratis) - Crear y activar de inmediato
       if (isSuper && !isTestOneDollarMode) {
         safeCamp.status = 'active';
         saveCampaignToVault(safeCamp);
+
+        if (supabase) {
+          const row = mapCampaignToRow(safeCamp);
+          if (row) {
+            supabase
+              .from('campaigns')
+              .upsert([row])
+                  .then(({ error }: { error: any }) => {
+                if (error) console.warn('[NewCampaignModal] Supabase campaigns sync:', error.message);
+              });
+
+            if (safeCamp.modules && typeof safeCamp.modules === 'object') {
+              const modEntries = Object.entries(safeCamp.modules).map(([key, state]: [string, any]) => ({
+                campaign_id: safeCamp.id,
+                module_key: key,
+                name: state?.name || key,
+                category: state?.category || 'base',
+                active: Boolean(state?.active),
+                items_processed: state?.itemsProcessed || 0,
+                last_execution: state?.lastExecution || 'Ahora mismo',
+                status_text: state?.statusText || 'Operando',
+              }));
+              supabase
+                .from('campaign_modules')
+                .upsert(modEntries, { onConflict: 'campaign_id,module_key' })
+                .then(({ error }: { error: any }) => {
+                  if (error) console.warn('[NewCampaignModal] Supabase modules sync:', error.message);
+                });
+            }
+          }
+        }
+
         onCreated(safeCamp);
         setAdminSuccessCamp(safeCamp);
         return;
       }
 
-      // 4. CASO B: Modo Autoprueba $1.00 USD (o usuario normal) - Abrir Pasarela de Pago al instante
-      onCreated(safeCamp);
+      // 2. CASO B: Usuario normal o Autoprueba $1.00 USD -> NO guardar ni crear hasta confirmar pago
+      try {
+        window.sessionStorage.setItem('kase_pending_checkout_campaign', JSON.stringify(safeCamp));
+      } catch {}
+
       if (onRequestCheckout) {
         onRequestCheckout(safeCamp);
       }
       onClose();
+
 
     } catch (err: any) {
       console.error('Error crítico al procesar la campaña:', err);
