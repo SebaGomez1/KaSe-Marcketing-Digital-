@@ -40,6 +40,7 @@ import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 
 // Purga inmediata de campañas falsas en almacenamiento del navegador
 purgeFakeCampaignsFromStorage();
+try { window.localStorage.removeItem('kase_current_user'); window.localStorage.removeItem('kase_active_tab'); } catch (_) {}
 
 const KATHY_SUPER_ADMIN_USER: User = {
   id: 'kathy_super_admin',
@@ -51,63 +52,12 @@ const KATHY_SUPER_ADMIN_USER: User = {
 };
 
 export default function App() {
-    const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      if (typeof window === 'undefined') return null;
-      const saved = window.localStorage.getItem('kase_current_user');
-      if (!saved) return null;
-      
-      const parsed = JSON.parse(saved);
-      if (parsed && (parsed.email || parsed.name || parsed.id)) {
-        if (isUserSuperAdmin(parsed)) {
-          parsed.role = 'super_admin';
-        } else {
-          parsed.role = parsed.role || 'client';
-        }
-        return parsed;
-      }
-      return null;
-    } catch (e) {
-      console.error("Error al recuperar usuario del localStorage:", e);
-      // Limpiamos el dato corrupto para que no vuelva a romper la app en el próximo inicio
-      try { window.localStorage.removeItem('kase_current_user'); } catch(_) {}
-      return null;
-    }
-  });
-
+      const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Active View Persistent Mirroring (Retains viewport across reloads)
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const savedTab = window.localStorage.getItem('kase_active_tab');
-        if (savedTab) {
-          return savedTab;
-        }
-        const savedUser = window.localStorage.getItem('kase_current_user');
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          if (parsedUser.email?.toLowerCase() === 'kathyseba2020@gmail.com') {
-            return 'dashboard';
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return 'landing';
-  });
+    const [activeTab, setActiveTab] = useState<string>('landing');
 
-  // Blindaje de almacenamiento indestructible: Carga inicial desde el baúl blindado local
-  const [campaigns, setCampaigns] = useState<Campaign[]>(() => {
-    try {
-      const recovered = getVaultCampaigns(currentUser?.email, currentUser?.id, isUserSuperAdmin(currentUser));
-      if (recovered.length > 0) return recovered;
-    } catch {
-      // ignore
-    }
-    return [];
-  });
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   const [activeCampaignId, setActiveCampaignId] = useState<string>(() => {
     try {
@@ -151,35 +101,14 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => {
-    if (isOnline) {
+   useEffect(() => {
+    if (isOnline && currentUser) {
       fetchCampaigns();
+    } else if (!currentUser) {
+      setCampaigns([]);
     }
-  }, [isOnline]);
+  }, [isOnline, currentUser]);
 
-  // Sync user state to localStorage
-  useEffect(() => {
-    try {
-      if (currentUser) {
-        window.localStorage.setItem('kase_current_user', JSON.stringify(currentUser));
-      } else {
-        window.localStorage.removeItem('kase_current_user');
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [currentUser]);
-
-  // Sync activeTab to localStorage so reload preserves viewport
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && activeTab) {
-        window.localStorage.setItem('kase_active_tab', activeTab);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [activeTab]);
 
   // Sync activeCampaignId to localStorage
   useEffect(() => {
@@ -192,26 +121,6 @@ export default function App() {
     }
   }, [activeCampaignId]);
 
-  // Direct admin bypass via URL parameter (?admin=kathy or ?kathy=true)
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('admin') === 'kathy' || params.get('kathy') === 'true') {
-        const kathyUser: User = {
-          id: 'kase_super_admin',
-          name: 'Kathy Seba (Super Admin)',
-          email: 'kathyseba2020@gmail.com',
-          role: 'super_admin',
-          createdAt: new Date().toISOString(),
-          acquisitionSource: 'direct_organic',
-        };
-        setCurrentUser(kathyUser);
-        setActiveTab('admin_global');
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
 
   // Enrutador Puente Inteligente: Redirección instantánea sin fricción si se accede vía /r/:id o /puente/:id
   useEffect(() => {
@@ -313,8 +222,6 @@ export default function App() {
       const cleanEmail = (currentUser?.email || '').trim().toLowerCase();
       const isSuperAdmin = isUserSuperAdmin(currentUser);
 
-      // 1. Obtener campañas guardadas en el baúl blindado local (Aislamiento de Privacidad)
-      const localVault = getVaultCampaigns(currentUser?.email, currentUser?.id, isSuperAdmin);
 
       // Strict user_id parameter passed to query: Always provide identification so backend authenticates
       const queryParam = `?user_id=${encodeURIComponent(authenticatedUserId)}&email=${encodeURIComponent(currentUser?.email || '')}`;
@@ -348,19 +255,6 @@ export default function App() {
       }
 
 
-      // Sincronización bidireccional automática: si el baúl local tiene campañas que el servidor no tiene, respaldar en servidor
-      if (localVault.length > 0) {
-        const missingOnServer = localVault.filter(
-          (lc) => !serverCampaigns.some((sc) => sc.id === lc.id)
-        );
-        if (missingOnServer.length > 0) {
-          fetch('/api/campaigns/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ campaigns: missingOnServer }),
-          }).catch(() => {});
-        }
-      }
 
       // Ensure strict privacy: Super Admins ven todo. Usuarios normales ven sus campañas (sin ocultar 'configuring').
       const isolatedServer = isSuperAdmin
@@ -372,19 +266,16 @@ export default function App() {
               (currentUser?.id && c.userId === currentUser.id)
           );
 
-      // 2. FUSIÓN BLINDADA: Combina lo que tiene el servidor con lo que tiene el baúl local.
-      const mergedCampaigns = mergeCampaigns(isolatedServer, localVault);
-
-      // 3. Persistir inmediatamente en el baúl local
-      saveAllCampaignsToVault(mergedCampaigns);
-      setCampaigns(mergedCampaigns);
+            setCampaigns(isolatedServer);
 
       setActiveCampaignId((prevId) => {
-        if (prevId && mergedCampaigns.some((c: Campaign) => c.id === prevId)) {
+        if (prevId && isolatedServer.some((c: Campaign) => c.id === prevId)) {
           return prevId;
         }
-        return mergedCampaigns.length > 0 ? mergedCampaigns[0].id : '';
+        return isolatedServer.length > 0 ? isolatedServer[0].id : '';
+
       });
+
     } catch (err) {
       console.error('Error fetching campaigns:', err);
     } finally {
