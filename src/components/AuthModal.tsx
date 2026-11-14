@@ -31,94 +31,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const effectiveOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
 
-  // Device-specific remembered account
-  const deviceAccount = (() => {
+    // Privacidad: nunca guardar ni recordar cuentas automáticamente en el dispositivo sin permiso
+  if (typeof window !== 'undefined') {
     try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('kase_device_account') : null;
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
+      window.localStorage.removeItem('kase_device_account');
+    } catch {}
+  }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    if (!cleanEmail) {
-      setError("Por favor ingresa tu correo electrónico");
-      return;
-    }
-    if (!cleanPass) {
-      setError("Por favor ingresa tu contraseña");
-      return;
-    }
-
-    const isAdmin = isUserSuperAdmin({ email: cleanEmail });
-    if (isAdmin) {
-      if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
-        setError('Contraseña Incorrecta');
-        return;
-      }
-      const adminUser: User = {
-        id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : 'usr_superadmin_kase',
-        name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : 'KaSe Administrador',
-        email: cleanEmail,
-        role: 'super_admin',
-        createdAt: new Date().toISOString(),
-        acquisitionSource: 'direct_organic',
-      };
-      localStorage.setItem('kase_device_account', JSON.stringify({ email: adminUser.email, name: adminUser.name, role: adminUser.role }));
-      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
-      onAuthSuccess(adminUser);
-      onSuccess?.();
-      onClose();
-      return;
-    }
-
-    setLoading(true); setError("");
-    try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
-      if (authError) throw authError;
-      if (data?.user) {
-        const { data: userData, error: dbError } = await supabase
-          .from('users').select('*').eq('id', data.user.id).single();
-        if (dbError) throw dbError;
-        if (userData) {
-          const authUser: User = {
-            id: userData.id,
-            name: userData.name || userData.full_name || email.split('@')[0],
-            email: userData.email || email,
-            role: userData.role === 'super_admin' ? 'super_admin' : 'client',
-            createdAt: userData.created_at || new Date().toISOString(),
-          };
-          onAuthSuccess(authUser);
-        }
-        onSuccess?.();
-        onClose();
-      }
-    } catch (err: any) {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setError("Error: Requiere conexión a internet.");
-      } else {
-        setError(err.message || "Error de credenciales o servidor.");
-      }
-    } finally { setLoading(false); }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mode === 'login') {
-      return handleLoginSubmit(e);
-    }
-    if (typeof navigator !== 'undefined' && !navigator.onLine && !effectiveOnline) {
-      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para registrarse.');
-      return;
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = password.trim();
     if (!cleanEmail) {
       setError('Por favor ingresa tu correo electrónico');
       return;
@@ -128,14 +52,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     const isAdmin = isUserSuperAdmin({ email: cleanEmail });
     if (isAdmin) {
       if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
-        setError('Contraseña Incorrecta');
-        setLoading(false);
+        setError('Contraseña incorrecta');
         return;
       }
       const adminUser: User = {
@@ -146,41 +66,178 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         createdAt: new Date().toISOString(),
         acquisitionSource: 'direct_organic',
       };
-      localStorage.setItem('kase_device_account', JSON.stringify({ email: adminUser.email, name: adminUser.name, role: adminUser.role }));
-      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
       onAuthSuccess(adminUser);
       onSuccess?.();
       onClose();
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+    setError(null);
     try {
-      let authUser: User | null = null;
-      const endpoint = '/api/auth/register';
-      
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: cleanEmail, password: cleanPass }),
-      });
-      
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'Error en registro');
-        }
-        if (data.user) {
-          authUser = data.user;
-        }
-      } else {
-        throw new Error('Sin conexión con el servidor central de KaSe');
+      if (!supabase) {
+        throw new Error('Servicio de autenticación no disponible.');
       }
 
-      if (!authUser) {
-        throw new Error('No fue posible registrar la cuenta. Verifica tus datos de acceso.');
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPass,
+      });
+
+      if (authError) {
+        const msg = authError.message.toLowerCase();
+        if (msg.includes('invalid login') || msg.includes('credentials')) {
+          throw new Error('Correo o contraseña incorrectos.');
+        }
+        throw new Error(authError.message);
       }
+
+      if (!data?.user) {
+        throw new Error('No se pudo iniciar sesión. Verifica tus credenciales.');
+      }
+
+      // Intentar leer perfil en tabla users (si no existe aún, usar datos de Auth sin bloquear)
+      let profileName = data.user.user_metadata?.name || data.user.user_metadata?.full_name || cleanEmail.split('@')[0];
+      let profileRole: 'super_admin' | 'client' = 'client';
+      let profileCreated = data.user.created_at || new Date().toISOString();
+
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (userData) {
+          profileName = userData.name || userData.full_name || profileName;
+          profileRole = userData.role === 'super_admin' ? 'super_admin' : 'client';
+          profileCreated = userData.created_at || profileCreated;
+        }
+      } catch {}
+
+      const authUser: User = {
+        id: data.user.id,
+        name: profileName,
+        email: data.user.email || cleanEmail,
+        role: profileRole,
+        createdAt: profileCreated,
+      };
+
+      onAuthSuccess(authUser);
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError('Requiere conexión a internet.');
+      } else {
+        setError(err?.message || 'Error al iniciar sesión.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mode === 'login') {
+      return handleLoginSubmit(e);
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine && !effectiveOnline) {
+      setError('Sin conexión a internet. Se requiere conexión activa para registrarse.');
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+    const cleanName = name.trim() || cleanEmail.split('@')[0];
+
+    if (!cleanEmail) {
+      setError('Por favor ingresa tu correo electrónico');
+      return;
+    }
+    if (!cleanPass || cleanPass.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    // Bloquear registro con correo de administrador
+    if (isUserSuperAdmin({ email: cleanEmail })) {
+      setMode('login');
+      setError('Esta cuenta de administrador ya existe. Inicia sesión con tu contraseña.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!supabase) {
+        throw new Error('Servicio de registro no disponible.');
+      }
+
+      // 1. Verificar si el correo ya existe en tabla users antes de registrar
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+
+      if (existingUser) {
+        setMode('login');
+        setError('Este correo ya tiene una cuenta creada. Inicia sesión con tu contraseña.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Crear cuenta real en Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPass,
+        options: {
+          data: { name: cleanName, full_name: cleanName },
+        },
+      });
+
+      if (signUpError) {
+        const msg = signUpError.message.toLowerCase();
+        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+          setMode('login');
+          throw new Error('Este correo ya está registrado. Por favor inicia sesión.');
+        }
+        throw new Error(signUpError.message);
+      }
+
+      // Supabase devuelve identities vacío si el email ya existía y está confirmando
+      if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+        setMode('login');
+        throw new Error('Este correo ya tiene una cuenta registrada. Inicia sesión.');
+      }
+
+      if (!signUpData?.user) {
+        throw new Error('No se pudo completar el registro. Intenta nuevamente.');
+      }
+
+      // 3. Guardar perfil en tabla users de Supabase
+      try {
+        await supabase.from('users').upsert([
+          {
+            id: signUpData.user.id,
+            name: cleanName,
+            email: cleanEmail,
+            role: 'client',
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      } catch {}
+
+      const authUser: User = {
+        id: signUpData.user.id,
+        name: cleanName,
+        email: cleanEmail,
+        role: 'client',
+        createdAt: new Date().toISOString(),
+      };
 
       fetch('/api/bridge/track-register', {
         method: 'POST',
@@ -192,30 +249,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      if (err.message && err.message.toLowerCase().includes('contrase')) {
-        setError('Contraseña Incorrecta');
-      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setError('❌ Sin conexión a internet. No se puede registrar fuera de línea. Por favor verifica tu red.');
-      } else {
-        setError(err.message || 'Error en autenticación');
-      }
+      setError(err?.message || 'Error al registrar la cuenta.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDeviceAccountQuickLogin = () => {
-    if (!deviceAccount) return;
-    const user: User = {
-      id: deviceAccount.role === 'super_admin' ? 'kathy_super_admin' : `usr_${deviceAccount.email.replace(/[^a-z0-9]/gi, '_')}`,
-      name: deviceAccount.name,
-      email: deviceAccount.email,
-      role: deviceAccount.role as 'super_admin' | 'client',
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem('kase_current_user', JSON.stringify(user));
-    onAuthSuccess(user);
-    onClose();
   };
 
   return (
@@ -242,20 +279,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
 
-        {/* Device-specific remembered account (only on the device where that user logged in) */}
-        {deviceAccount && (
-          <div className="my-3 p-2.5 bg-neutral-900/90 border border-neutral-800 rounded-xl space-y-1.5 text-[11px]">
-            <span className="text-neutral-400 font-semibold block">Cuenta guardada en este dispositivo:</span>
-            <button
-              type="button"
-              onClick={handleDeviceAccountQuickLogin}
-              className="w-full text-left px-2.5 py-1.5 rounded bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-950/70 transition-colors flex items-center justify-between cursor-pointer"
-            >
-              <span>Continuar como: <strong>{deviceAccount.role === 'super_admin' ? 'Administradora Kathy Seba' : `${deviceAccount.name} (${deviceAccount.email})`}</strong></span>
-              <span className="font-mono text-[10px] text-emerald-400 font-bold">Entrar ⚡</span>
-            </button>
-          </div>
-        )}
 
         {!effectiveOnline && (
           <div className="p-2.5 bg-rose-950/60 border border-rose-600/60 rounded-xl text-rose-200 text-xs mb-3 flex items-center gap-2 font-medium">

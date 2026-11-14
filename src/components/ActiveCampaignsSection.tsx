@@ -78,37 +78,95 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
   const [activeTab, setActiveTab] = useState<'motores' | 'publicaciones'>('motores');
   const [logsLoading, setLogsLoading] = useState(false);
 
-  // Nuevo estado para las campañas reales leídas en caliente desde la nube
-  const [dbCampaigns, setDbCampaigns] = useState<Campaign[]>([]);
+   const [dbCampaigns, setDbCampaigns] = useState<Campaign[]>([]);
+  const [cloudLoaded, setCloudLoaded] = useState(false);
+  const [showAllUsersCampaigns, setShowAllUsersCampaigns] = useState(false);
+  const [adminDeleteNameInput, setAdminDeleteNameInput] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 1. Sincronización indestructible: Traer campaigns desde Supabase por Gmail
-  // 1. Sincronización: Traer campaigns desde Supabase o backend
-  useEffect(() => {
+  const isAdminUser = isUserSuperAdmin(currentUser);
+  const myEmail = (currentUser?.email || '').toLowerCase().trim();
+
+  const isOwnedByCurrentUser = (c: Campaign) => {
+    const cEmail = (c.creatorEmail || '').toLowerCase().trim();
+    const cUid = (c.userId || '').toLowerCase().trim();
+    return (myEmail && cEmail === myEmail) || (myEmail && cUid === myEmail) || (currentUser?.id && c.userId === currentUser.id);
+  };
+
+  const fetchCloudCampaigns = async () => {
     if (!currentUser?.email) return;
-
-    const fetchCloudCampaigns = async () => {
-      try {
-        if (supabase) {
-          const { data, error } = await supabase
-            .from('campaigns')
-            .select('*')
-            .or(`creator_email.eq.${currentUser.email},user_id.eq.${currentUser.email}`)
-            .order('created_at', { ascending: false });
-
-          if (!error && Array.isArray(data) && data.length > 0) {
-            setDbCampaigns(data.map((r: any) => mapRowToCampaign(r)));
-          }
+    try {
+      if (supabase) {
+        let query = supabase.from('campaigns').select('*').order('created_at', { ascending: false });
+        if (!isAdminUser) {
+          query = query.or(`creator_email.eq.${currentUser.email},user_id.eq.${currentUser.email}`);
         }
-      } catch (e) {
-        console.warn('[ActiveCampaignsSection fetchCloudCampaigns]:', e);
+        const { data, error } = await query;
+
+        if (!error && Array.isArray(data)) {
+          setDbCampaigns(data.map((r: any) => mapRowToCampaign(r)));
+          setCloudLoaded(true);
+          return;
+        }
       }
-    };
+    } catch (e) {
+      console.warn('[ActiveCampaignsSection fetchCloudCampaigns]:', e);
+    }
+  };
 
+  useEffect(() => {
     fetchCloudCampaigns();
-  }, [currentUser?.email]);
+  }, [currentUser?.email, isAdminUser]);
 
-  // Si dbCampaigns tiene datos, usarlos; de lo contrario fallback a localCampaigns
-  const campaigns = dbCampaigns.length > 0 ? dbCampaigns : localCampaigns;
+  const rawCampaigns = cloudLoaded ? dbCampaigns : localCampaigns;
+
+  // Ordenar: si es Admin, primero sus propias campañas ordenadas por fecha, luego las de otros usuarios
+  const campaigns = [...rawCampaigns].sort((a, b) => {
+    if (isAdminUser) {
+      const aMine = isOwnedByCurrentUser(a) ? 0 : 1;
+      const bMine = isOwnedByCurrentUser(b) ? 0 : 1;
+      if (aMine !== bMine) return aMine - bMine;
+    }
+    return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+  });
+
+  const handlePermanentDelete = async (targetCamp: Campaign) => {
+    if (!isAdminUser) return;
+    const confirmed = window.confirm(`¿Eliminar definitivamente la campaña "${targetCamp.name}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) return;
+
+    setDeletingId(targetCamp.id);
+    try {
+      if (supabase) {
+        await supabase.from('campaign_modules').delete().eq('campaign_id', targetCamp.id);
+        await supabase.from('campaigns').delete().eq('id', targetCamp.id);
+      }
+      await fetch(`/api/campaigns/${encodeURIComponent(targetCamp.id)}?adminEmail=${encodeURIComponent(myEmail)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+
+      setDbCampaigns((prev) => prev.filter((c) => c.id !== targetCamp.id));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteOtherUserCampaignByName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdminUser) return;
+    const cleanQuery = adminDeleteNameInput.trim().toLowerCase();
+    if (!cleanQuery) return;
+
+    const found = campaigns.find((c) => !isOwnedByCurrentUser(c) && c.name.trim().toLowerCase() === cleanQuery);
+    if (!found) {
+      alert('No se encontró ninguna campaña de otro usuario con ese nombre exacto.');
+      return;
+    }
+
+    await handlePermanentDelete(found);
+    setAdminDeleteNameInput('');
+  };
+
 
 
   
@@ -132,7 +190,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
     const channel = supabase
       .channel(`realtime-campaign-logs-${currentId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_audit_logs', filter: `campaign_id=eq.${currentId}` }, 
-        (payload) => { setLogs((prev) => [payload.new as AuditLog, ...prev]); }
+      (payload: any) => { setLogs((prev) => [payload.new as AuditLog, ...prev]); }
       ).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [activeCampaignId, campaigns]);
@@ -149,19 +207,26 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
     }));
   };
 
-  const isSuperAdmin = isUserSuperAdmin(currentUser);
+    const myCampaigns = campaigns.filter((c) => isOwnedByCurrentUser(c));
+  const otherUsersCampaigns = campaigns.filter((c) => !isOwnedByCurrentUser(c));
+
+  const visibleBaseCampaigns = !isAdminUser
+    ? myCampaigns
+    : showAllUsersCampaigns
+    ? [...myCampaigns, ...otherUsersCampaigns]
+    : myCampaigns;
 
   // Filter campaigns
-  const filteredCampaigns = campaigns.filter((camp) => {
+  const filteredCampaigns = visibleBaseCampaigns.filter((camp) => {
     if (filterType === 'active') return camp.status === 'active';
     if (filterType === 'paused') return camp.status === 'paused_manual' || camp.status === 'paused_quota_reached';
     if (filterType === 'configuring') return camp.status === 'configuring';
     return true;
   });
 
-  const totalActive = campaigns.filter((c) => c.status === 'active').length;
-  const totalGoal = campaigns.reduce((acc, c) => acc + (c.targetRegistrations || 0), 0);
-  const totalDelivered = campaigns.reduce((acc, c) => acc + (c.currentRegistrations || 0), 0);
+  const totalActive = visibleBaseCampaigns.filter((c) => c.status === 'active').length;
+  const totalGoal = visibleBaseCampaigns.reduce((acc, c) => acc + (c.targetRegistrations || 0), 0);
+  const totalDelivered = visibleBaseCampaigns.reduce((acc, c) => acc + (c.currentRegistrations || 0), 0);
   const overallPercent = totalGoal > 0 ? Math.min(100, Math.round((totalDelivered / totalGoal) * 100)) : 0;
 
   return (
@@ -210,7 +275,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
       {/* 2. Controls & Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Filter Pills */}
+                {/* Filter Pills */}
         <div className="flex items-center gap-1.5 p-1 bg-neutral-900 border border-neutral-800 rounded-xl overflow-x-auto">
           <button
             onClick={() => setFilterType('all')}
@@ -220,7 +285,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
-            Todas ({campaigns.length})
+            Todas ({visibleBaseCampaigns.length})
           </button>
           <button
             onClick={() => setFilterType('active')}
@@ -230,7 +295,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
-            🟢 Activas ({campaigns.filter((c) => c.status === 'active').length})
+            🟢 Activas ({visibleBaseCampaigns.filter((c) => c.status === 'active').length})
           </button>
           <button
             onClick={() => setFilterType('paused')}
@@ -240,9 +305,10 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                 : 'text-neutral-400 hover:text-white'
             }`}
           >
-            ⏸️ Pausadas ({campaigns.filter((c) => c.status === 'paused_manual' || c.status === 'paused_quota_reached').length})
+            ⏸️ Pausadas ({visibleBaseCampaigns.filter((c) => c.status === 'paused_manual' || c.status === 'paused_quota_reached').length})
           </button>
         </div>
+
 
         {/* Action: Create New Campaign */}
         <button
@@ -254,7 +320,34 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
         </button>
       </div>
 
-      {/* 3. Accordion List of Campaigns */}
+            {/* 3. Accordion List of Campaigns */}
+      {isAdminUser && (
+        <form
+          onSubmit={handleDeleteOtherUserCampaignByName}
+          className="p-4 rounded-xl bg-red-950/20 border border-red-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
+        >
+          <div className="flex-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-red-300 mb-1">
+              🛡️ Panel Super Admin: Eliminar definitivamente campaña de otro usuario
+            </label>
+            <input
+              type="text"
+              value={adminDeleteNameInput}
+              onChange={(e) => setAdminDeleteNameInput(e.target.value)}
+              placeholder="Escribe el nombre exacto de la campaña de otro usuario..."
+              className="w-full px-3 py-2 rounded-lg bg-black/70 border border-neutral-800 focus:border-red-500/60 text-xs text-white placeholder-neutral-500 outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!adminDeleteNameInput.trim() || deletingId !== null}
+            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-xs font-bold transition-colors cursor-pointer shrink-0 sm:self-end"
+          >
+            {deletingId ? 'Eliminando...' : 'Borrar Definitivamente'}
+          </button>
+        </form>
+      )}
+
       <div className="space-y-4">
         {filteredCampaigns.length === 0 ? (
           <div className="py-16 text-center rounded-2xl bg-neutral-900/40 border border-neutral-800 space-y-4 p-6">
@@ -280,6 +373,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
             const progress = Math.min(100, Math.round((camp.currentRegistrations / camp.targetRegistrations) * 100));
             const remaining = Math.max(0, camp.targetRegistrations - camp.currentRegistrations);
             const activeModsCount = Object.values(camp.modules).filter((m) => m.active).length;
+            const isMine = isOwnedByCurrentUser(camp);
 
             return (
               <div
@@ -567,8 +661,8 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                         Estado operativo: <strong className="text-white">{camp.status === 'active' ? 'Motores operando en segundo plano 24/7' : 'En pausa preventiva'}</strong>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {onToggleStatus && (
+                                            <div className="flex items-center gap-2 flex-wrap">
+                        {onToggleStatus && isMine && (
                           <button
                             type="button"
                             onClick={() => onToggleStatus(camp)}
@@ -585,6 +679,17 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                                 <span>Reanudar Motores</span>
                               </>
                             )}
+                          </button>
+                        )}
+
+                        {isAdminUser && isMine && (
+                          <button
+                            type="button"
+                            disabled={deletingId === camp.id}
+                            onClick={() => handlePermanentDelete(camp)}
+                            className="px-3 py-1.5 rounded-lg border border-red-500/40 hover:border-red-500 bg-red-950/30 hover:bg-red-950/60 text-xs font-semibold text-red-300 transition-colors cursor-pointer"
+                          >
+                            {deletingId === camp.id ? 'Borrando...' : '🗑️ Borrar mi campaña'}
                           </button>
                         )}
   {/* Panel Integrado en Tiempo Real (system_audit_logs) */}
@@ -681,6 +786,7 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
 
 
                         
+                                             {isMine && (
                         <button
                           type="button"
                           onClick={() => {
@@ -692,15 +798,34 @@ export const ActiveCampaignsSection: React.FC<ActiveCampaignsSectionProps> = ({
                           <span>Gestionar Campaña Completa</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
+                      )}
                       </div>
                     </div>
                   </div>
-                )}
+                               )}
               </div>
             );
           })
+        )}
+
+        {isAdminUser && otherUsersCampaigns.length > 0 && (
+          <div className="pt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setShowAllUsersCampaigns((prev) => !prev)}
+              className="px-5 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-bold text-emerald-400 transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Users className="w-4 h-4" />
+              <span>
+                {showAllUsersCampaigns
+                  ? 'Ocultar campañas de otros usuarios'
+                  : `Ver más (campañas de todos los usuarios: ${otherUsersCampaigns.length})`}
+              </span>
+            </button>
+          </div>
         )}
       </div>
     </div>
   );
 };
+

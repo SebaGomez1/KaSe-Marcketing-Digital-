@@ -297,7 +297,9 @@ export default function App() {
           const directSupabaseData = await getUserCampaigns(currentUser.id || currentUser.email);
           if (Array.isArray(directSupabaseData) && directSupabaseData.length > 0) {
             const validSbCampaigns = directSupabaseData.filter((c: any) => !isFakeCampaign(c));
-            serverCampaigns = [...serverCampaigns, ...validSbCampaigns];
+                   const seenIds = new Set(serverCampaigns.map((c) => c.id));
+        const uniqueSbCampaigns = validSbCampaigns.filter((c: Campaign) => !seenIds.has(c.id));
+        serverCampaigns = [...serverCampaigns, ...uniqueSbCampaigns];
           }
         } catch (sbErr) {
           console.warn('[Supabase Direct Fetch]:', sbErr);
