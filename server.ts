@@ -2859,21 +2859,30 @@ app.post(['/api/bridge/verify-target-url', '/api/pixel/verify-installation'], (r
 
 // MERCADO PAGO CHECKOUT PREFERENCE CREATION (PARTE 1 PLG CHECKOUT & REAL TOKEN READY)
 app.post('/api/payments/mercadopago/create-preference', async (req: Request, res: Response) => {
-  const { campaignId, amount, currency = 'USD', title, payerEmail } = req.body;
+    const { campaignId, plan, currency = 'USD', title, payerEmail, isAdminTest } = req.body;
   const campaign = campaigns.find((c) => c.id === campaignId);
 
-  if (campaign) {
-    const validation = validateCampaignEnginesForPlan(campaign.plan);
-    if (!validation.canProceed) {
-      res.status(403).json({
-        error: `BLOQUEO DE SEGURIDAD KASE: No se puede generar la orden de cobro en Mercado Pago porque faltan APIs en Vercel requeridas para el plan ${campaign.plan.toUpperCase()}.`,
-        missingModules: validation.missingModules,
-      });
-      return;
-    }
+  const resolvedPlan = String(plan || campaign?.plan || 'starter').toLowerCase();
+  const validation = validateCampaignEnginesForPlan(resolvedPlan as any);
+  if (!validation.canProceed) {
+    res.status(403).json({
+      error: `BLOQUEO DE SEGURIDAD KASE: No se puede generar la orden de cobro en Mercado Pago porque faltan APIs en Vercel requeridas para el plan ${resolvedPlan.toUpperCase()}.`,
+      missingModules: validation.missingModules,
+    });
+    return;
   }
 
-  const cleanAmount = Number(amount || 490);
+  const PLAN_PRICES_SERVER: Record<string, number> = {
+    basic: 250,
+    starter: 490,
+    growth: 1890,
+    enterprise: 8900,
+  };
+  const normalizedPayer = String(payerEmail || '').toLowerCase().trim();
+  const isSuperAdmin = normalizedPayer === 'kathyseba2020@gmail.com';
+  const cleanAmount = isSuperAdmin && isAdminTest
+    ? 1
+    : (PLAN_PRICES_SERVER[resolvedPlan] || 490);
   const cleanTitle = title || (campaign ? `Plan Growth (${campaign.name}) - Bloque de 50 ventas` : 'Plan Growth - Bloque de 50 ventas');
   // Usar estrictamente variables de entorno seguras del backend
  const token = (detectMercadoPagoToken()?.token || process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || kaseGlobalConfig.mercadoPagoAccessToken || '').trim();
@@ -2961,68 +2970,100 @@ app.post('/api/payments/mercadopago/create-preference', async (req: Request, res
   });
 });
 
-// MERCADO PAGO SIMULATED APPROVAL / REAL CHECKOUT HOOK
-app.post('/api/payments/mercadopago/simulate-approval', async (req: Request, res: Response) => {
-  const { campaignId, amount, currency = 'USD', payerEmail } = req.body;
-  const campaign = campaigns.find((c) => c.id === campaignId);
+// VERIFICACIÓN REAL DE PAGO EN MERCADO PAGO ANTES DE CREAR Y ACTIVAR CAMPAÑA
+app.post('/api/payments/mercadopago/verify-and-activate', async (req: Request, res: Response) => {
+  try {
+    const { paymentId, campaign: draftCampaign } = req.body;
+    const token = (detectMercadoPagoToken()?.token || process.env.MERCADO_PAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || '').trim();
 
-  if (!campaign) {
-    res.status(404).json({ error: 'Campaña no encontrada' });
-    return;
-  }
+    if (!paymentId || !draftCampaign?.id) {
+      res.status(400).json({ success: false, error: 'Faltan datos de pago o campaña para verificar.' });
+      return;
+    }
 
-  const validation = validateCampaignEnginesForPlan(campaign.plan);
-  if (!validation.canProceed) {
-    res.status(403).json({
-      error: `BLOQUEO DE SEGURIDAD KASE: No se puede activar la campaña porque faltan APIs en Vercel requeridas para el plan ${campaign.plan.toUpperCase()}.`,
-      missingModules: validation.missingModules,
+    if (!token || token.length < 15) {
+      res.status(500).json({ success: false, error: 'MERCADO_PAGO_ACCESS_TOKEN no configurado en el servidor.' });
+      return;
+    }
+
+    // Consultar directamente a la API oficial de Mercado Pago
+    const verifyRes = await fetch(`https://mercadopago.com{encodeURIComponent(String(paymentId))}`, {
+      headers: { Authorization: `Bearer ${token}` },
     });
-    return;
+
+    if (!verifyRes.ok) {
+      res.status(403).json({ success: false, error: 'El pago no existe o no pudo verificarse en Mercado Pago.' });
+      return;
+    }
+
+    const paymentInfo: any = await verifyRes.json();
+
+    if (paymentInfo.status !== 'approved') {
+      res.status(402).json({
+        success: false,
+        status: paymentInfo.status,
+        error: `El pago no fue aprobado (estado: ${paymentInfo.status}). La campaña permanece bloqueada.`,
+      });
+      return;
+    }
+
+    if (paymentInfo.external_reference && paymentInfo.external_reference !== draftCampaign.id) {
+      res.status(403).json({ success: false, error: 'El comprobante de pago no pertenece a esta campaña.' });
+      return;
+    }
+
+    // Construir y activar la campaña ahora que el pago está 100% confirmado
+    const activatedCampaign = {
+      ...draftCampaign,
+      status: 'active' as const,
+      pausedAt: undefined,
+      modules: draftCampaign.modules || getInitialModules(draftCampaign.plan || 'starter'),
+      billing: {
+        subscriptionStatus: 'active' as const,
+        paymentGateway: 'mercadopago_uy' as const,
+        frequency: 'monthly' as const,
+        monthlyAmount: Number(paymentInfo.transaction_amount || 490),
+        currency: (paymentInfo.currency_id === 'UYU' ? 'UYU' : 'USD') as 'USD' | 'UYU',
+        lastBilledAt: new Date().toISOString(),
+        nextBillingDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+        payerEmail: draftCampaign.creatorEmail || paymentInfo.payer?.email || 'cliente@empresa.com',
+        mpPaymentId: String(paymentInfo.id),
+      },
+    };
+
+    const existingIdx = campaigns.findIndex((c) => c.id === activatedCampaign.id);
+    if (existingIdx >= 0) {
+      campaigns[existingIdx] = activatedCampaign;
+    } else {
+      campaigns.unshift(activatedCampaign);
+    }
+
+    const newTx = {
+      id: `tx_${Date.now()}`,
+      campaignId: activatedCampaign.id,
+      campaignName: activatedCampaign.name,
+      clientEmail: activatedCampaign.creatorEmail || 'cliente@empresa.com',
+      amount: activatedCampaign.billing.monthlyAmount,
+      currency: activatedCampaign.billing.currency,
+      status: 'approved' as const,
+      paymentMethod: 'mercadopago_uy' as const,
+      timestamp: new Date().toISOString(),
+      mpPaymentId: String(paymentInfo.id),
+    };
+    paymentTransactions.unshift(newTx);
+
+    await saveCampaignAsync(activatedCampaign);
+    saveTransactionsToFile(newTx);
+    ejecutarCicloAutonomoParaCampana(activatedCampaign).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
+
+    res.json({
+      success: true,
+      campaign: activatedCampaign,
+      mpPaymentId: String(paymentInfo.id),
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message || 'Error interno al verificar pago.' });
   }
-
-  const mpPayId = `mp_pay_${Date.now()}`;
-  campaign.status = 'active';
-  campaign.pausedAt = undefined;
-  campaign.modules = getInitialModules(campaign.plan);
-
-  if (campaign.billing) {
-    campaign.billing.subscriptionStatus = 'active';
-    campaign.billing.lastBilledAt = new Date().toISOString();
-  }
-
-  const newTx = {
-    id: `tx_${Date.now()}`,
-    campaignId: campaign.id,
-    campaignName: campaign.name,
-    clientEmail: payerEmail || campaign.billing?.payerEmail || 'cliente@empresa.com',
-    amount: Number(amount || campaign.billing?.monthlyAmount || 490),
-    currency: (currency || campaign.billing?.currency || 'USD') as 'USD' | 'UYU',
-    status: 'approved' as const,
-    paymentMethod: 'mercadopago_uy' as const,
-    timestamp: new Date().toISOString(),
-    mpPaymentId: mpPayId,
-  };
-  paymentTransactions.unshift(newTx);
-
-  campaign.logs.unshift({
-    id: `log_pay_ok_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    level: 'SUCCESS',
-    module: 'MERCADO_PAGO_IPN',
-    message: `Pago de ${newTx.currency} $${newTx.amount} CONFIRMADO vía pasarela de Mercado Pago (ID: ${mpPayId}). Motores autónomos encendidos al 100%.`,
-  });
-
-  await saveCampaignAsync(campaign);
-  saveTransactionsToFile(newTx);
-
-  ejecutarCicloAutonomoParaCampana(campaign).catch((e) => console.warn('[AUTO CYCLE ERROR]:', e));
-
-  res.json({
-    success: true,
-    campaign,
-    transaction: newTx,
-    message: 'Pago confirmado y motores activados automáticamente.',
-  });
 });
 
 // MERCADO PAGO WEBHOOK RECEIVER (IPN DE PRODUCCIÓN CON ACTUALIZACIÓN DIRECTA EN SUPABASE)

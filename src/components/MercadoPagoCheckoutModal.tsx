@@ -26,7 +26,6 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
   const [showExplanation, setShowExplanation] = useState(false);
   const [engineValidation] = useState<EngineValidationResult>({
     canProceed: true,
-    isLive: true,
     testedPlan: campaign.plan || 'starter',
     missingModules: [],
   });
@@ -52,15 +51,16 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
     setRedirecting(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/mercadopago/create-preference', {
+            const res = await fetch('/api/payments/mercadopago/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           campaignId: campaign.id,
-          amount,
+          plan: campaign.plan,
           currency,
           title: `Campaña KaSe - ${campaign.name}`,
           payerEmail,
+          isAdminTest: campaign.billing?.monthlyAmount === 1,
         }),
       });
 

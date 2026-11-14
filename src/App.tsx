@@ -206,6 +206,56 @@ export default function App() {
     } catch {}
   }, []);
 
+    // 6. Verificar pago real en Mercado Pago al regresar del Checkout antes de crear/activar campaña
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const isPaymentSuccess = searchParams.has('payment-success') || searchParams.get('mp_status') === 'approved' || searchParams.get('status') === 'approved';
+    const isPaymentFailed = searchParams.has('payment-failure') || searchParams.has('payment-pending') || searchParams.get('mp_status') === 'failure';
+    const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
+    const campaignId = searchParams.get('campaignId') || searchParams.get('campaign_id') || searchParams.get('external_reference');
+
+    if (!isPaymentSuccess && !isPaymentFailed && !paymentId) return;
+
+    // Limpiar parámetros de la URL inmediatamente
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    if (isPaymentSuccess && paymentId && paymentId !== 'null') {
+      let pendingCamp: Campaign | null = null;
+      try {
+        const raw = window.sessionStorage.getItem('kase_pending_checkout_campaign');
+        if (raw) pendingCamp = JSON.parse(raw);
+      } catch {}
+
+      if (pendingCamp && (!campaignId || pendingCamp.id === campaignId)) {
+        fetch('/api/payments/mercadopago/verify-and-activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentId, campaign: pendingCamp }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success && data.campaign) {
+              window.sessionStorage.removeItem('kase_pending_checkout_campaign');
+              saveCampaignToVault(data.campaign);
+              setCampaigns((prev) => [data.campaign, ...prev.filter((c) => c.id !== data.campaign.id)]);
+              setActiveCampaignId(data.campaign.id);
+              setActiveTab('dashboard');
+            } else {
+              alert(data.error || 'El pago no pudo verificarse como aprobado. La campaña no fue creada.');
+            }
+          })
+          .catch(() => {
+            alert('Error de conexión al verificar el pago con Mercado Pago.');
+          });
+      }
+    } else {
+      // Pago rechazado, pendiente o usuario volvió atrás: descartar borrador sin crear campaña
+      window.sessionStorage.removeItem('kase_pending_checkout_campaign');
+    }
+  }, []);
+
+
   const [isLoading, setIsLoading] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
