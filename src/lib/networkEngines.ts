@@ -7,7 +7,7 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
+import nodemailer from 'nodemailer';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -869,9 +869,11 @@ export async function enviarOutreachRealResend(params: {
   country: string;
   tier: string;
 }): Promise<{ success: boolean; id?: string; error?: string }> {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    return { success: false, error: 'RESEND_API_KEY no configurada en Vercel' };
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+
+  if (!gmailUser || !gmailPass) {
+    return { success: false, error: 'GMAIL_USER o GMAIL_APP_PASSWORD no configuradas en Vercel' };
   }
 
   try {
@@ -884,27 +886,24 @@ export async function enviarOutreachRealResend(params: {
       </div>
     `;
 
-    const res = await fetch('https://resend.com', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey.trim()}`,
-        'Content-Type': 'application/json',
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser.trim(),
+        pass: gmailPass.trim(),
       },
-      body: JSON.stringify({
-        from: 'KaSe Growth Engine <onboarding@resend.dev>',
-        to: [params.toEmail],
-        subject: params.subject,
-        html: htmlContent,
-      }),
     });
 
-    const data = await res.json();
-    if (res.ok && data?.id) {
-      return { success: true, id: data.id };
-    }
-    return { success: false, error: data?.message || `HTTP ${res.status}` };
+    const info = await transporter.sendMail({
+      from: `"KaSe Growth Engine" <${gmailUser.trim()}>`,
+      to: params.toEmail,
+      subject: params.subject,
+      html: htmlContent,
+    });
+
+    return { success: true, id: info.messageId };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Error conectando Resend API' };
+    return { success: false, error: err?.message || 'Error enviando correo vía Gmail SMTP' };
   }
 }
 
