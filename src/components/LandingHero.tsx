@@ -23,6 +23,7 @@ import {
   WifiOff
 } from 'lucide-react';
 import { User, CampaignType, CAMPAIGN_TYPES_CATALOG, isUserSuperAdmin, isValidAdminCredentials, ADMIN_PASSWORD } from '../types/growth';
+import { supabase } from '../lib/db';
 
 interface LandingHeroProps {
   currentUser: User | null;
@@ -58,25 +59,24 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
 
   const effectiveOnline = isOnline && (typeof navigator === 'undefined' || navigator.onLine);
 
-  // Device-specific remembered account (only appears on the device where that user logged in)
-  const [deviceAccount, setDeviceAccount] = useState<{ email: string; name: string; role: string } | null>(() => {
+    // Privacidad: nunca guardar ni recordar cuentas automáticamente en el dispositivo sin permiso
+  if (typeof window !== 'undefined') {
     try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('kase_device_account') : null;
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+      window.localStorage.removeItem('kase_device_account');
+    } catch {}
+  }
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (typeof navigator !== 'undefined' && !navigator.onLine && !effectiveOnline) {
-      setError('❌ Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
+      setError('Sin conexión a internet. Se requiere conexión activa a internet para iniciar sesión o registrarse.');
       return;
     }
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = password.trim();
+    const cleanName = name.trim() || cleanEmail.split('@')[0];
+
     if (!cleanEmail) {
       setError('Por favor ingresa tu correo electrónico');
       return;
@@ -85,18 +85,28 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       setError('Por favor ingresa tu contraseña');
       return;
     }
+    if (authMode === 'register' && cleanPass.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
     setError(null);
     setLoading(true);
 
     const isAdmin = isUserSuperAdmin({ email: cleanEmail });
     if (isAdmin) {
+      if (authMode === 'register') {
+        setAuthMode('login');
+        setError('Esta cuenta de administrador ya existe. Inicia sesión con tu contraseña.');
+        setLoading(false);
+        return;
+      }
       if (!isValidAdminCredentials(cleanEmail, cleanPass)) {
-        setError('Contraseña Incorrecta');
+        setError('Contraseña incorrecta');
         setLoading(false);
         return;
       }
 
-      // Administrador verificado: Acceso garantizado inmediato
       const adminUser: User = {
         id: cleanEmail === 'kathyseba2020@gmail.com' ? 'kathy_super_admin' : 'usr_superadmin_kase',
         name: cleanEmail === 'kathyseba2020@gmail.com' ? 'Kathy Seba (Super Admin)' : 'KaSe Administrador',
@@ -105,18 +115,6 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         createdAt: new Date().toISOString(),
         acquisitionSource: 'direct_organic',
       };
-      const deviceData = { email: adminUser.email, name: adminUser.name, role: adminUser.role };
-      localStorage.setItem('kase_device_account', JSON.stringify(deviceData));
-      localStorage.setItem('kase_current_user', JSON.stringify(adminUser));
-      setDeviceAccount(deviceData);
-
-      // Sincronizar en segundo plano si el endpoint está disponible
-      fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
-      }).catch(() => {});
-
       onLoginSuccess(adminUser);
       onGoToDashboard();
       setLoading(false);
@@ -124,78 +122,132 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
     }
 
     try {
-      let authUser: User | null = null;
-      const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: cleanEmail, password }),
-      });
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await res.json();
-        if (!res.ok) {
-          if (res.status === 401 || (data.error && data.error.toLowerCase().includes('contrase'))) {
-            throw new Error('Contraseña Incorrecta');
+      if (!supabase) {
+        throw new Error('Servicio de autenticación no disponible.');
+      }
+
+      if (authMode === 'login') {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: cleanPass,
+        });
+
+        if (authError) {
+          const msg = authError.message.toLowerCase();
+          if (msg.includes('invalid login') || msg.includes('credentials')) {
+            throw new Error('Correo o contraseña incorrectos.');
           }
-          throw new Error(data.error || 'Contraseña Incorrecta');
+          throw new Error(authError.message);
         }
-        if (data.user) {
-          authUser = data.user;
+
+        if (!data?.user) {
+          throw new Error('No se pudo iniciar sesión. Verifica tus credenciales.');
         }
+
+        let profileName = data.user.user_metadata?.name || data.user.user_metadata?.full_name || cleanEmail.split('@')[0];
+        let profileRole: 'super_admin' | 'client' = 'client';
+        let profileCreated = data.user.created_at || new Date().toISOString();
+
+        try {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
+          if (userData) {
+            profileName = userData.name || userData.full_name || profileName;
+            profileRole = userData.role === 'super_admin' ? 'super_admin' : 'client';
+            profileCreated = userData.created_at || profileCreated;
+          }
+        } catch {}
+
+        const authUser: User = {
+          id: data.user.id,
+          name: profileName,
+          email: data.user.email || cleanEmail,
+          role: profileRole,
+          createdAt: profileCreated,
+        };
+
+        onLoginSuccess(authUser);
+        onGoToDashboard();
       } else {
-        throw new Error('Sin conexión con el servidor central de KaSe');
-      }
+        // 1. Verificar si el correo ya existe en tabla users de Supabase
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', cleanEmail)
+          .maybeSingle();
 
-      // STRICT: No offline fallback allowed for regular accounts
-      if (!authUser) {
-        throw new Error('No fue posible autenticar. Verifica tus datos de acceso.');
-      }
+        if (existingUser) {
+          setAuthMode('login');
+          setError('Este correo ya tiene una cuenta creada. Inicia sesión con tu contraseña.');
+          setLoading(false);
+          return;
+        }
 
-      if (authMode === 'register') {
+        // 2. Crear cuenta real al instante en Supabase Auth
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: cleanPass,
+          options: {
+            data: { name: cleanName, full_name: cleanName },
+          },
+        });
+
+        if (signUpError) {
+          const msg = signUpError.message.toLowerCase();
+          if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+            setAuthMode('login');
+            throw new Error('Este correo ya está registrado. Por favor inicia sesión.');
+          }
+          throw new Error(signUpError.message);
+        }
+
+        if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+          setAuthMode('login');
+          throw new Error('Este correo ya tiene una cuenta registrada. Inicia sesión.');
+        }
+
+        if (!signUpData?.user) {
+          throw new Error('No se pudo completar el registro. Intenta nuevamente.');
+        }
+
+        // 3. Guardar perfil en la tabla users de Supabase
+        try {
+          await supabase.from('users').upsert({
+            id: signUpData.user.id,
+            name: cleanName,
+            email: cleanEmail,
+            role: 'client',
+            created_at: new Date().toISOString(),
+          });
+        } catch {}
+
+        const authUser: User = {
+          id: signUpData.user.id,
+          name: cleanName,
+          email: cleanEmail,
+          role: 'client',
+          createdAt: new Date().toISOString(),
+        };
+
         fetch('/api/bridge/track-register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: authUser.email, name: authUser.name, userId: authUser.id }),
         }).catch(() => {});
-      }
-      // Remember this specific account on this device
-      const deviceData = { email: authUser.email, name: authUser.name, role: authUser.role };
-      localStorage.setItem('kase_device_account', JSON.stringify(deviceData));
-      localStorage.setItem('kase_current_user', JSON.stringify(authUser));
-      setDeviceAccount(deviceData);
-      onLoginSuccess(authUser);
-      onGoToDashboard();
-    } catch (err: any) {
-      if (err.message && err.message.toLowerCase().includes('contrase')) {
-        setError('Contraseña Incorrecta');
-      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setError('❌ Sin conexión a internet. No se puede iniciar sesión fuera de línea. Por favor verifica tu red.');
-      } else {
-        setError(err.message || 'Error al conectar con el servidor central de autenticación');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleQuickResumeDeviceAccount = async () => {
-    if (!deviceAccount) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const user: User = {
-        id: deviceAccount.role === 'super_admin' ? 'kathy_super_admin' : `usr_${deviceAccount.email.replace(/[^a-z0-9]/gi, '_')}`,
-        name: deviceAccount.name,
-        email: deviceAccount.email,
-        role: deviceAccount.role as 'super_admin' | 'client',
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem('kase_current_user', JSON.stringify(user));
-      onLoginSuccess(user);
-      onGoToDashboard();
-    } catch {
-      setError('Contraseña Incorrecta');
+        onLoginSuccess(authUser);
+        onGoToDashboard();
+      }
+    } catch (err: any) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setError('Sin conexión a internet. Por favor verifica tu red.');
+      } else {
+        setError(err.message || 'Error al conectar con el servidor de autenticación');
+      }
     } finally {
       setLoading(false);
     }
@@ -504,28 +556,12 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
-                    </button>
-                  </form>
+                </button>
+            </form>
+          </>
+          ) : (
+            /* Authenticated state inside card */
 
-                  {/* Device-Specific Quick Access (ONLY for this device's own registered account) */}
-                  {deviceAccount && (
-                    <div className="mt-5 pt-4 border-t border-neutral-800 text-center">
-                      <p className="text-[11px] text-neutral-400 mb-1.5">
-                        Cuenta guardada en este dispositivo:
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleQuickResumeDeviceAccount}
-                        disabled={loading}
-                        className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-4 cursor-pointer"
-                      >
-                        ⚡ Continuar como {deviceAccount.role === 'super_admin' ? 'Administradora Kathy Seba' : `${deviceAccount.name} (${deviceAccount.email})`}
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Authenticated state inside card */
                 <div className="space-y-4">
                   <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-800 space-y-1.5">
                     <div className="text-[11px] text-neutral-400 font-mono">Usuario conectado:</div>
