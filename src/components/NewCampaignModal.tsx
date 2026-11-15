@@ -82,32 +82,31 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
   });
   const [isValidatingEngines, setIsValidatingEngines] = useState<boolean>(false);
 
-  const [targetUrl, setTargetUrl] = useState(campaign?.targetUrl || 'https://');
-  const [niche, setNiche] = useState(campaign?.niche || 'Fintech & B2B SaaS');
+    const [targetUrl, setTargetUrl] = useState(campaign?.targetUrl || '');
+  const [niche, setNiche] = useState(campaign?.niche || '');
   const [description, setDescription] = useState(campaign?.description || '');
   const [adminSuccessCamp, setAdminSuccessCamp] = useState<Campaign | null>(null);
   const [isTestOneDollarMode, setIsTestOneDollarMode] = useState<boolean>(false);
   const [copiedSuccessBridge, setCopiedSuccessBridge] = useState(false);
   const [copiedFormBridge, setCopiedFormBridge] = useState(false);
 
-
-  // Conditional Fields
-  const [interactionPreferences, setInteractionPreferences] = useState('Comentarios positivos y preguntas frecuentes orientadas al nicho');
+  // Conditional Fields (Vacíos para obligar al usuario a completarlos)
+  const [interactionPreferences, setInteractionPreferences] = useState('');
   const [communicationTone, setCommunicationTone] = useState('');
 
-  // Geographic Smart Segmentation
-  const [selectedCountryCode, setSelectedCountryCode] = useState('GLOBAL');
-  const [selectedRegionName, setSelectedRegionName] = useState('Mundial');
-  const [selectedCityName, setSelectedCityName] = useState('Tráfico Global Cualificado por Idioma e Intención');
-  const [cityInputText, setCityInputText] = useState('Tráfico Global Cualificado por Idioma e Intención');
+  // Geographic Smart Segmentation (Obligatorio elegir país y ciudad real)
+  const [selectedCountryCode, setSelectedCountryCode] = useState('');
+  const [selectedRegionName, setSelectedRegionName] = useState(campaign?.geoTargeting?.region || '');
+  const [selectedCityName, setSelectedCityName] = useState(campaign?.geoTargeting?.city || '');
+  const [cityInputText, setCityInputText] = useState(campaign?.geoTargeting?.city || '');
   const [countrySearchQuery, setCountrySearchQuery] = useState('');
-  const [autoExpandProximity, setAutoExpandProximity] = useState(true);
+  const [autoExpandProximity, setAutoExpandProximity] = useState(false);
 
-  // Pricing Range Calibration (Strategic Intent Qualification - Only for user_registrations & plan_sales)
-  const [minPlanPrice, setMinPlanPrice] = useState<string>('29');
-  const [maxPlanPrice, setMaxPlanPrice] = useState<string>('199');
+  // Pricing Range Calibration (Obligatorio ingresar precios reales)
+  const [minPlanPrice, setMinPlanPrice] = useState<string>(campaign?.minPlanPrice ? String(campaign.minPlanPrice) : '');
+  const [maxPlanPrice, setMaxPlanPrice] = useState<string>(campaign?.maxPlanPrice ? String(campaign.maxPlanPrice) : '');
   const [currency, setCurrency] = useState<'USD' | 'UYU'>('USD');
-  
+
   // Target Conversion Goal - flexibly typed for build tolerance
   const [targetQuantity, setTargetQuantity] = useState<number | any>(campaign?.targetRegistrations || defaultInitialQty);
   const [plan, setPlan] = useState<'basic' | 'starter' | 'growth' | 'enterprise'>(resolvedPlan);
@@ -822,12 +821,19 @@ export const NewCampaignModal: React.FC<NewCampaignModalProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <label className="text-neutral-300 text-[11px] font-semibold flex items-center gap-1.5">
-                    <span>1. País Seleccionado:</span>
-                    <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
-                      <span>{countryObj.flag}</span>
-                      <span>{countryObj.name}</span>
-                      <span className="font-mono text-[10px] text-neutral-400">({countryObj.code})</span>
-                    </span>
+                                        <span>1. País Seleccionado *:</span>
+                    {selectedCountryCode ? (
+                      <span className="text-emerald-400 font-bold bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded flex items-center gap-1">
+                        <span>{countryObj.flag}</span>
+                        <span>{countryObj.name}</span>
+                        <span className="font-mono text-[10px] text-neutral-400">({countryObj.code})</span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 font-bold bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded">
+                        ⚠️ Obligatorio: Selecciona un país abajo
+                      </span>
+                    )}
+
                   </label>
                   <span className="text-[10px] text-neutral-500 font-mono">Búsqueda rápida mundial</span>
                 </div>

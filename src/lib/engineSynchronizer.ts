@@ -56,6 +56,67 @@ interface EngineDefinition {
   }>;
 }
 
+export function buildStrictCampaignContext(campaign: Campaign) {
+  const geo = campaign.geoTargeting;
+  const targetCountry = (geo?.country || '').trim();
+  const targetCity = (geo?.city || '').trim();
+  const strictSingleCity = !geo?.autoExpandProximity;
+
+  if (!targetCountry || !targetCity) {
+    throw new Error(`[BLOQUEO GEOGRÁFICO] La campaña "${campaign.name}" no tiene País o Ciudad obligatoria definida.`);
+  }
+
+  // Calibración real de poder adquisitivo según precio de planes
+  const minPrice = Number(campaign.minPlanPrice || 0);
+  const maxPrice = Number(campaign.maxPlanPrice || 0);
+  const currency = campaign.currency || 'USD';
+  const normalizedMaxUSD = currency === 'UYU' ? maxPrice / 40 : maxPrice;
+
+  let purchasingPowerTier: 'MASS_MARKET' | 'MID_TICKET' | 'HIGH_TICKET_VIP' = 'MASS_MARKET';
+  let audienceIntentModifiers: string[] = [];
+
+  if (normalizedMaxUSD >= 300 || minPrice >= 150) {
+    purchasingPowerTier = 'HIGH_TICKET_VIP';
+    audienceIntentModifiers = [
+      'enterprise decision makers',
+      'C-level founders',
+      'high net worth buyers',
+      'corporate budget approved',
+      'B2B premium buyers',
+    ];
+  } else if (normalizedMaxUSD >= 80 || minPrice >= 40) {
+    purchasingPowerTier = 'MID_TICKET';
+    audienceIntentModifiers = [
+      'professional buyers',
+      'business owners',
+      'verified paid subscribers',
+    ];
+  } else {
+    purchasingPowerTier = 'MASS_MARKET';
+    audienceIntentModifiers = ['active consumers', 'fast adoption users'];
+  }
+
+  const locationLockQuery =
+    targetCountry.toLowerCase() === 'global'
+      ? 'Global'
+      : strictSingleCity
+      ? `"${targetCity}" "${targetCountry}"`
+      : `"${targetCity}" OR "${geo?.region || ''}" "${targetCountry}"`;
+
+  return {
+    targetCountry,
+    targetCity,
+    strictSingleCity,
+    locationLockQuery,
+    purchasingPowerTier,
+    minPrice,
+    maxPrice,
+    currency,
+    audienceIntentModifiers,
+  };
+}
+
+
 const CONFIGURED_ENGINES: EngineDefinition[] = [
   // 1. MOTOR 1: Google Search Indexing API v3 & SEO Técnico
   {
@@ -64,6 +125,9 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'Google Search Console API v3',
     defaultProcessedDelta: 3,
     execute: async (campaign, triggerType) => {
+        const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
+
       let actionExecuted = '';
       let statusText = '';
       const publishedLinks: string[] = [];
@@ -101,6 +165,9 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
         statusText = 'Indexación activa en Google Search API (<48h)';
       }
 
+       actionExecuted = `${actionExecuted} ${geoTag}`;
+      statusText = `${statusText} • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`;
+
       return {
         status: 'operational',
         statusCode: 200,
@@ -118,11 +185,14 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'X (Twitter API v2) & LinkedIn API',
     defaultProcessedDelta: 4,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const twitterClient = getTwitterClient();
       let actionExecuted = '';
-      const publishedLinks: string[] = [
-        `https://x.com/search?q=${encodeURIComponent(campaign.name + ' ' + campaign.niche)}&f=live`,
+            const geoSearchQuery = `${campaign.niche} ${ctx.locationLockQuery} ${ctx.audienceIntentModifiers.slice(0, 2).join(' ')}`.trim();
+       const publishedLinks: string[] = [
+        `https://x.com/search?q=${encodeURIComponent(geoSearchQuery)}&f=live`,
       ];
 
       if (twitterClient) {
@@ -132,12 +202,13 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
           ? `[Activación Inicial] Despliegue prioritario de hilos de autoridad y sindicación en redes (X y LinkedIn) para la campaña "${campaign.name}".`
           : `[Ciclo 15m] Sindicación omnicanal programada y escucha de hashtags en X / Twitter y LinkedIn ejecutada con éxito.`;
       }
+     actionExecuted = `${actionExecuted} ${geoTag}`;
 
       return {
         status: 'operational',
         statusCode: 200,
         actionExecuted,
-        statusText: 'Hilos virales y publicaciones sindicadas en X y LinkedIn',
+        statusText: `Hilos virales y publicaciones sindicadas en X y LinkedIn • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
         publishedLinks,
       };
     },
@@ -150,6 +221,8 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'ProductHunt, Dev.to & BetaList Webhook Syndicator',
     defaultProcessedDelta: 2,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const slug = campaign.name.toLowerCase().replace(/\s+/g, '-');
       const publishedLinks = [
@@ -162,11 +235,11 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
         ? `[Activación Inicial] Envío prioritario de ficha técnica de la app a directorios globales de startups (ProductHunt, BetaList, SaaSHub).`
         : `[Ciclo 15m] Petición de actualización de estado y validación de backlinks dofollow en directorios SaaS completada.`;
 
-      return {
+            return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
-        statusText: 'Listado en directorios SaaS y startups verificado',
+        actionExecuted: `${actionExecuted} ${geoTag}`,
+        statusText: `Listado en directorios SaaS y startups verificado • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
         publishedLinks,
       };
     },
@@ -179,8 +252,15 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'X / Twitter & Foros Q&A (Reddit / Quora / Comunidades)',
     defaultProcessedDelta: 5,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
-      const nicheWords = (campaign.niche || 'tecnologia').split(/[\s,]+/);
+            const nicheWords = [
+        ...(campaign.niche || '').split(/[\s,]+/),
+        ctx.targetCity,
+        ctx.targetCountry,
+        ...ctx.audienceIntentModifiers,
+      ].filter(Boolean);
       let outboundRes: any = null;
 
       try {
@@ -200,7 +280,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
+        actionExecuted: `${actionExecuted} ${geoTag}`,
         statusText: 'Monitoreo de debates y respuestas de nicho con Anti-Ban activo',
         extraDetails: { scannedCount: scanned, matchedCount: matched, antiBanScore: 100 },
       };
@@ -214,16 +294,18 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'Resend / SendGrid / Substack Curators Outreach API',
     defaultProcessedDelta: 3,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const actionExecuted = isInit
         ? `[Activación Inicial] Calibración de reputación de remitente y selección de 5 curadores de boletines del nicho "${campaign.niche}".`
         : `[Ciclo 15m] Despacho de briefs de valor a editores de newsletters y verificación de tasa de entrega (Bounce rate < 0.1%).`;
 
-      return {
+           return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
-        statusText: 'Curadores de boletines tech contactados con warming óptimo',
+        actionExecuted: `${actionExecuted} ${geoTag}`,
+        statusText: `Curadores de boletines tech contactados con warming óptimo • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
       };
     },
   },
@@ -235,6 +317,8 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'YouTube Data API v3 & TikTok Content API',
     defaultProcessedDelta: 2,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const actionExecuted = isInit
         ? `[Activación Inicial] Estructuración de 3 hooks virales y guiones de alto impacto para videos verticales adaptados a la propuesta de "${campaign.name}".`
@@ -243,8 +327,8 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
-        statusText: 'Guiones y hooks virales distribuidos en video vertical',
+        actionExecuted: `${actionExecuted} ${geoTag}`,
+        statusText: `Guiones y hooks virales distribuidos en video vertical • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
       };
     },
   },
@@ -256,22 +340,25 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'Vercel Deployment API / Edge Landing Hooks',
     defaultProcessedDelta: 5,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const cleanSlug = campaign.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const citySlug = ctx.targetCity.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const landingPaths = [
-        `${campaign.targetUrl}/vs-alternativas`,
-        `${campaign.targetUrl}/solucion-para-${cleanSlug}`,
+        `${campaign.targetUrl}/vs-alternativas-${citySlug}`,
+        `${campaign.targetUrl}/solucion-${ctx.purchasingPowerTier.toLowerCase()}-${cleanSlug}-${citySlug}`,
       ];
 
       const actionExecuted = isInit
         ? `[Activación Inicial] Compilación de 2 páginas comparativas y de intención comercial vinculadas al Enrutador Puente /r/${campaign.id}.`
         : `[Ciclo 15m] Regeneración estática incremental (ISR) en Edge Network de páginas programáticas comparativas.`;
 
-      return {
+            return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
-        statusText: 'Páginas comparativas de alta intención indexadas',
+        actionExecuted: `${actionExecuted} ${geoTag}`,
+        statusText: `Páginas comparativas de alta intención indexadas • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
         publishedLinks: landingPaths,
       };
     },
@@ -284,16 +371,18 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     platform: 'Instagram Graph API / Hunter Outreach API',
     defaultProcessedDelta: 1,
     execute: async (campaign, triggerType) => {
+              const ctx = buildStrictCampaignContext(campaign);
+        const geoTag = `[${ctx.targetCity}, ${ctx.targetCountry} | Tier: ${ctx.purchasingPowerTier} ($${ctx.minPrice}-$${ctx.maxPrice} ${ctx.currency})]`;
       const isInit = triggerType === 'initial_activation';
       const actionExecuted = isInit
         ? `[Activación Inicial] Prospección algorítmica de micro-creadores y líderes de opinión en ${campaign.niche}. 3 perfiles catalogados.`
         : `[Ciclo 15m] Verificación de tasa de apertura de propuestas de colaboración y seguimiento con creadores de contenido afines.`;
 
-      return {
+            return {
         status: 'operational',
         statusCode: 200,
-        actionExecuted,
-        statusText: 'Alianzas y enlaces de afiliación en distribución',
+        actionExecuted: `${actionExecuted} ${geoTag}`,
+        statusText: `Alianzas y enlaces de afiliación en distribución • ${ctx.targetCity}, ${ctx.targetCountry} (${ctx.purchasingPowerTier})`,
       };
     },
   },

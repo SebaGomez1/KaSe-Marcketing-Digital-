@@ -777,3 +777,213 @@ export function getNetworkEnginesStatus() {
     },
   };
 }
+
+// ============================================================================
+// CONECTORES REALES PARA MOTORES 3, 5, 6, 7 Y 8 (USANDO VARIABLES DE VERCEL)
+// ============================================================================
+
+async function generateRealCopyWithGemini(prompt: string, fallbackText: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return fallbackText;
+  try {
+    const res = await fetch(
+      `https://googleapis.com{apiKey.trim()}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      }
+    );
+    const data = await res.json();
+    const generated = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    return generated ? generated.trim() : fallbackText;
+  } catch {
+    return fallbackText;
+  }
+}
+
+// MOTOR 3 & MOTOR 7: Publicación REAL de Artículo / Landing en Dev.to (DEVTO_API_KEY) -> Devuelve URL pública real
+export async function publicarArticuloRealDevTo(params: {
+  title: string;
+  campaignName: string;
+  niche: string;
+  targetUrl: string;
+  city: string;
+  country: string;
+  tier: string;
+  tags?: string[];
+}): Promise<{ success: boolean; url?: string; error?: string }> {
+  const devtoKey = process.env.DEVTO_API_KEY;
+  if (!devtoKey) {
+    return { success: false, error: 'DEVTO_API_KEY no configurada en Vercel' };
+  }
+
+  try {
+    const bodyMarkdown = await generateRealCopyWithGemini(
+      `Escribe un artículo profesional en español de 3 párrafos presentando "${params.campaignName}" para el sector "${params.niche}", enfocado específicamente en clientes de nivel ${params.tier} en ${params.city}, ${params.country}. Incluye este enlace oficial al final: ${params.targetUrl}. No uses saludos ni meta-comentarios, solo el artículo en Markdown.`,
+      `## ${params.title}\n\nDescubre cómo **${params.campaignName}** está transformando el sector de **${params.niche}** en **${params.city}, ${params.country}**.\n\nDiseñado específicamente para perfiles **${params.tier}**, ofrece resultados medibles desde el primer día.\n\n👉 Accede directamente aquí: [${params.campaignName}](${params.targetUrl})`
+    );
+
+    const cleanTags = (params.tags || ['saas', 'marketing', 'tecnologia', 'negocios'])
+      .map((t) => t.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15))
+      .filter(Boolean)
+      .slice(0, 4);
+
+    const res = await fetch('https://dev.to', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': devtoKey.trim(),
+      },
+      body: JSON.stringify({
+        article: {
+          title: `${params.title} (${params.city}, ${params.country})`,
+          published: true,
+          body_markdown: bodyMarkdown,
+          tags: cleanTags.length > 0 ? cleanTags : ['startup', 'tech'],
+          canonical_url: params.targetUrl,
+        },
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data?.url) {
+      return { success: true, url: data.url };
+    }
+    return { success: false, error: data?.error || `HTTP ${res.status}` };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error conectando Dev.to API' };
+  }
+}
+
+// MOTOR 5 & MOTOR 8: Despacho REAL vía Resend API (RESEND_API_KEY)
+export async function enviarOutreachRealResend(params: {
+  toEmail: string;
+  subject: string;
+  campaignName: string;
+  niche: string;
+  targetUrl: string;
+  city: string;
+  country: string;
+  tier: string;
+}): Promise<{ success: boolean; id?: string; error?: string }> {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    return { success: false, error: 'RESEND_API_KEY no configurada en Vercel' };
+  }
+
+  try {
+    const htmlContent = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2>${params.campaignName} — ${params.city}, ${params.country}</h2>
+        <p>Hola,</p>
+        <p>Hemos seleccionado <strong>${params.campaignName}</strong> dentro del nicho <strong>${params.niche}</strong> para audiencia <strong>${params.tier}</strong> en <strong>${params.city}</strong>.</p>
+        <p><a href="${params.targetUrl}" style="display:inline-block;padding:12px 20px;background:#10b981;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Ver Plataforma Oficial</a></p>
+      </div>
+    `;
+
+    const res = await fetch('https://resend.com', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendKey.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'KaSe Growth Engine <onboarding@resend.dev>',
+        to: [params.toEmail],
+        subject: params.subject,
+        html: htmlContent,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data?.id) {
+      return { success: true, id: data.id };
+    }
+    return { success: false, error: data?.message || `HTTP ${res.status}` };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error conectando Resend API' };
+  }
+}
+
+// MOTOR 6: Publicación REAL en Instagram Graph API (INSTAGRAM_GRAPH_TOKEN)
+export async function publicarPostRealInstagram(params: {
+  campaignName: string;
+  niche: string;
+  targetUrl: string;
+  city: string;
+  country: string;
+  tier: string;
+  imageUrl?: string;
+}): Promise<{ success: boolean; permalink?: string; error?: string }> {
+  const igToken = process.env.INSTAGRAM_GRAPH_TOKEN;
+  if (!igToken) {
+    return { success: false, error: 'INSTAGRAM_GRAPH_TOKEN no configurado en Vercel' };
+  }
+
+  try {
+    const graphBase = 'https://graph.' + 'facebook.com/v21.0';
+    const meRes = await fetch(
+      `${graphBase}/me/accounts?fields=instagram_business_account&access_token=${igToken.trim()}`
+    );
+    const meData = await meRes.json();
+    const igUserId = meData?.data?.find((p: any) => p.instagram_business_account)?.instagram_business_account?.id;
+
+    if (!igUserId) {
+      return {
+        success: false,
+        error: 'No se encontró cuenta de Instagram Business vinculada al token',
+      };
+    }
+
+    const caption = await generateRealCopyWithGemini(
+      `Escribe un caption corto y persuasivo para Instagram en español promocionando "${params.campaignName}" (${params.niche}) en ${params.city}, ${params.country} para clientes ${params.tier}. Incluye llamado a la acción hacia ${params.targetUrl} y 4 hashtags relevantes.`,
+      `🚀 ${params.campaignName} llega a ${params.city}, ${params.country}.\n\nSoluciones de alto impacto en ${params.niche} (${params.tier}).\n\n🔗 Más info: ${params.targetUrl}\n\n#${params.city.replace(/\s+/g, '')} #${params.niche.replace(/\s+/g, '')} #Negocios #Crecimiento`
+    );
+
+    const mediaImage =
+      params.imageUrl ||
+      'https://images.' + 'unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1080&q=80';
+
+    const containerRes = await fetch(`${graphBase}/${igUserId}/media`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_url: mediaImage,
+        caption,
+        access_token: igToken.trim(),
+      }),
+    });
+    const containerData = await containerRes.json();
+    if (!containerData?.id) {
+      return { success: false, error: containerData?.error?.message || 'Error creando media container en IG' };
+    }
+
+    const publishRes = await fetch(`${graphBase}/${igUserId}/media_publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        creation_id: containerData.id,
+        access_token: igToken.trim(),
+      }),
+    });
+    const publishData = await publishRes.json();
+    if (!publishData?.id) {
+      return { success: false, error: publishData?.error?.message || 'Error publicando en IG' };
+    }
+
+    const linkRes = await fetch(
+      `${graphBase}/${publishData.id}?fields=permalink&access_token=${igToken.trim()}`
+    );
+    const linkData = await linkRes.json();
+
+    return {
+      success: true,
+      permalink: linkData?.permalink || `https://instagram.com/p/${publishData.id}/`,
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Error en Instagram Graph API' };
+  }
+}
