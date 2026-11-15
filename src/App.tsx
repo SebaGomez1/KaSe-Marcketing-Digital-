@@ -40,7 +40,6 @@ import { Smartphone, Download, ShieldCheck, WifiOff } from 'lucide-react';
 
 // Purga inmediata de campañas falsas en almacenamiento del navegador
 purgeFakeCampaignsFromStorage();
-try { window.localStorage.removeItem('kase_current_user'); window.localStorage.removeItem('kase_active_tab'); } catch (_) {}
 
 const KATHY_SUPER_ADMIN_USER: User = {
   id: 'kathy_super_admin',
@@ -52,10 +51,25 @@ const KATHY_SUPER_ADMIN_USER: User = {
 };
 
 export default function App() {
-      const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('kase_current_user') : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Active View Persistent Mirroring (Retains viewport across reloads)
-    const [activeTab, setActiveTab] = useState<string>('landing');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try {
+      const savedUser = typeof window !== 'undefined' ? window.localStorage.getItem('kase_current_user') : null;
+      const savedTab = typeof window !== 'undefined' ? window.localStorage.getItem('kase_active_tab') : null;
+      if (savedUser && savedTab && savedTab !== 'landing') return savedTab;
+      if (savedUser) return 'dashboard';
+    } catch {}
+    return 'landing';
+  });
 
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
@@ -109,6 +123,80 @@ export default function App() {
     }
   }, [isOnline, currentUser]);
 
+
+    // Sync currentUser & activeTab to localStorage so reload stays on the exact same page
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (currentUser) {
+        window.localStorage.setItem('kase_current_user', JSON.stringify(currentUser));
+      }
+      if (activeTab) {
+        window.localStorage.setItem('kase_active_tab', activeTab);
+      }
+    } catch {}
+  }, [currentUser, activeTab]);
+
+  // Historial de navegación para el botón "Atrás" del celular
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const currentState = window.history.state;
+    if (!currentState || currentState.tab !== activeTab) {
+      window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      // 1. Si hay un modal o detalle abierto, cerrarlo primero al dar Atrás
+      if (selectedModule) {
+        setSelectedModule(null);
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+        return;
+      }
+      if (isNewCampaignOpen) {
+        setIsNewCampaignOpen(false);
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+        return;
+      }
+      if (isCheckoutModalOpen) {
+        setIsCheckoutModalOpen(false);
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+        return;
+      }
+      if (isAuthModalOpen) {
+        setIsAuthModalOpen(false);
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+        return;
+      }
+      if (isInstallModalOpen) {
+        setIsInstallModalOpen(false);
+        window.history.pushState({ tab: activeTab }, '', window.location.pathname + window.location.search);
+        return;
+      }
+
+      // 2. Navegar a la pestaña anterior registrada en el historial
+      const prevTab = event.state?.tab;
+      if (prevTab && prevTab !== activeTab) {
+        if (!currentUser && prevTab !== 'landing') {
+          setActiveTab('landing');
+        } else if (currentUser && prevTab === 'landing') {
+          setActiveTab('dashboard');
+          window.history.pushState({ tab: 'dashboard' }, '', window.location.pathname + window.location.search);
+        } else {
+          setActiveTab(prevTab);
+        }
+      } else if (currentUser && activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        window.history.pushState({ tab: 'dashboard' }, '', window.location.pathname + window.location.search);
+      } else if (currentUser && activeTab === 'dashboard') {
+        // Evitar salir accidentalmente de la app estando en el dashboard principal
+        window.history.pushState({ tab: 'dashboard' }, '', window.location.pathname + window.location.search);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab, currentUser, selectedModule, isNewCampaignOpen, isCheckoutModalOpen, isAuthModalOpen, isInstallModalOpen]);
 
   // Sync activeCampaignId to localStorage
   useEffect(() => {
@@ -539,9 +627,10 @@ export default function App() {
     setIsCheckoutModalOpen(true);
   };
 
-  // Logout handler to return to Hero
+    // Logout handler to return to Home
   const handleLogout = () => {
     try {
+      supabase?.auth.signOut().catch(() => {});
       window.localStorage.removeItem('kase_current_user');
       window.localStorage.removeItem('kase_active_tab');
       window.localStorage.removeItem('kase_cached_campaigns');
