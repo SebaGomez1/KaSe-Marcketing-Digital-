@@ -27,20 +27,41 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
   const [serverLogs, setServerLogs] = useState<CampaignLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+    const isAdmin = isUserSuperAdmin(currentUser);
+
+  const userOwnedCampaigns = React.useMemo(() => {
+    if (isAdmin) return allCampaigns;
+    if (!currentUser) return [];
+    return allCampaigns.filter(
+      (c) =>
+        (c.userId && c.userId === currentUser.id) ||
+        (c.creatorEmail && currentUser.email && c.creatorEmail.toLowerCase() === currentUser.email.toLowerCase())
+    );
+  }, [allCampaigns, currentUser, isAdmin]);
+
   const fetchServerLogs = async () => {
     setIsLoading(true);
     try {
-      const adminEmail = currentUser?.email || '';
+      const userEmail = currentUser?.email || '';
+      const targetCampaignId =
+        campaign && (isAdmin || userOwnedCampaigns.some((c) => c.id === campaign.id))
+          ? campaign.id
+          : userOwnedCampaigns?.[0]?.id;
+
       const [resLogs, resSync] = await Promise.allSettled([
-        fetch(`/api/system_audit_logs?email=${encodeURIComponent(adminEmail)}`, {
-          headers: { 'x-admin-email': adminEmail },
-        }),
-        campaign?.id ? fetch(`/api/campaigns/${encodeURIComponent(campaign.id)}/sync-logs?limit=100`) : Promise.resolve(null),
+        isAdmin
+          ? fetch(`/api/system_audit_logs?email=${encodeURIComponent(userEmail)}`, {
+              headers: { 'x-admin-email': userEmail },
+            })
+          : Promise.resolve(null),
+        targetCampaignId
+          ? fetch(`/api/campaigns/${encodeURIComponent(targetCampaignId)}/sync-logs?limit=100`)
+          : Promise.resolve(null),
       ]);
 
       const loadedLogs: CampaignLog[] = [];
 
-      if (resLogs.status === 'fulfilled' && resLogs.value && resLogs.value.ok) {
+      if (isAdmin && resLogs.status === 'fulfilled' && resLogs.value && resLogs.value.ok) {
         const data = await resLogs.value.json();
         if (Array.isArray(data.system_audit_logs)) {
           loadedLogs.push(...data.system_audit_logs);
@@ -66,33 +87,32 @@ export const SystemAuditLogs: React.FC<SystemAuditLogsProps> = ({ campaign, allC
 
       setServerLogs(loadedLogs);
     } catch (e) {
-      console.warn('[Bitácora] Error al cargar logs globales:', e);
+      console.warn('[Bitácora] Error al cargar logs:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
-
   useEffect(() => {
     fetchServerLogs();
-  }, [campaign?.id]);
+  }, [campaign?.id, currentUser?.email, isAdmin]);
 
   // Combine campaign logs with server-side bridge logs without duplicates
   const allLogsMap = new Map<string, CampaignLog>();
 
-  // Add campaign specific logs if available
-  if (campaign?.logs) {
+  // Add campaign specific logs if available and owned by user (or admin)
+  if (campaign?.logs && (isAdmin || userOwnedCampaigns.some((c) => c.id === campaign.id))) {
     campaign.logs.forEach((l) => allLogsMap.set(l.id, l));
   }
 
-  // Also collect logs from other campaigns if available for super admin view
-  allCampaigns.forEach((c) => {
+  // Collect logs from user's own campaigns (or all campaigns if admin)
+  userOwnedCampaigns.forEach((c) => {
     if (c.logs) {
       c.logs.forEach((l) => allLogsMap.set(l.id, l));
     }
   });
 
-  // Add global server bridge logs
+  // Add server logs (global logs only loaded for Admin + user's own campaign sync logs)
   serverLogs.forEach((l) => {
     if (!allLogsMap.has(l.id)) {
       allLogsMap.set(l.id, l);

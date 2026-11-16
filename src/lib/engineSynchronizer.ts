@@ -4,6 +4,7 @@
  * Diseñado para disparador Cron-Job (cada 15 min) y Certeza de Activación Inicial Inmediata.
  */
 import { Campaign, CampaignSyncLog, ModuleKey } from '../types/growth.js';
+import { getBridgeUrl } from './bridgeRouter.js';
 import {
   forzarIndexacionGoogleAPI,
   getTwitterClient,
@@ -106,6 +107,14 @@ export function buildStrictCampaignContext(campaign: Campaign) {
       : strictSingleCity
       ? `"${targetCity}" "${targetCountry}"`
       : `"${targetCity}" OR "${geo?.region || ''}" "${targetCountry}"`;
+  const publicOrigin =
+    process.env.PUBLIC_APP_URL ||
+    process.env.VITE_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'https://vercel.app');
+
+  const bridgeUrl = getBridgeUrl(campaign.id, campaign.campaignType, publicOrigin);
 
   return {
     targetCountry,
@@ -117,8 +126,10 @@ export function buildStrictCampaignContext(campaign: Campaign) {
     maxPrice,
     currency,
     audienceIntentModifiers,
+    bridgeUrl,
   };
 }
+
 
 
 const CONFIGURED_ENGINES: EngineDefinition[] = [
@@ -200,7 +211,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       ];
 
           if (twitterClient) {
-      const tweet1 = `🚀 ${campaign.name} (${ctx.targetCity}, ${ctx.targetCountry}): ${campaign.description || `Líder en ${campaign.niche}`}. Descúbrelo aquí 👉 ${campaign.targetUrl}`;
+      const tweet1 = `🚀  ${campaign.targetUrl} (${ctx.targetCity}, ${ctx.targetCountry}): ${campaign.description || `Líder en ${campaign.niche}`}. Descúbrelo aquí 👉 ${campaign.targetUrl}`;
       const tweet2 = `🎯 Especialmente diseñado para ${ctx.audienceIntentModifiers.slice(0, 2).join(', ')} en ${ctx.targetCity}. #${campaign.niche.replace(/[^a-zA-Z0-9]/g, '')} #${ctx.targetCity.replace(/[^a-zA-Z0-9]/g, '')}`;
       const pubRes = await publicarHiloAutonomo([tweet1, tweet2]);
       if (pubRes.success && pubRes.threadIds && pubRes.threadIds.length > 0) {
@@ -250,7 +261,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       title: `Lanzamiento Oficial: ${campaign.name} — Solución ${campaign.niche}`,
       campaignName: campaign.name,
       niche: campaign.niche,
-      targetUrl: campaign.targetUrl,
+      targetUrl: ctx.bridgeUrl,
       city: ctx.targetCity,
       country: ctx.targetCountry,
       tier: ctx.purchasingPowerTier,
@@ -330,7 +341,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       subject: `[KaSe Motor 5] Despacho Newsletter: ${campaign.name} (${ctx.targetCity}, ${ctx.targetCountry})`,
       campaignName: campaign.name,
       niche: campaign.niche,
-      targetUrl: campaign.targetUrl,
+       targetUrl: ctx.bridgeUrl,
       city: ctx.targetCity,
       country: ctx.targetCountry,
       tier: ctx.purchasingPowerTier,
@@ -361,7 +372,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
     const igPost = await publicarPostRealInstagram({
       campaignName: campaign.name,
       niche: campaign.niche,
-      targetUrl: campaign.targetUrl,
+         targetUrl: ctx.bridgeUrl,
       city: ctx.targetCity,
       country: ctx.targetCountry,
       tier: ctx.purchasingPowerTier,
@@ -402,7 +413,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       title: `Guía Comparativa y Alternativas en ${campaign.niche}: ${campaign.name}`,
       campaignName: campaign.name,
       niche: campaign.niche,
-      targetUrl: campaign.targetUrl,
+         targetUrl: ctx.bridgeUrl,
       city: ctx.targetCity,
       country: ctx.targetCountry,
       tier: ctx.purchasingPowerTier,
@@ -440,7 +451,7 @@ const CONFIGURED_ENGINES: EngineDefinition[] = [
       subject: `[KaSe Motor 8] Propuesta de Alianza & Afiliados: ${campaign.name} (${ctx.targetCity})`,
       campaignName: campaign.name,
       niche: campaign.niche,
-      targetUrl: campaign.targetUrl,
+       targetUrl: ctx.bridgeUrl,
       city: ctx.targetCity,
       country: ctx.targetCountry,
       tier: ctx.purchasingPowerTier,

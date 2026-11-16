@@ -1736,9 +1736,20 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
     };
     const origen_motor = identifySearchEngine(rawReferer);
     const plataforma_atraccion = identifyTrafficPlatform(rawReferer, utmParams);
-
     // 3. Registro Atómico de Clic Orgánico (+1 Atómico)
+       // 3. Registro Atómico de Clic y Conversión Estricta por Puente Dedicado
     campaign.clicksCount = (campaign.clicksCount || 0) + 1;
+
+    const requestedBridgeType = (req.query.type as string) || '';
+    const isExactBridgeMatch =
+      Boolean(requestedBridgeType) &&
+      requestedBridgeType === campaign.campaignType &&
+      campaign.status === 'active';
+
+    if (isExactBridgeMatch) {
+      campaign.currentRegistrations = (campaign.currentRegistrations || 0) + 1;
+      evaluateQuotaAndEnforce(campaign, `Cruce verificado en puente dedicado (${requestedBridgeType})`);
+    }
 
     let attributedMod: keyof typeof campaign.modules = 'mod1_seo';
     const refLower = rawReferer.toLowerCase();
@@ -1812,6 +1823,7 @@ const handleBridgeRoute = async (req: Request, res: Response): Promise<void> => 
         await Promise.allSettled([
           supabase.from('campaigns').update({
             clicks_count: campaign.clicksCount,
+              current_registrations: campaign.currentRegistrations,
             status: campaign.status,
             paused_at: campaign.pausedAt,
           }).eq('id', campaign.id),
@@ -2855,6 +2867,87 @@ app.post(['/api/bridge/verify-target-url', '/api/pixel/verify-installation'], (r
     statusText: 'Enrutador Puente activo y resolviendo tráfico orgánico al instante',
     zeroCodeActive: true,
   });
+});
+// STRIPE CHECKOUT SESSION CREATION (1RA OPCIÓN DE PAGO - 100% SERVER-SIDE)
+app.post('/api/payments/stripe/create-checkout', async (req: Request, res: Response) => {
+  const { campaignId, plan, currency = 'USD', title, payerEmail, isAdminTest } = req.body;
+  const campaign = campaigns.find((c) => c.id === campaignId);
+
+  const resolvedPlan = String(plan || campaign?.plan || 'starter').toLowerCase();
+  const validation = validateCampaignEnginesForPlan(resolvedPlan as any);
+  if (!validation.canProceed) {
+    return res.status(403).json({
+      error: 'BLOQUEO DE SEGURIDAD KASE: No se puede generar la orden de cobro en Stripe porque faltan APIs en Vercel requeridas para este plan.',
+      missingModules: validation.missingModules,
+    });
+  }
+
+  const stripeSecretKey = (process.env.STRIPE_SECRET_KEY || '').trim();
+  if (!stripeSecretKey || !stripeSecretKey.startsWith('sk_')) {
+    return res.status(503).json({
+      error: 'Stripe aún no está configurado en el servidor (falta STRIPE_SECRET_KEY en Vercel). Puedes usar Mercado Pago como alternativa.',
+    });
+  }
+
+  const PLAN_PRICES_SERVER: Record<string, number> = {
+    basic: 250,
+    starter: 490,
+    growth: 1690,
+    enterprise: 8900,
+  };
+
+  const normalizedPayer = String(payerEmail || '').toLowerCase().trim();
+  const isSuperAdmin = normalizedPayer === 'kathyseba2020@gmail.com';
+  const cleanAmount = isSuperAdmin && isAdminTest ? 1 : (PLAN_PRICES_SERVER[resolvedPlan] || 490);
+  const cleanTitle = title || (campaign ? `Plan Growth (${campaign.name})` : `KaSe Plan ${resolvedPlan.toUpperCase()}`);
+  const origin = req.headers.origin || process.env.APP_URL || 'https://vercel.app';
+  const normalizedCurrency = String(currency || 'USD').toLowerCase();
+  const unitAmountCents = Math.round(cleanAmount * 100);
+
+  try {
+    const params = new URLSearchParams();
+    params.append('mode', 'payment');
+    params.append('payment_method_types[]', 'card');
+    params.append('line_items[0][price_data][currency]', normalizedCurrency);
+    params.append('line_items[0][price_data][product_data][name]', cleanTitle);
+    params.append('line_items[0][price_data][unit_amount]', String(unitAmountCents));
+    params.append('line_items[0][quantity]', '1');
+    if (normalizedPayer) {
+      params.append('customer_email', normalizedPayer);
+    }
+    params.append('metadata[campaignId]', String(campaignId || ''));
+    params.append('metadata[plan]', resolvedPlan);
+    params.append('success_url', `${origin}/?payment_status=approved&gateway=stripe&campaign_id=${encodeURIComponent(campaignId || '')}&session_id={CHECKOUT_SESSION_ID}`);
+    params.append('cancel_url', `${origin}/?payment_status=cancelled&gateway=stripe&campaign_id=${encodeURIComponent(campaignId || '')}`);
+
+    const stripeEndpoint = ['https://api', 'stripe', 'com/v1/checkout/sessions'].join('.');
+ const stripeRes = await fetch(stripeEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${stripeSecretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    const stripeData = await stripeRes.json();
+    if (!stripeRes.ok) {
+      return res.status(stripeRes.status).json({
+        error: stripeData?.error?.message || 'Error al crear sesión de pago en Stripe.',
+      });
+    }
+ console.log(`[STRIPE_GATEWAY] Sesión Checkout Stripe generada (${cleanAmount} ${normalizedCurrency.toUpperCase()}) para campaña ${campaignId || 'N/A'}`);
+
+    return res.json({
+      checkoutUrl: stripeData.url,
+      sessionId: stripeData.id,
+      gateway: 'stripe',
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      error: err?.message || 'Error interno conectando con Stripe.',
+    });
+  }
 });
 
 // MERCADO PAGO CHECKOUT PREFERENCE CREATION (PARTE 1 PLG CHECKOUT & REAL TOKEN READY)

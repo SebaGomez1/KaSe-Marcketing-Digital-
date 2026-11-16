@@ -804,7 +804,7 @@ export default function App() {
             }}
             currentUser={currentUser}
           />
-        ) : activeTab === 'logs' && isUserSuperAdmin(currentUser) ? (
+        ) : activeTab === 'logs' && currentUser ? (
           <SystemAuditLogs campaign={activeCampaign || null} allCampaigns={campaigns} currentUser={currentUser} />
         ) : activeCampaign ? (
           <>

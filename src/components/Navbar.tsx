@@ -43,12 +43,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'modules', label: 'Módulos (8)' },
     { id: 'plans', label: 'Planes y Precios' },
     { id: 'reviews', label: '⭐ Reseñas' },
+    { id: 'logs', label: '📋 Bitácora' },
     { id: 'integration', label: 'Integración Segura' },
   ];
 
   const adminNavItems = [
     ...authenticatedClientNavItems,
-    { id: 'logs', label: '📋 Bitácora' },
     { id: 'admin_global', label: '👑 Admin Global KaSe' },
   ];
 

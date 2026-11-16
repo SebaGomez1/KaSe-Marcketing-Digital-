@@ -21,6 +21,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSimulation, setIsSimulation] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState<'stripe' | 'mercadopago'>('stripe');
     const [isGatewayLive] = useState(true);
   const [checkingGateway] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
@@ -42,16 +43,22 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
   const amount = campaign.billing?.monthlyAmount || planAmounts[campaign.plan] || 490;
   const currency = campaign.currency || 'USD';
 
-  // 1. REAL MERCADO PAGO REDIRECT (CHECKOUT PRO)
-  const handleRealMercadoPagoCheckout = async () => {
+    // 1. REAL CHECKOUT REDIRECT (STRIPE 1RA OPCIÓN + MERCADO PAGO 2DA OPCIÓN)
+  const handleCheckoutRedirect = async () => {
     if (checkingGateway || !engineValidation || !engineValidation.canProceed) {
       setError('Bloqueo de Seguridad KaSe: Cobro prevenido porque las APIs requeridas para este plan no están configuradas en Vercel.');
       return;
     }
     setRedirecting(true);
     setError(null);
+    const endpoint =
+      selectedGateway === 'stripe'
+        ? '/api/payments/stripe/create-checkout'
+        : '/api/payments/mercadopago/create-preference';
+    const gatewayLabel = selectedGateway === 'stripe' ? 'Stripe' : 'Mercado Pago';
+
     try {
-            const res = await fetch('/api/payments/mercadopago/create-preference', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,10 +72,9 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al conectar con Mercado Pago');
+      if (!res.ok) throw new Error(data.error || `Error al conectar con ${gatewayLabel}`);
 
       if (data.checkoutUrl) {
-        // Redirect the user to the official Mercado Pago page where card numbers are securely requested
         window.location.href = data.checkoutUrl;
       } else {
         throw new Error('No se pudo generar el enlace de pago seguro');
@@ -78,6 +84,7 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
       setRedirecting(false);
     }
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
@@ -215,30 +222,71 @@ export const MercadoPagoCheckoutModal: React.FC<MercadoPagoCheckoutModalProps> =
               </div>
             )}
 
-            {/* Actions */}
-                                <div className="space-y-2 pt-2">
-            <button
-              type="button"
-              onClick={handleRealMercadoPagoCheckout}
-              disabled={redirecting || loading}
-              className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                redirecting || loading
-                  ? 'bg-neutral-800 text-neutral-400 border border-neutral-700 cursor-not-allowed opacity-75'
-                  : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
-              }`}
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>
-                {redirecting
-                  ? 'Conectando con Mercado Pago...'
-                  : `Pagar $${amount} ${currency} en Mercado Pago Uruguay`}
-              </span>
-            </button>
-            <p className="text-[10px] text-neutral-500 text-center font-mono">
-              Redirección oficial segura a Mercado Pago Checkout Pro.
-            </p>
-          </div>
-          </div>
+                       {/* Selector de Pasarela: 1ª Opción Stripe / 2ª Opción Mercado Pago */}
+            <div className="space-y-2 pt-2">
+              <label className="block text-neutral-300 font-medium text-xs">
+                Método de Pago Oficial
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedGateway('stripe'); setError(null); }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedGateway === 'stripe'
+                      ? 'bg-indigo-500/20 border-indigo-400 text-white'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs">1. Stripe</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono">GLOBAL</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Tarjetas Int. / Apple & Google Pay</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setSelectedGateway('mercadopago'); setError(null); }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedGateway === 'mercadopago'
+                      ? 'bg-sky-500/20 border-sky-400 text-white'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs">2. Mercado Pago</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/30 text-sky-200 font-mono">LATAM</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Checkout Pro / Local</p>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCheckoutRedirect}
+                disabled={redirecting || loading}
+                className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  redirecting || loading
+                    ? 'bg-neutral-800 text-neutral-400 border border-neutral-700 cursor-not-allowed opacity-75'
+                    : selectedGateway === 'stripe'
+                      ? 'bg-indigo-500 hover:bg-indigo-400 text-white cursor-pointer shadow-lg shadow-indigo-500/20'
+                      : 'bg-sky-500 hover:bg-sky-400 text-black cursor-pointer shadow-lg shadow-sky-500/20'
+                }`}
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>
+                  {redirecting
+                    ? `Conectando con ${selectedGateway === 'stripe' ? 'Stripe' : 'Mercado Pago'}...`
+                    : `Pagar $${amount} ${currency} con ${selectedGateway === 'stripe' ? 'Stripe' : 'Mercado Pago'}`}
+                </span>
+              </button>
+              <p className="text-[10px] text-neutral-500 text-center font-mono">
+                {selectedGateway === 'stripe'
+                  ? 'Redirección oficial encriptada vía Stripe Checkout (PCI-DSS Nivel 1).'
+                  : 'Redirección oficial segura a Mercado Pago Checkout Pro.'}
+              </p>
+            </div>
+                   </div>
         )}
       </div>
     </div>
