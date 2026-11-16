@@ -907,7 +907,7 @@ export async function enviarOutreachRealResend(params: {
   }
 }
 
-// MOTOR 6: Publicación REAL en Instagram Graph API (INSTAGRAM_GRAPH_TOKEN)
+// MOTOR 6: Publicación REAL de Reels/Posts en Instagram Graph API (INSTAGRAM_GRAPH_TOKEN + PIXABAY_API_KEY)
 export async function publicarPostRealInstagram(params: {
   campaignName: string;
   niche: string;
@@ -916,6 +916,7 @@ export async function publicarPostRealInstagram(params: {
   country: string;
   tier: string;
   imageUrl?: string;
+  videoUrl?: string;
 }): Promise<{ success: boolean; permalink?: string; error?: string }> {
   const igToken = process.env.INSTAGRAM_GRAPH_TOKEN;
   if (!igToken) {
@@ -923,7 +924,7 @@ export async function publicarPostRealInstagram(params: {
   }
 
   try {
-    const graphBase = 'https://graph.' + 'facebook.com/v21.0';
+    const graphBase = 'https://facebook.com';
     const meRes = await fetch(
       `${graphBase}/me/accounts?fields=instagram_business_account&access_token=${igToken.trim()}`
     );
@@ -937,27 +938,86 @@ export async function publicarPostRealInstagram(params: {
       };
     }
 
-    const caption = await generateRealCopyWithGemini(
-      `Escribe un caption corto y persuasivo para Instagram en español promocionando "${params.campaignName}" (${params.niche}) en ${params.city}, ${params.country} para clientes ${params.tier}. Incluye llamado a la acción hacia ${params.targetUrl} y 4 hashtags relevantes.`,
-      `🚀 ${params.campaignName} llega a ${params.city}, ${params.country}.\n\nSoluciones de alto impacto en ${params.niche} (${params.tier}).\n\n🔗 Más info: ${params.targetUrl}\n\n#${params.city.replace(/\s+/g, '')} #${params.niche.replace(/\s+/g, '')} #Negocios #Crecimiento`
+        const caption = await generateRealCopyWithGemini(
+      `Actúa como un experto en Reels virales y growth hacking. Escribe un caption de alta retención en español para Instagram Reels promocionando "${params.campaignName}" (Nicho: ${params.niche}) en ${params.city}, ${params.country} para público ${params.tier}.
+REGLAS ESTRICTAS DE RETENCIÓN:
+1. Primera línea (HOOK): Una frase corta, disruptiva o pregunta directa sobre el mayor dolor/deseo del cliente que obligue a frenar el scroll y leer más (usa 1 emoji llamativo al inicio).
+2. Cuerpo (3 líneas cortas): Explica el beneficio transformador de forma directa, usando gatillos de autoridad y exclusividad en ${params.city}.
+3. Llamado a la acción (CTA urgente): Invita a entrar ya mismo a ${params.targetUrl} o comentar una palabra clave para recibir acceso inmediato.
+4. Cierra con 5 hashtags estratégicos (nicho + ${params.city.replace(/\s+/g, '')} + tendencia).
+Responde SOLO con el texto listo para publicar.`,
+      `🚨 ¿Todavía no conocés lo que está revolucionando ${params.niche} en ${params.city}?\n\nMientras otros pierden tiempo y dinero, ${params.campaignName} ya está ayudando a clientes ${params.tier} en ${params.country} a lograr resultados reales más rápido.\n\n👇 Entrá ahora antes de que se agoten los cupos:\n👉 ${params.targetUrl}\n\n#${params.city.replace(/\s+/g, '')} #${params.niche.replace(/\s+/g, '')} #Tendencia #Emprendedores #Crecimiento`
     );
 
-    const mediaImage =
-      params.imageUrl ||
-      'https://images.' + 'unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1080&q=80';
+    // 1. Obtener video HD real de alto impacto visual desde Pixabay si no se pasó un videoUrl ya renderizado
+    let finalVideoUrl = params.videoUrl || '';
+    const pixabayKey = process.env.PIXABAY_API_KEY;
+
+    if (!finalVideoUrl && pixabayKey) {
+      try {
+        const searchQuery = await generateRealCopyWithGemini(
+          `Convierte el nicho "${params.niche}" en 2 o 3 palabras clave en inglés de alto impacto visual y movimiento dinámico para buscar un video cinematográfico en Pixabay (ejemplo: "modern technology neon", "luxury lifestyle success", "happy business team"). Responde SOLO las palabras en inglés sin comillas ni puntos.`,
+          'modern dynamic business success'
+        );
+        const cleanQuery = encodeURIComponent(searchQuery.replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'modern business');
+        const pixRes = await fetch(
+          `https://pixabay.com{pixabayKey.trim()}&q=${cleanQuery}&per_page=8&safesearch=true`
+        );
+        const pixData = await pixRes.json();
+        const hits = pixData?.hits || [];
+        if (hits.length > 0) {
+          const randomHit = hits[Math.floor(Math.random() * hits.length)];
+          finalVideoUrl =
+            randomHit?.videos?.large?.url ||
+            randomHit?.videos?.medium?.url ||
+            randomHit?.videos?.small?.url ||
+            '';
+        }
+      } catch {
+        // Si falla Pixabay, continúa con respaldo de imagen sin interrumpir el motor
+      }
+    }
+
+    // 2. Crear contenedor en Instagram (REEL si hay video .mp4, o IMAGE como respaldo)
+    const mediaPayload: Record<string, string> = finalVideoUrl
+      ? {
+          media_type: 'REELS',
+          video_url: finalVideoUrl,
+          caption,
+          access_token: igToken.trim(),
+        }
+      : {
+          image_url:
+            params.imageUrl ||
+            'https://unsplash.com',
+          caption,
+          access_token: igToken.trim(),
+        };
 
     const containerRes = await fetch(`${graphBase}/${igUserId}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_url: mediaImage,
-        caption,
-        access_token: igToken.trim(),
-      }),
+      body: JSON.stringify(mediaPayload),
     });
+
     const containerData = await containerRes.json();
     if (!containerData?.id) {
       return { success: false, error: containerData?.error?.message || 'Error creando media container en IG' };
+    }
+
+    // 3. Si es un REEL en video, esperar a que Instagram termine de procesarlo antes de publicar
+    if (finalVideoUrl) {
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const statusRes = await fetch(
+          `${graphBase}/${containerData.id}?fields=status_code&access_token=${igToken.trim()}`
+        );
+        const statusData = await statusRes.json();
+        if (statusData?.status_code === 'FINISHED') break;
+        if (statusData?.status_code === 'ERROR') {
+          return { success: false, error: 'Instagram reportó error al procesar el video Reel' };
+        }
+      }
     }
 
     const publishRes = await fetch(`${graphBase}/${igUserId}/media_publish`, {
@@ -968,6 +1028,7 @@ export async function publicarPostRealInstagram(params: {
         access_token: igToken.trim(),
       }),
     });
+
     const publishData = await publishRes.json();
     if (!publishData?.id) {
       return { success: false, error: publishData?.error?.message || 'Error publicando en IG' };
@@ -980,7 +1041,7 @@ export async function publicarPostRealInstagram(params: {
 
     return {
       success: true,
-      permalink: linkData?.permalink || `https://instagram.com/p/${publishData.id}/`,
+      permalink: linkData?.permalink || `https://instagram.com{publishData.id}/`,
     };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Error en Instagram Graph API' };
