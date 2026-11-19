@@ -60,7 +60,75 @@ const ai = process.env.GEMINI_API_KEY
     })
   : null;
 
+// --- WEBHOOK AUTOMÁTICO DE STRIPE (DEBE IR ANTES DE express.json()) ---
+app.post('/api/payments/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!sig || !webhookSecret || !process.env.STRIPE_SECRET_KEY) {
+    console.error('[Stripe Webhook] Faltan credenciales o firma.');
+    return res.status(400).send('Webhook Error: Missing signature or secret');
+  }
+
+    let event;
+  try {
+    const crypto = await import('node:crypto');
+    const rawBody = req.body.toString('utf8');
+    const parts = (sig as string).split(',').reduce((acc: any, part) => {
+      const [k, v] = part.split('=');
+      acc[k] = v;
+      return acc;
+    }, {});
+    const signedPayload = `${parts.t}.${rawBody}`;
+    const expectedSig = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(signedPayload, 'utf8')
+      .digest('hex');
+
+    if (expectedSig !== parts.v1) {
+      throw new Error('Firma HMAC de Stripe no coincide');
+    }
+    event = JSON.parse(rawBody);
+  } catch (err: any) {
+    console.error('[Stripe Webhook] Firma inválida:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // ÚNICO MOMENTO DONDE SE CREA LA CAMPAÑA: PAGO CONFIRMADO
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as any;
+    
+    if (session.payment_status === 'paid' && session.metadata?.campaign_payload) {
+      try {
+        const campaignData = JSON.parse(session.metadata.campaign_payload);
+        
+        // Guardamos en Supabase (usando el cliente supabase que ya tienes en server.ts)
+        const { error } = await supabase
+          .from('campaigns')
+          .upsert({
+            ...campaignData,
+            status: 'active',
+            payment_status: 'paid',
+            stripe_session_id: session.id
+          }, { onConflict: 'id' });
+
+        if (error) {
+          console.error('[Stripe Webhook] Error guardando campaña en Supabase:', error);
+          return res.status(500).json({ error: 'Database insert failed' });
+        }
+
+        console.log('[Stripe Webhook] Campaña creada tras pago confirmado:', campaignData.id);
+      } catch (parseErr) {
+        console.error('[Stripe Webhook] Error procesando metadata:', parseErr);
+      }
+    }
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json());
+
 
 // Normalización de rutas para Vercel rewrites y enrutador puente
 app.use((req, _res, next) => {
